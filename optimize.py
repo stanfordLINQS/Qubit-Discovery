@@ -12,8 +12,15 @@ from functions import (
 from loss import calculate_total_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
 
+import argparse
 import numpy as np
 import torch
+
+# Assign keyword arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("codename")
+parser.add_argument("id")
+args = parser.parse_args()
 
 # Optimization settings
 
@@ -21,7 +28,7 @@ seed = 2
 random.seed(seed)
 np.random.seed(seed)
 k = 2  # number of circuits to sample of each topology
-num_epochs = 15  # number of training iterations
+num_epochs = 2  # number of training iterations
 lr = 1e-1  # learning rate
 num_eigenvalues = 3
 total_trunc_num = 1000
@@ -63,7 +70,10 @@ def init_loss_record(circuit, codename):
   return loss_record
 
 
-def optimize(circuit_code, N=2):
+def main():
+    circuit_code = args.codename
+    id = int(args.id)
+    N = len(circuit_code)
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
     circuit = sampler.sample_circuit_code(circuit_code)
     trunc_nums = circuit.truncate_circuit(total_trunc_num)
@@ -78,6 +88,7 @@ def optimize(circuit_code, N=2):
     converged = True
     # Circuit optimization loop
     for iteration in range(num_epochs):
+        print(f"Iteration {iteration}")
         optimizer = torch.optim.SGD(
             circuit.parameters,
             nesterov=nesterov_momentum,
@@ -126,3 +137,6 @@ def optimize(circuit_code, N=2):
     if not converged:
         # TODO: Save circuit, throw error
         pass
+
+if __name__ == "__main__":
+    main()
