@@ -6,7 +6,7 @@ import torch
 
 from numpy import ndarray
 from SQcircuit import Circuit, CircuitSampler
-from SQcircuit.elements import Loop
+from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
 from typing import Tuple
 
 
@@ -117,3 +117,38 @@ def print_new_circuit_sampled_message(total_l= 131):
   print("*" + (total_l-2)*" " + "*")
   print(+total_l*"*" )
   print(total_l*"*")
+
+def flatten(l):
+  return [item for sublist in l for item in sublist]
+
+def get_element_counts(circuit):
+  inductor_count = sum([type(xi) is Inductor for xi in
+                        flatten(list(circuit.elements.values()))])
+  junction_count = sum([type(xi) is Junction for xi in
+                        flatten(list(circuit.elements.values()))])
+  capacitor_count = sum([type(xi) is Capacitor for xi in
+                         flatten(list(circuit.elements.values()))])
+  return junction_count, inductor_count, capacitor_count
+
+def update_metrics(circuit, codename, metric_record, metrics):
+  omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
+  metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
+  metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
+  metric_record[(circuit, codename, 'omega')].append(omega_10.detach().numpy())
+  metric_record[(circuit, codename, 'flux_sensitivity')].append(flux_sensitivity.detach().numpy())
+  metric_record[(circuit, codename, 'charge_sensitivity')].append(charge_sensitivity.detach().numpy())
+  metric_record[(circuit, codename, 'Total Loss')].append(total_loss.detach().numpy())
+
+# TODO: Generalize codename to account for element ordering
+# (ex. for N=4, JJJL and JJLJ should be distinct)
+def lookup_codename(num_junctions, num_inductors):
+  if num_inductors == 0 and num_junctions == 3:
+    return "JJJ"
+  if num_inductors == 1 and num_junctions == 2:
+    return "JJL"
+  if num_inductors == 2 and num_junctions == 1:
+    return "JLL"
+  if num_inductors == 1 and num_junctions == 1:
+    return "Fluxonium"
+  if num_inductors == 0 and num_junctions == 2:
+    return "Transmon"
