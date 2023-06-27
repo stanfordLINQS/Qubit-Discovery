@@ -74,47 +74,46 @@ def charge_sensitivity_loss(circuit, a=0.1, b=1):
     return loss, S
 
 
-def calculate_total_loss(circuit, use_frequency_loss, use_anharmonicity_loss,
-                         use_flux_sensitivity_loss, use_charge_sensitivity_loss,
+def calculate_total_loss(circuit, use_frequency_loss=True, use_anharmonicity_loss=True,
+                         use_flux_sensitivity_loss=True, use_charge_sensitivity_loss=True,
                          use_T1_loss=False, log_loss=False,
                          loss_normalization = False):
     loss = torch.zeros((), requires_grad=True)
 
     if loss_normalization:
-        loss_frequency_init = frequency_loss(circuit,
-                                     omega_target=omega_target).detach()
-        anharmonicity_loss_init = anharmonicity_loss(circuit).detach()
-        T1_loss_init = T1_loss(circuit).detach()
-        flux_sensitivity_loss_init = flux_sensitivity_loss(circuit)[0].detach()
-        charge_sensitivity_loss_init = charge_sensitivity_loss(circuit)[
+        loss_frequency_init = frequency_loss(circuit).detach()
+        loss_anharmonicity_init = anharmonicity_loss(circuit).detach()
+        loss_T1_init = T1_loss(circuit).detach()
+        loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
+        loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[
             0].detach()
 
     if use_frequency_loss:
-        loss_frequency = frequency_loss(circuit, omega_target=omega_target)
+        loss_frequency = frequency_loss(circuit)
         if loss_normalization:
             loss_frequency /= loss_frequency_init
         loss = loss + loss_frequency
     if use_anharmonicity_loss:
         loss_anharmonicity = anharmonicity_loss(circuit)
         if loss_normalization:
-            loss_anharmonicity /= anharmonicity_loss_init
+            loss_anharmonicity /= loss_anharmonicity_init
         loss = loss + loss_anharmonicity
     if use_T1_loss:
         loss_T1 = T1_loss(circuit)
         if loss_normalization:
-            loss_T1 /= T1_loss_init
+            loss_T1 /= loss_T1_init
         loss = loss + loss_T1
     if use_flux_sensitivity_loss:
         loss_flux_sensitivity, _ = flux_sensitivity_loss(
             circuit)
         if loss_normalization:
-            loss_flux_sensitivity /= flux_sensitivity_loss_init
+            loss_flux_sensitivity /= loss_flux_sensitivity_init
         loss = loss + loss_flux_sensitivity
     if use_charge_sensitivity_loss:
         loss_charge_sensitivity, _ = charge_sensitivity_loss(circuit)
         if loss_normalization:
-            loss_charge_sensitivity /= charge_sensitivity_loss_init
-        loss = loss + charge_sensitivity_loss
+            loss_charge_sensitivity /= loss_charge_sensitivity_init
+        loss = loss + loss_charge_sensitivity
 
     if log_loss:
         loss = torch.log(1 + loss)
@@ -126,6 +125,8 @@ def calculate_metrics(circuit):
     frequency =first_resonant_frequency(circuit)
     anharmonicity = calculate_anharmonicity(circuit)
     T1_time = 1 / T1_loss(circuit)
-    metrics = (frequency, anharmonicity, T1_time, flux_sensitivity,
-               charge_sensitivity)
+    flux_sensitivity_value = flux_sensitivity(circuit)
+    charge_sensitivity_value = charge_sensitivity(circuit)
+    metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
+               charge_sensitivity_value)
     return metrics

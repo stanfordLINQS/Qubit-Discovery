@@ -6,7 +6,10 @@ from functions import (
     print_new_circuit_sampled_message,
     create_sampler,
     get_element_counts,
-    update_metrics,
+    init_loss_record,
+    init_metric_record,
+    update_loss_record,
+    update_metric_record,
     lookup_codename
 )
 from loss import calculate_total_loss, calculate_metrics
@@ -14,6 +17,7 @@ from truncation import trunc_num_heuristic, test_convergence
 
 import argparse
 import numpy as np
+import SQcircuit as sq
 import torch
 
 # Assign keyword arguments
@@ -31,7 +35,7 @@ k = 2  # number of circuits to sample of each topology
 num_epochs = 2  # number of training iterations
 lr = 1e-1  # learning rate
 num_eigenvalues = 3
-total_trunc_num = 1000
+total_trunc_num = 200
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
@@ -56,34 +60,27 @@ show_flux_spectrum_plot = False
 circuit_patterns = ['JJ', 'JL', 'JJJ', 'JJL', 'JLL']
 circuit_patterns.reverse()
 
-# Initialize global vars
-metric_record = {}
-
-def init_loss_record(circuit, codename):
-  loss_record = {}
-  loss_record[(circuit, codename, 'T1')] = []
-  loss_record[(circuit, codename, 'Total Loss')] = []
-  loss_record[(circuit, codename, 'A')] = []
-  loss_record[(circuit, codename, 'omega')] = []
-  loss_record[(circuit, codename, 'flux_sensitivity')] = []
-  loss_record[(circuit, codename, 'charge_sensitivity')] = []
-  return loss_record
-
-
 def main():
+    sq.set_optim_mode(True)
+
     circuit_code = args.codename
     id = int(args.id)
     N = len(circuit_code)
+
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
     circuit = sampler.sample_circuit_code(circuit_code)
+    print("Circuit sampled!")
     trunc_nums = circuit.truncate_circuit(total_trunc_num)
+    print("Circuit truncated...")
+
+    metric_record = init_metric_record(circuit, circuit_code)
+    loss_record = init_loss_record(circuit, circuit_code)
 
     junction_count, inductor_count, _ = get_element_counts(circuit)
     codename = lookup_codename(junction_count, inductor_count)
 
-    loss_record = init_loss_record(circuit, codename)
-
     circuit.diag(num_eigenvalues)
+    print("Circuit diagonalized")
 
     converged = True
     # Circuit optimization loop
@@ -117,8 +114,10 @@ def main():
             # TODO: In addition to breaking, also arXiv circuit
 
         # Calculate loss, backprop
-        total_loss, metrics = calculate_total_loss()
-        update_metrics(circuit, metric_record, metrics)
+        total_loss = calculate_total_loss(circuit)
+        metrics = calculate_metrics(circuit)
+        # TODO: update loss values
+        update_metric_record(circuit, circuit_code, metric_record, metrics)
         total_loss.backward()
 
         for element in list(circuit._parameters.keys()):

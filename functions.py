@@ -130,14 +130,30 @@ def get_element_counts(circuit):
                          flatten(list(circuit.elements.values()))])
   return junction_count, inductor_count, capacitor_count
 
-def update_metrics(circuit, codename, metric_record, metrics):
-  omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
+'''loss_record[(circuit, codename, 'frequency_loss')] = []
+    loss_record[(circuit, codename, 'anharmonicity_loss')] = []
+    loss_record[(circuit, codename, 'T1_loss')] = []
+    loss_record[(circuit, codename, 'flux_sensitivity_loss')] = []
+    loss_record[(circuit, codename, 'charge_sensitivity_loss')] = []
+    loss_record[(circuit, codename, 'total_loss')] = []'''
+
+def update_loss_record(circuit, codename, loss_record, loss_values):
+  frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss,\
+  charge_sensitivity_loss, total_loss = loss_values
+  loss_record[(circuit, codename, 'frequency_loss')].append(frequency_loss.detach().numpy())
+  loss_record[(circuit, codename, 'anharmonicity_loss')].append(anharmonicity_loss.detach().numpy())
+  loss_record[(circuit, codename, 'T1_loss')].append(T1_loss.detach().numpy())
+  loss_record[(circuit, codename, 'flux_sensitivity_loss')].append(flux_sensitivity_loss.detach().numpy())
+  loss_record[(circuit, codename, 'charge_sensitivity_loss')].append(charge_sensitivity_loss.detach().numpy())
+  loss_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
+
+def update_metric_record(circuit, codename, metric_record, metrics):
+  omega_10, A, T1, flux_sensitivity, charge_sensitivity = metrics
   metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
   metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
   metric_record[(circuit, codename, 'omega')].append(omega_10.detach().numpy())
   metric_record[(circuit, codename, 'flux_sensitivity')].append(flux_sensitivity.detach().numpy())
   metric_record[(circuit, codename, 'charge_sensitivity')].append(charge_sensitivity.detach().numpy())
-  metric_record[(circuit, codename, 'Total Loss')].append(total_loss.detach().numpy())
 
 # TODO: Generalize codename to account for element ordering
 # (ex. for N=4, JJJL and JJLJ should be distinct)
@@ -152,3 +168,23 @@ def lookup_codename(num_junctions, num_inductors):
     return "Fluxonium"
   if num_inductors == 0 and num_junctions == 2:
     return "Transmon"
+
+def init_loss_record(circuit, codename):
+    loss_record = {}
+    loss_record[(circuit, codename, 'frequency_loss')] = []
+    loss_record[(circuit, codename, 'anharmonicity_loss')] = []
+    loss_record[(circuit, codename, 'T1_loss')] = []
+    loss_record[(circuit, codename, 'flux_sensitivity_loss')] = []
+    loss_record[(circuit, codename, 'charge_sensitivity_loss')] = []
+    loss_record[(circuit, codename, 'total_loss')] = []
+    return loss_record
+
+def init_metric_record(circuit, codename):
+    loss_record = {}
+    loss_record[(circuit, codename, 'T1')] = []
+    loss_record[(circuit, codename, 'Total Loss')] = []
+    loss_record[(circuit, codename, 'A')] = []
+    loss_record[(circuit, codename, 'omega')] = []
+    loss_record[(circuit, codename, 'flux_sensitivity')] = []
+    loss_record[(circuit, codename, 'charge_sensitivity')] = []
+    return loss_record
