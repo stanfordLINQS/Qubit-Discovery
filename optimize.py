@@ -16,6 +16,7 @@ from loss import calculate_total_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
 
 import argparse
+import joblib
 import numpy as np
 import SQcircuit as sq
 import torch
@@ -136,6 +137,9 @@ def main():
     if not converged:
         # TODO: Save circuit, throw error
         pass
+
+    save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle'
+    joblib.dump(loss_record, save_url)
 
 if __name__ == "__main__":
     main()

@@ -122,7 +122,7 @@ def calculate_total_loss(circuit, use_frequency_loss=True, use_anharmonicity_los
     return loss
 
 def calculate_metrics(circuit):
-    frequency =first_resonant_frequency(circuit)
+    frequency = first_resonant_frequency(circuit)
     anharmonicity = calculate_anharmonicity(circuit)
     T1_time = 1 / T1_loss(circuit)
     flux_sensitivity_value = flux_sensitivity(circuit)
