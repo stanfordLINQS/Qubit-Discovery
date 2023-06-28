@@ -1,5 +1,6 @@
 """Contains code for optimization of single circuit instance."""
 
+import pickle
 import random
 
 from functions import (
@@ -16,7 +17,6 @@ from loss import calculate_total_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
 
 import argparse
-import joblib
 import numpy as np
 import SQcircuit as sq
 import torch
@@ -139,7 +139,9 @@ def main():
         pass
 
     save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle'
-    joblib.dump(loss_record, save_url)
+    save_file = open(save_url, 'wb')
+    pickle.dump(loss_record, save_file)
+    save_file.close()
 
 if __name__ == "__main__":
     main()
