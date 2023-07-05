@@ -1,6 +1,6 @@
 """Contains code for optimization of single circuit instance."""
 
-import pickle
+import dill as pickle
 import random
 
 from functions import (
@@ -13,7 +13,7 @@ from functions import (
     update_metric_record,
     lookup_codename
 )
-from loss import calculate_total_loss, calculate_metrics
+from loss import calculate_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
 
 import argparse
@@ -70,6 +70,11 @@ def main():
 
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
     circuit = sampler.sample_circuit_code(circuit_code)
+    # TODO: Hacky fix, need function to map ex. JJ -> Transmon
+    if circuit_code == "JJ":
+        circuit_code = "Transmon"
+    if circuit_code == "JL":
+        circuit_code = "Fluxonium"
     print("Circuit sampled!")
     trunc_nums = circuit.truncate_circuit(total_trunc_num)
     print("Circuit truncated...")
@@ -115,10 +120,11 @@ def main():
             # TODO: In addition to breaking, also arXiv circuit
 
         # Calculate loss, backprop
-        total_loss = calculate_total_loss(circuit)
-        metrics = calculate_metrics(circuit)
+        total_loss, loss_values = calculate_loss(circuit)
+        metrics = calculate_metrics(circuit) + (total_loss, )
         # TODO: update loss values
         update_metric_record(circuit, circuit_code, metric_record, metrics)
+        update_loss_record(circuit, circuit_code, loss_record, loss_values)
         total_loss.backward()
 
         for element in list(circuit._parameters.keys()):
@@ -141,6 +147,10 @@ def main():
     save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(loss_record, save_file)
+    save_file.close()
+    save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/metric_record.pickle'
+    save_file = open(save_url, 'wb')
+    pickle.dump(metric_record, save_file)
     save_file.close()
 
 if __name__ == "__main__":

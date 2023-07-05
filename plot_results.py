@@ -4,7 +4,7 @@
 from functions import lookup_codename, get_element_counts
 
 from matplotlib import pyplot as plt
-import joblib
+import dill as pickle
 
 # TODO: Consolidate following definition with that in loss.py
 omega_target = 1 # GHz
@@ -12,18 +12,22 @@ omega_target = 1 # GHz
 codenames = ["JL", ]
 num_runs = 1
 
-def load_loss_record(url):
-    # for codename in codenames:
-    #     for run_idx in range(num_runs):
-    loss_record = joblib.load(url)
-    return loss_record
+def load_record(url):
+    file = open(url, 'rb')
+    record = pickle.load(file)
+    file.close()
+    return record
 
 def get_optimal_key(loss_record, codename=None):
   optimal_loss = 1e100
   optimal_key = None
 
   for circuit, codename_key, _ in loss_record.keys():
-    key = (circuit, codename_key, 'Total Loss')
+    key = (circuit, codename_key, 'total_loss')
+    print(f"keys: {loss_record.keys()}")
+    print(f"key: {key}")
+    print(f"values: {loss_record.values()}")
+    print(f"lr: {loss_record[key]}")
     loss = loss_record[key][-1]
     if loss < optimal_loss and (codename in key or codename is None):
         optimal_loss = loss
@@ -55,7 +59,7 @@ def plot_results(loss_record):
         axs[1, 0].set_yscale('log')
         axs[1, 1].set_yscale('log')
         axs[1, 2].set_yscale('log')
-        key = (circuit, codename, 'Total Loss')
+        key = (circuit, codename, 'total_loss')
         if key in optimal_keys:
             alpha = None
             linestyle = None
@@ -63,7 +67,7 @@ def plot_results(loss_record):
             alpha = 0.3
             linestyle = '--'
 
-        axs[0, 0].plot(loss_record[(circuit, codename, 'Total Loss')],
+        axs[0, 0].plot(loss_record[(circuit, codename, 'total_loss')],
                        plot_scheme[codename], label=label, alpha=alpha,
                        linestyle=linestyle)
         axs[0, 0].legend(loc='upper right')
@@ -95,7 +99,8 @@ def plot_results(loss_record):
                     in codenames]
 
     plotted_codenames = set()
-    for circuit in loss_record.keys():
+    for key in loss_record.keys():
+        circuit, codename, index = key
         show_label = False
         junction_count, inductor_count, _ = get_element_counts(circuit)
         codename = lookup_codename(junction_count, inductor_count)
@@ -105,11 +110,12 @@ def plot_results(loss_record):
         plot_circuit_metrics(circuit, loss_record, codename, optimal_keys,
                              show_label=show_label)
 
-    plt.show()
+    plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
 
 def main():
-    loss_record = load_loss_record('/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle')
-    plot_results(loss_record)
+    loss_record = load_record('/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle')
+    metric_record = load_record('/home/mckeehan/sqcircuit/Qubit-Discovery/results/metric_record.pickle')
+    plot_results(metric_record)
 
 
 if __name__ == "__main__":

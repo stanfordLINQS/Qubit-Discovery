@@ -148,12 +148,13 @@ def update_loss_record(circuit, codename, loss_record, loss_values):
   loss_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
 
 def update_metric_record(circuit, codename, metric_record, metrics):
-  omega_10, A, T1, flux_sensitivity, charge_sensitivity = metrics
+  omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
   metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
   metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
   metric_record[(circuit, codename, 'omega')].append(omega_10.detach().numpy())
   metric_record[(circuit, codename, 'flux_sensitivity')].append(flux_sensitivity.detach().numpy())
   metric_record[(circuit, codename, 'charge_sensitivity')].append(charge_sensitivity.detach().numpy())
+  metric_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
 
 # TODO: Generalize codename to account for element ordering
 # (ex. for N=4, JJJL and JJLJ should be distinct)
@@ -182,7 +183,7 @@ def init_loss_record(circuit, codename):
 def init_metric_record(circuit, codename):
     loss_record = {}
     loss_record[(circuit, codename, 'T1')] = []
-    loss_record[(circuit, codename, 'Total Loss')] = []
+    loss_record[(circuit, codename, 'total_loss')] = []
     loss_record[(circuit, codename, 'A')] = []
     loss_record[(circuit, codename, 'omega')] = []
     loss_record[(circuit, codename, 'flux_sensitivity')] = []
