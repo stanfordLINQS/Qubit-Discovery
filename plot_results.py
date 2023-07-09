@@ -5,40 +5,46 @@ from functions import lookup_codename, get_element_counts
 
 import argparse
 from matplotlib import pyplot as plt
-import joblib
+import dill as pickle
 
 # Assign keyword arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("codenames")
-parser.add_argument("id")
+parser.add_argument('-c', '--codenames', type=str, required=True)
+parser.add_argument("num_runs")
 args = parser.parse_args()
 
 # TODO: Consolidate following definition with that in loss.py
 omega_target = 1 # GHz
 
-codenames = ["JL", ]
-num_runs = 1
-
-def load_loss_record(url):
-    # for codename in codenames:
-    #     for run_idx in range(num_runs):
-    loss_record = joblib.load(url)
-    return loss_record
+def load_record(url):
+    file = open(url, 'rb')
+    record = pickle.load(file)
+    file.close()
+    return record
 
 def get_optimal_key(loss_record, codename=None):
   optimal_loss = 1e100
   optimal_key = None
 
-  for circuit, codename_key, _ in loss_record.keys():
-    key = (circuit, codename_key, 'Total Loss')
+  # Temporary hacky fix to extrapolate codes to codenames
+  if codename == "JJ":
+      codename = "Transmon"
+  elif codename == "JL":
+      codename = "Fluxonium"
+
+  for circuit, codename_key, l in loss_record.keys():
+    key = (circuit, codename_key, 'total_loss')
     loss = loss_record[key][-1]
+    print(f"Loss: {loss}")
+    print(f"codename: {codename}")
+    print(f"key: {key}")
     if loss < optimal_loss and (codename in key or codename is None):
         optimal_loss = loss
         optimal_key = key
 
   return optimal_key
 
-def plot_results(loss_record):
+def plot_results(loss_record, circuit_codes):
     plot_scheme = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
 
@@ -62,15 +68,18 @@ def plot_results(loss_record):
         axs[1, 0].set_yscale('log')
         axs[1, 1].set_yscale('log')
         axs[1, 2].set_yscale('log')
-        key = (circuit, codename, 'Total Loss')
+        key = (circuit, codename, 'total_loss')
+        print(f"optimal keys: {optimal_keys}")
         if key in optimal_keys:
             alpha = None
             linestyle = None
+            print("optimal")
         else:
             alpha = 0.3
             linestyle = '--'
+            print('non-optimal')
 
-        axs[0, 0].plot(loss_record[(circuit, codename, 'Total Loss')],
+        axs[0, 0].plot(loss_record[(circuit, codename, 'total_loss')],
                        plot_scheme[codename], label=label, alpha=alpha,
                        linestyle=linestyle)
         axs[0, 0].legend(loc='upper right')
@@ -99,27 +108,39 @@ def plot_results(loss_record):
     axs[0, 2].axhline(y=22, color='m', linestyle=':')
 
     optimal_keys = [get_optimal_key(loss_record, codename=codename) for codename
-                    in codenames]
+                    in circuit_codes]
 
     plotted_codenames = set()
-    for circuit in loss_record.keys():
+    for key in loss_record.keys():
+        circuit, codename, index = key
         show_label = False
         junction_count, inductor_count, _ = get_element_counts(circuit)
         codename = lookup_codename(junction_count, inductor_count)
         if codename not in plotted_codenames:
             show_label = True
             plotted_codenames.add(codename)
+        print("plot")
         plot_circuit_metrics(circuit, loss_record, codename, optimal_keys,
                              show_label=show_label)
 
-    plt.show()
+    # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
+    plt.savefig('/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record.png')
 
 def main():
-    circuit_codes = args.codenames
-    count = int(args.count)
-    for
-    loss_record = load_loss_record('/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle')
-    plot_results(loss_record)
+    circuit_codes = [code for code in args.codenames.split(',')]
+    print(f"circuit_codes: {circuit_codes}")
+    num_runs = int(args.num_runs)
+    aggregate_loss_record = {}
+    aggregate_metric_record = {}
+    for codename in circuit_codes:
+        for id in range(num_runs):
+            loss_record = load_record(f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/loss_record_{codename}_{id}.pickle')
+            metric_record = load_record(
+                f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record_{codename}_{id}.pickle')
+            aggregate_loss_record.update(loss_record)
+            aggregate_metric_record.update(metric_record)
+    # plot_results(aggregate_loss_record)
+    plot_results(aggregate_metric_record, circuit_codes)
 
 
 if __name__ == "__main__":
