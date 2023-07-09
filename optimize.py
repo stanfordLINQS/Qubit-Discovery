@@ -138,7 +138,8 @@ def main():
         # TODO: Save circuit, throw error
         pass
 
-    save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle'
+    # save_url = f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record_{circui_code}_{id}.pickle'
+    save_url = f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/loss_record_{circuit_code}_{id}.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(loss_record, save_file)
     save_file.close()

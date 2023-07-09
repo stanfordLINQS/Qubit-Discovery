@@ -3,8 +3,15 @@
 
 from functions import lookup_codename, get_element_counts
 
+import argparse
 from matplotlib import pyplot as plt
 import joblib
+
+# Assign keyword arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("codenames")
+parser.add_argument("id")
+args = parser.parse_args()
 
 # TODO: Consolidate following definition with that in loss.py
 omega_target = 1 # GHz
@@ -108,6 +115,9 @@ def plot_results(loss_record):
     plt.show()
 
 def main():
+    circuit_codes = args.codenames
+    count = int(args.count)
+    for
     loss_record = load_loss_record('/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record.pickle')
     plot_results(loss_record)
 
