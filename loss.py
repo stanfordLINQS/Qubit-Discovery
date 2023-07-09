@@ -133,6 +133,7 @@ def calculate_metrics(circuit):
     T1_time = 1 / T1_loss(circuit)
     flux_sensitivity_value = flux_sensitivity(circuit)
     charge_sensitivity_value = charge_sensitivity(circuit)
+    print(f"CS type: {type(charge_sensitivity_value)}")
     metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
                charge_sensitivity_value)
     return metrics

@@ -47,6 +47,7 @@ def charge_sensitivity(circuit, epsilon=1e-14):
 
     S = torch.abs((f_delta - f_0) / ((f_delta + f_0) / 2))
 
+    print(f"functions: {type(S)}")
     return S
 
 def flux_sensitivity(
@@ -153,6 +154,7 @@ def update_metric_record(circuit, codename, metric_record, metrics):
   metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
   metric_record[(circuit, codename, 'omega')].append(omega_10.detach().numpy())
   metric_record[(circuit, codename, 'flux_sensitivity')].append(flux_sensitivity.detach().numpy())
+  print(f"CS type: {type(charge_sensitivity)}")
   metric_record[(circuit, codename, 'charge_sensitivity')].append(charge_sensitivity.detach().numpy())
   metric_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
 
