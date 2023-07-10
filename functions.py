@@ -13,41 +13,44 @@ from typing import Tuple
 # Helper functions
 
 def first_resonant_frequency(circuit):
+    """Calculates resonant frequency of first excited eigenstate in circuit."""
     omega = circuit.efreqs[1] - circuit.efreqs[0]
     return omega
 
 
 def calculate_anharmonicity(circuit):
-    return (circuit.efreqs[2] - circuit.efreqs[1]) / (circuit.efreqs[1] - circuit.efreqs[0])
+    """Calculates anharmonicity (ratio between first and second energy
+    eigenvalue spacings)."""
+    return (circuit.efreqs[2] - circuit.efreqs[1]) / \
+           (circuit.efreqs[1] - circuit.efreqs[0])
 
 
 def charge_sensitivity(circuit, epsilon=1e-14):
-  """Returns the charge sensitivity of the circuit for all charge islands.
-  Designed to account for entire charge spectrum, to account for charge drift
-  (as opposed to e.g. flux sensitivity, which considers perturbations around
-  flux operation point)."""
-  f_0 = circuit.efreqs[1] - circuit.efreqs[0]
-  new_circuit = copy(circuit)
+    """Returns the charge sensitivity of the circuit for all charge islands.
+    Designed to account for entire charge spectrum, to account for charge drift
+    (as opposed to e.g. flux sensitivity, which considers perturbations around
+    flux operation point)."""
+    c_0 = circuit.efreqs[1] - circuit.efreqs[0]
+    new_circuit = copy(circuit)
 
-  # Edge case: For circuit with no charge modes, assigne zero sensitivity
-  if sum(circuit.omega == 0) == 0:
-    return epsilon
+    # Edge case: For circuit with no charge modes, assign zero sensitivity
+    if sum(circuit.omega == 0) == 0:
+        return torch.as_tensor(epsilon)
 
-  else:
-    # For each mode, if charge mode exists then set gate charge to obtain
-    # minimum frequency
-    for charge_island_idx in new_circuit.charge_islands.keys():
-      charge_mode = charge_island_idx + 1
-      # set gate charge to 0.5 in each mode
-      # (to extremize relative to n_g=0)
-      new_circuit.set_charge_offset(charge_mode, 0.5)
+    else:
+        # For each mode, if charge mode exists then set gate charge to obtain
+        # minimum frequency
+        for charge_island_idx in new_circuit.charge_islands.keys():
+            charge_mode = charge_island_idx + 1
+            # Set gate charge to 0.5 in each mode
+            # (to extremize relative to n_g=0)
+            new_circuit.set_charge_offset(charge_mode, 0.5)
 
     new_circuit.diag(len(circuit.efreqs))
-    f_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
+    c_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
 
-    S = torch.abs((f_delta - f_0) / ((f_delta + f_0) / 2))
+    return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
-    return S
 
 def flux_sensitivity(
         circuit,
@@ -67,6 +70,7 @@ def flux_sensitivity(
     S = torch.abs((f_delta - f_0) / f_0)
 
     return S
+
 
 def get_reshaped_eigvec(
         circuit: Circuit,
@@ -89,7 +93,9 @@ def get_reshaped_eigvec(
 
     return eigvec_mag, mode_1_magnitudes, mode_2_magnitudes
 
+
 def reset_charge_modes(circuit):
+    """Sets gate charge of all charge degrees of freedom to zero."""
     default_n_g = 0.0
     if sum(circuit.omega == 0) == 0:
         return
@@ -100,35 +106,41 @@ def reset_charge_modes(circuit):
 
 
 def create_sampler(N, capacitor_range, inductor_range, junction_range):
-  circuit_sampler = CircuitSampler(N)
-  circuit_sampler.capacitor_range = capacitor_range
-  circuit_sampler.inductor_range = inductor_range
-  circuit_sampler.junction_range = junction_range
-  return circuit_sampler
+    """Initializes circuit sampler object within specified parameter range."""
+    circuit_sampler = CircuitSampler(N)
+    circuit_sampler.capacitor_range = capacitor_range
+    circuit_sampler.inductor_range = inductor_range
+    circuit_sampler.junction_range = junction_range
+    return circuit_sampler
 
-def print_new_circuit_sampled_message(total_l= 131):
-  message = "NEW CIRCUIT SAMPLED"
-  print(total_l*"*")
-  print(total_l*"*")
-  print("*" + (total_l-2)*" " + "*")
-  print("*"+ int((total_l-len(message)-2)/2)*" "+  message
-        + int((total_l-len(message)-2)/2)*" " + "*"
-  )
-  print("*" + (total_l-2)*" " + "*")
-  print(+total_l*"*" )
-  print(total_l*"*")
+
+def print_new_circuit_sampled_message(total_l=131):
+    message = "NEW CIRCUIT SAMPLED"
+    print(total_l * "*")
+    print(total_l * "*")
+    print("*" + (total_l - 2) * " " + "*")
+    print("*" + int((total_l - len(message) - 2) / 2) * " " + message
+          + int((total_l - len(message) - 2) / 2) * " " + "*")
+    print("*" + (total_l - 2) * " " + "*")
+    print(+ total_l * "*")
+    print(total_l * "*")
+
 
 def flatten(l):
-  return [item for sublist in l for item in sublist]
+    """Converts array of arrays into single contiguous one-dimensional array."""
+    return [item for sublist in l for item in sublist]
+
 
 def get_element_counts(circuit):
-  inductor_count = sum([type(xi) is Inductor for xi in
-                        flatten(list(circuit.elements.values()))])
-  junction_count = sum([type(xi) is Junction for xi in
-                        flatten(list(circuit.elements.values()))])
-  capacitor_count = sum([type(xi) is Capacitor for xi in
-                         flatten(list(circuit.elements.values()))])
-  return junction_count, inductor_count, capacitor_count
+    """Gets counts of each type of circuit element."""
+    inductor_count = sum([type(xi) is Inductor for xi in
+                          flatten(list(circuit.elements.values()))])
+    junction_count = sum([type(xi) is Junction for xi in
+                          flatten(list(circuit.elements.values()))])
+    capacitor_count = sum([type(xi) is Capacitor for xi in
+                           flatten(list(circuit.elements.values()))])
+    return junction_count, inductor_count, capacitor_count
+
 
 '''loss_record[(circuit, codename, 'frequency_loss')] = []
     loss_record[(circuit, codename, 'anharmonicity_loss')] = []
@@ -137,48 +149,70 @@ def get_element_counts(circuit):
     loss_record[(circuit, codename, 'charge_sensitivity_loss')] = []
     loss_record[(circuit, codename, 'total_loss')] = []'''
 
+
 def update_loss_record(circuit, codename, loss_record, loss_values):
-  frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss,\
-  charge_sensitivity_loss, total_loss = loss_values
-  loss_record[(circuit, codename, 'frequency_loss')].append(frequency_loss.detach().numpy())
-  loss_record[(circuit, codename, 'anharmonicity_loss')].append(anharmonicity_loss.detach().numpy())
-  loss_record[(circuit, codename, 'T1_loss')].append(T1_loss.detach().numpy())
-  loss_record[(circuit, codename, 'flux_sensitivity_loss')].append(flux_sensitivity_loss.detach().numpy())
-  loss_record[(circuit, codename, 'charge_sensitivity_loss')].append(charge_sensitivity_loss.detach().numpy())
-  loss_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
+    """Updates loss record based on next iteration of optimization."""
+    frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss, \
+    charge_sensitivity_loss, total_loss = loss_values
+    loss_record[(circuit, codename, 'frequency_loss')].append(
+        frequency_loss.detach().numpy())
+    loss_record[(circuit, codename, 'anharmonicity_loss')].append(
+        anharmonicity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'T1_loss')].append(T1_loss.detach().numpy())
+    loss_record[(circuit, codename, 'flux_sensitivity_loss')].append(
+        flux_sensitivity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'charge_sensitivity_loss')].append(
+        charge_sensitivity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'total_loss')].append(
+        total_loss.detach().numpy())
+
 
 def update_metric_record(circuit, codename, metric_record, metrics):
-  omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
-  metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
-  metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
-  metric_record[(circuit, codename, 'omega')].append(omega_10.detach().numpy())
-  metric_record[(circuit, codename, 'flux_sensitivity')].append(flux_sensitivity.detach().numpy())
-  metric_record[(circuit, codename, 'charge_sensitivity')].append(charge_sensitivity.detach().numpy())
-  metric_record[(circuit, codename, 'total_loss')].append(total_loss.detach().numpy())
+    """Updates metric record with information from new iteration of optimization."""
+    omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
+    metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
+    metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
+    metric_record[(circuit, codename, 'omega')].append(
+        omega_10.detach().numpy())
+    metric_record[(circuit, codename, 'flux_sensitivity')].append(
+        flux_sensitivity.detach().numpy())
+    metric_record[(circuit, codename, 'charge_sensitivity')].append(
+        charge_sensitivity.detach().numpy())
+    metric_record[(circuit, codename, 'total_loss')].append(
+        total_loss.detach().numpy())
+
 
 # TODO: Generalize codename to account for element ordering
 # (ex. for N=4, JJJL and JJLJ should be distinct)
 def lookup_codename(num_junctions, num_inductors):
-  if num_inductors == 0 and num_junctions == 3:
-    return "JJJ"
-  if num_inductors == 1 and num_junctions == 2:
-    return "JJL"
-  if num_inductors == 2 and num_junctions == 1:
-    return "JLL"
-  if num_inductors == 1 and num_junctions == 1:
-    return "Fluxonium"
-  if num_inductors == 0 and num_junctions == 2:
-    return "Transmon"
+    if num_inductors == 0 and num_junctions == 2:
+        return "JJ"
+    if num_inductors == 1 and num_junctions == 1:
+        return "JL"
+    if num_inductors == 0 and num_junctions == 3:
+        return "JJJ"
+    if num_inductors == 1 and num_junctions == 2:
+        return "JJL"
+    if num_inductors == 2 and num_junctions == 1:
+        return "JLL"
+
+
+def code_to_codename(circuit_code):
+    if circuit_code == "JJ":
+        return "Transmon"
+    if circuit_code == "JL":
+        return "Fluxonium"
+    return circuit_code
+
 
 def init_loss_record(circuit, codename):
-    loss_record = {}
-    loss_record[(circuit, codename, 'frequency_loss')] = []
-    loss_record[(circuit, codename, 'anharmonicity_loss')] = []
-    loss_record[(circuit, codename, 'T1_loss')] = []
-    loss_record[(circuit, codename, 'flux_sensitivity_loss')] = []
-    loss_record[(circuit, codename, 'charge_sensitivity_loss')] = []
-    loss_record[(circuit, codename, 'total_loss')] = []
-    return loss_record
+    return {(circuit, codename, 'frequency_loss'): [],
+            (circuit, codename, 'anharmonicity_loss'): [],
+            (circuit, codename, 'T1_loss'): [],
+            (circuit, codename, 'flux_sensitivity_loss'): [],
+            (circuit, codename, 'charge_sensitivity_loss'): [],
+            (circuit, codename, 'total_loss'): []}
+
 
 def init_metric_record(circuit, codename):
     loss_record = {}

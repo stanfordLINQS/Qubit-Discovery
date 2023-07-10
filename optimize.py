@@ -4,14 +4,12 @@ import dill as pickle
 import random
 
 from functions import (
-    print_new_circuit_sampled_message,
     create_sampler,
     get_element_counts,
     init_loss_record,
     init_metric_record,
     update_loss_record,
-    update_metric_record,
-    lookup_codename
+    update_metric_record
 )
 from loss import calculate_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
@@ -23,7 +21,7 @@ import torch
 
 # Assign keyword arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("codename")
+parser.add_argument("code")
 parser.add_argument("id")
 args = parser.parse_args()
 
@@ -43,6 +41,7 @@ capacitor_range = [1e-15, 12e-12]  # F
 inductor_range = [2e-8, 5e-6]  # H
 junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]  # Hz
 
+# Settings
 gradient_clipping = True
 loss_normalization = False
 learning_rate_scheduler = True
@@ -58,23 +57,15 @@ element_verbose = False
 show_charge_spectrum_plot = False
 show_flux_spectrum_plot = False
 
-circuit_patterns = ['JJ', 'JL', 'JJJ', 'JJL', 'JLL']
-circuit_patterns.reverse()
-
 def main():
     sq.set_optim_mode(True)
 
-    circuit_code = args.codename
+    circuit_code = args.code
     id = int(args.id)
     N = len(circuit_code)
 
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
     circuit = sampler.sample_circuit_code(circuit_code)
-    # TODO: Hacky fix, need function to map ex. JJ -> Transmon
-    if circuit_code == "JJ":
-        circuit_code = "Transmon"
-    if circuit_code == "JL":
-        circuit_code = "Fluxonium"
     print("Circuit sampled!")
     trunc_nums = circuit.truncate_circuit(total_trunc_num)
     print("Circuit truncated...")
@@ -83,7 +74,6 @@ def main():
     loss_record = init_loss_record(circuit, circuit_code)
 
     junction_count, inductor_count, _ = get_element_counts(circuit)
-    codename = lookup_codename(junction_count, inductor_count)
 
     circuit.diag(num_eigenvalues)
     print("Circuit diagonalized")
@@ -145,11 +135,11 @@ def main():
         pass
 
     # save_url = f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record_{circui_code}_{id}.pickle'
-    save_url = f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/loss_record_{args.codename}_{id}.pickle'
+    save_url = f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/loss_record_{args.code}_{id}.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(loss_record, save_file)
     save_file.close()
-    save_url = f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record_{args.codename}_{id}.pickle'
+    save_url = f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record_{args.code}_{id}.pickle'
     # save_url = '/home/mckeehan/sqcircuit/Qubit-Discovery/results/metric_record.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(metric_record, save_file)

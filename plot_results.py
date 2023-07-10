@@ -1,7 +1,7 @@
 # Optionally plot circuit spectrum if desired
 # spectrum_optimal_circuit(loss_record, codename="Fluxonium")
 
-from functions import lookup_codename, get_element_counts
+from functions import get_element_counts, code_to_codename
 
 import argparse
 from matplotlib import pyplot as plt
@@ -9,7 +9,7 @@ import dill as pickle
 
 # Assign keyword arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--codenames', type=str, required=True)
+parser.add_argument('-c', '--codes', type=str, required=True)
 parser.add_argument("num_runs")
 args = parser.parse_args()
 
@@ -22,113 +22,88 @@ def load_record(url):
     file.close()
     return record
 
-def get_optimal_key(loss_record, codename=None):
+def get_optimal_key(loss_record, code=None):
   optimal_loss = 1e100
   optimal_key = None
 
-  # Temporary hacky fix to extrapolate codes to codenames
-  if codename == "JJ":
-      codename = "Transmon"
-  elif codename == "JL":
-      codename = "Fluxonium"
-
-  for circuit, codename_key, l in loss_record.keys():
-    key = (circuit, codename_key, 'total_loss')
+  for circuit, circuit_code, l in loss_record.keys():
+    key = (circuit, circuit_code, 'total_loss')
     loss = loss_record[key][-1]
-    print(f"Loss: {loss}")
-    print(f"codename: {codename}")
-    print(f"key: {key}")
-    if loss < optimal_loss and (codename in key or codename is None):
+    if loss < optimal_loss and (code in key or code is None):
         optimal_loss = loss
         optimal_key = key
 
   return optimal_key
 
-def plot_results(loss_record, circuit_codes):
+def plot_results(loss_record, circuit_codes, type='metrics'):
     plot_scheme = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
 
     fig, axs = plt.subplots(2, 3, figsize=(22, 11))
+    metric_titles = ['Total Loss', 'Frequency', 'Flux Sensitivity',
+                     'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
+    metric_keys = ['total_loss', 'omega', 'flux_sensitivity',
+                   'charge_sensitivity', 'A', 'T1']
+    loss_titles = ['Frequency Loss', 'Anharmonicity Loss', 'T1 Loss',
+                     'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
+    loss_keys = ['frequency_loss', 'anharmonicity_loss', 'T1_loss',
+                   'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
+    plot_titles = metric_titles if type == 'metrics' else loss_titles
+    record_keys = metric_keys if type == 'metrics' else loss_keys
 
     # fig.suptitle('Scaling from N=2 to N=3 Inductive Elements')
 
-    def plot_circuit_metrics(circuit, loss_record, codename, optimal_keys,
+    def plot_circuit_metrics(circuit, loss_record, code, optimal_keys,
                              show_label=False):
+        codename = code_to_codename(code)
         label = codename if show_label else None
-        axs[0, 0].set_title(f'Total Loss')
-        axs[1, 0].set_title(f'Frequency')
-        axs[0, 1].set_title(f'Flux Sensitivity')
-        axs[1, 1].set_title(f'Charge Sensitivity')
-        axs[0, 2].set_title(f'Anharmonicity')
-        axs[1, 2].set_title(r'$T_1$')
+        for plot_idx in range(6):
+            axs[plot_idx % 2, plot_idx // 2].set_title(plot_titles[plot_idx])
+            axs[plot_idx % 2, plot_idx // 2].set_yscale('log')
 
-        axs[0, 0].set_yscale('log')
-        axs[0, 1].set_yscale('log')
-        axs[0, 2].set_yscale('log')
-        axs[1, 0].set_yscale('log')
-        axs[1, 1].set_yscale('log')
-        axs[1, 2].set_yscale('log')
-        key = (circuit, codename, 'total_loss')
-        print(f"optimal keys: {optimal_keys}")
+        key = (circuit, code, 'total_loss')
         if key in optimal_keys:
             alpha = None
             linestyle = None
-            print("optimal")
         else:
             alpha = 0.3
             linestyle = '--'
-            print('non-optimal')
 
-        axs[0, 0].plot(loss_record[(circuit, codename, 'total_loss')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
+        for plot_idx in range(6):
+            axs[plot_idx % 2, plot_idx // 2].plot(loss_record[
+                           (circuit, code, record_keys[plot_idx])],
+                           plot_scheme[codename], label=label, alpha=alpha,
+                           linestyle=linestyle)
         axs[0, 0].legend(loc='upper right')
-        axs[1, 0].plot(loss_record[(circuit, codename, 'omega')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
         axs[1, 0].legend(loc='lower right')
-        axs[0, 1].plot(loss_record[(circuit, codename, 'flux_sensitivity')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
         axs[0, 1].legend(loc='upper right')
-        axs[1, 1].plot(loss_record[(circuit, codename, 'charge_sensitivity')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
         axs[1, 1].legend(loc='center right')
-        axs[0, 2].plot(loss_record[(circuit, codename, 'A')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
         axs[0, 2].legend(loc='upper right')
-        axs[1, 2].plot(loss_record[(circuit, codename, 'T1')],
-                       plot_scheme[codename], label=label, alpha=alpha,
-                       linestyle=linestyle)
         axs[1, 2].legend(loc='lower left')
 
     axs[1, 0].axhline(y=omega_target, color='m', linestyle=':')
     axs[0, 2].axhline(y=22, color='m', linestyle=':')
 
-    optimal_keys = [get_optimal_key(loss_record, codename=codename) for codename
+    optimal_keys = [get_optimal_key(loss_record, code=code) for code
                     in circuit_codes]
 
     plotted_codenames = set()
     for key in loss_record.keys():
-        circuit, codename, index = key
+        circuit, code, index = key
         show_label = False
         junction_count, inductor_count, _ = get_element_counts(circuit)
-        codename = lookup_codename(junction_count, inductor_count)
-        if codename not in plotted_codenames:
+        # codename = lookup_codename(junction_count, inductor_count)
+        if code not in plotted_codenames:
             show_label = True
-            plotted_codenames.add(codename)
-        print("plot")
-        plot_circuit_metrics(circuit, loss_record, codename, optimal_keys,
+            plotted_codenames.add(code)
+        plot_circuit_metrics(circuit, loss_record, code, optimal_keys,
                              show_label=show_label)
 
     # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
-    plt.savefig('/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record.png')
+    plt.savefig(f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/{type}_record.png')
 
 def main():
-    circuit_codes = [code for code in args.codenames.split(',')]
-    print(f"circuit_codes: {circuit_codes}")
+    circuit_codes = [code for code in args.codes.split(',')]
     num_runs = int(args.num_runs)
     aggregate_loss_record = {}
     aggregate_metric_record = {}
@@ -139,8 +114,8 @@ def main():
                 f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record_{codename}_{id}.pickle')
             aggregate_loss_record.update(loss_record)
             aggregate_metric_record.update(metric_record)
-    # plot_results(aggregate_loss_record)
-    plot_results(aggregate_metric_record, circuit_codes)
+    plot_results(aggregate_loss_record, circuit_codes, type='loss')
+    plot_results(aggregate_metric_record, circuit_codes, type='metrics')
 
 
 if __name__ == "__main__":
