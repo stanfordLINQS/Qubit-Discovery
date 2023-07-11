@@ -99,8 +99,7 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
         plot_circuit_metrics(circuit, loss_record, code, optimal_keys,
                              show_label=show_label)
 
-    # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
-    plt.savefig(f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/{type}_record.png')
+    plt.savefig(f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/{type}_record.png')
 
 def main():
     circuit_codes = [code for code in args.codes.split(',')]
@@ -109,9 +108,8 @@ def main():
     aggregate_metric_record = {}
     for codename in circuit_codes:
         for id in range(num_runs):
-            loss_record = load_record(f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/loss_record_{codename}_{id}.pickle')
-            metric_record = load_record(
-                f'/Users/seshat/Laboratory/SQcircuit_dev/circuit_exploration/results/metric_record_{codename}_{id}.pickle')
+            loss_record = load_record(f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record_{codename}_{id}.pickle')
+            metric_record = load_record(f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/metric_record_{codename}_{id}.pickle')
             aggregate_loss_record.update(loss_record)
             aggregate_metric_record.update(metric_record)
     plot_results(aggregate_loss_record, circuit_codes, type='loss')
