@@ -123,7 +123,7 @@ def calculate_loss(circuit, use_frequency_loss=True, use_anharmonicity_loss=True
     if log_loss:
         loss = torch.log(1 + loss)
 
-    all_loss = loss_frequency + loss_anharmonicity + loss_T1 + loss_flux_sensitivity + loss_charge_sensitivity
+    all_loss = loss_frequency + loss_anharmonicity + loss_flux_sensitivity + loss_charge_sensitivity
     loss_values = (loss_frequency, loss_anharmonicity, loss_T1, loss_flux_sensitivity, loss_charge_sensitivity, all_loss)
     return loss, loss_values
 

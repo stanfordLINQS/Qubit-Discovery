@@ -27,35 +27,35 @@ args = parser.parse_args()
 
 # Optimization settings
 
-seed = int(args.id)
+seed = int(args.id) + 100
 random.seed(seed)
 np.random.seed(seed)
-k = 2  # number of circuits to sample of each topology
-num_epochs = 2  # number of training iterations
+num_epochs = 50  # number of training iterations
 lr = 1e-1  # learning rate
-num_eigenvalues = 3
-total_trunc_num = 200
+num_eigenvalues = 10
+total_trunc_num = 140
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
 inductor_range = [2e-8, 5e-6]  # H
 junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]  # Hz
+# capacitor_range = [8e-15, 12e-14] # F
+# inductor_range = [2e-7, 5e-6] # H
+# junction_range = [1e9 * 2 * np.pi, 12e9 * 2 * np.pi] # Hz
 
 # Settings
 gradient_clipping = True
 loss_normalization = False
 learning_rate_scheduler = True
-scheduler_decay_rate = 0.98
-gradient_clipping_threshold = 0.5
+scheduler_decay_rate = 0.99
+gradient_clipping_threshold = 2
 gc_norm_type = 'inf'
 
 log_loss = False
-nesterov_momentum = True
+nesterov_momentum = False
 momentum_value = 0.9
 
 element_verbose = False
-show_charge_spectrum_plot = False
-show_flux_spectrum_plot = False
 
 def main():
     sq.set_optim_mode(True)
@@ -134,11 +134,11 @@ def main():
         # TODO: Save circuit, throw error
         pass
 
-    save_url = f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/loss_record_{args.code}_{id}.pickle'
+    save_url = f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/loss_record_{args.code}_{id}.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(loss_record, save_file)
     save_file.close()
-    save_url = f'/home/mckeehan/sqcircuit/Qubit-Discovery/results/metric_record_{args.code}_{id}.pickle'
+    save_url = f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/metric_record_{args.code}_{id}.pickle'
     save_file = open(save_url, 'wb')
     pickle.dump(metric_record, save_file)
     save_file.close()
