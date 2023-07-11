@@ -2,6 +2,8 @@
 # spectrum_optimal_circuit(loss_record, codename="Fluxonium")
 
 from functions import get_element_counts, code_to_codename
+from loss import OMEGA_TARGET
+from settings import RESULTS_DIR
 
 import argparse
 from matplotlib import pyplot as plt
@@ -12,9 +14,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--codes', type=str, required=True)
 parser.add_argument("num_runs")
 args = parser.parse_args()
-
-# TODO: Consolidate following definition with that in loss.py
-omega_target = 1 # GHz
 
 def load_record(url):
     file = open(url, 'rb')
@@ -66,7 +65,7 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
             alpha = None
             linestyle = None
         else:
-            alpha = 0.3
+            alpha = 0.1
             linestyle = '--'
 
         for plot_idx in range(6):
@@ -74,6 +73,9 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
                            (circuit, code, record_keys[plot_idx])],
                            plot_scheme[codename], label=label, alpha=alpha,
                            linestyle=linestyle)
+            if record_keys[plot_idx] == 'flux_sensitivity_loss':
+                print(loss_record[
+                           (circuit, code, record_keys[plot_idx])])
         axs[0, 0].legend(loc='upper right')
         axs[1, 0].legend(loc='lower right')
         axs[0, 1].legend(loc='upper right')
@@ -81,8 +83,9 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
         axs[0, 2].legend(loc='upper right')
         axs[1, 2].legend(loc='lower left')
 
-    axs[1, 0].axhline(y=omega_target, color='m', linestyle=':')
-    axs[0, 2].axhline(y=22, color='m', linestyle=':')
+    if type == 'metrics':
+        axs[1, 0].axhline(y=OMEGA_TARGET, color='m', linestyle=':')
+        axs[0, 2].axhline(y=22, color='m', linestyle=':')
 
     optimal_keys = [get_optimal_key(loss_record, code=code) for code
                     in circuit_codes]
@@ -100,22 +103,22 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
                              show_label=show_label)
 
     # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
-    plt.savefig(f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/{type}_record.png')
+    plt.savefig(f'{RESULTS_DIR}/{type}_record.png')
 
 def main():
     circuit_codes = [code for code in args.codes.split(',')]
     num_runs = int(args.num_runs)
     aggregate_loss_record = {}
-    aggregate_metric_record = {}
+    aggregate_metrics_record = {}
     for codename in circuit_codes:
-        for id in range(1, num_runs+1):
-            loss_record = load_record(f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/loss_record_{codename}_{id}.pickle')
-            metric_record = load_record(
-                f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/metric_record_{codename}_{id}.pickle')
+        for id in range(num_runs):
+            loss_record = load_record(f'{RESULTS_DIR}/loss_record_{codename}_{id}.pickle')
+            metrics_record = load_record(
+                f'{RESULTS_DIR}/metrics_record_{codename}_{id}.pickle')
             aggregate_loss_record.update(loss_record)
-            aggregate_metric_record.update(metric_record)
+            aggregate_metrics_record.update(metrics_record)
     plot_results(aggregate_loss_record, circuit_codes, type='loss')
-    plot_results(aggregate_metric_record, circuit_codes, type='metrics')
+    plot_results(aggregate_metrics_record, circuit_codes, type='metrics')
 
 
 if __name__ == "__main__":

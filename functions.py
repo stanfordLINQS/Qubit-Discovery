@@ -4,10 +4,13 @@ from copy import copy
 import numpy as np
 import torch
 
+import dill as pickle
 from numpy import ndarray
 from SQcircuit import Circuit, CircuitSampler
 from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
 from typing import Tuple
+
+from settings import RESULTS_DIR
 
 
 # Helper functions
@@ -223,3 +226,17 @@ def init_metric_record(circuit, codename):
     loss_record[(circuit, codename, 'flux_sensitivity')] = []
     loss_record[(circuit, codename, 'charge_sensitivity')] = []
     return loss_record
+
+def clamp_gradient(element, epsilon):
+  max = torch.squeeze(torch.Tensor([epsilon, ]))
+  max = max.double()
+  element._value.grad = torch.minimum(max, element._value.grad)
+  element._value.grad = torch.maximum(-max, element._value.grad)
+
+def save_results(loss_record, metric_record, circuit_code, run_id):
+    save_records = {"loss": loss_record, "metrics": metric_record}
+    for record_type, record in save_records.items():
+        save_url = f'{RESULTS_DIR}/{record_type}_record_{circuit_code}_{run_id}.pickle'
+        save_file = open(save_url, 'wb')
+        pickle.dump(record, save_file)
+        save_file.close()

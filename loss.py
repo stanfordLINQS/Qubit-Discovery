@@ -11,12 +11,12 @@ from functions import (
 import torch
 
 # Loss function settings
-omega_target = 1 # GHz
+OMEGA_TARGET = 0.64 # GHz
 
 
 def frequency_loss(circuit):
     omega = first_resonant_frequency(circuit)
-    return (omega - omega_target) ** 2 / omega_target ** 2
+    return (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2
 
 
 def anharmonicity_loss(circuit, alpha=1, epsilon=1e-9):
@@ -52,7 +52,7 @@ def flux_sensitivity_loss(
 
     # Apply hinge loss
     if S < a:
-        loss = 0.0 * S
+        loss = 0.0 * S + epsilon
     else:
         loss = b * (S - a) + epsilon
 
@@ -133,7 +133,6 @@ def calculate_metrics(circuit):
     T1_time = 1 / T1_loss(circuit)
     flux_sensitivity_value = flux_sensitivity(circuit)
     charge_sensitivity_value = charge_sensitivity(circuit)
-    print(f"CS type: {type(charge_sensitivity_value)}")
     metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
                charge_sensitivity_value)
     return metrics

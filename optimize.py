@@ -1,6 +1,5 @@
 """Contains code for optimization of single circuit instance."""
 
-import dill as pickle
 import random
 
 from functions import (
@@ -9,7 +8,9 @@ from functions import (
     init_loss_record,
     init_metric_record,
     update_loss_record,
-    update_metric_record
+    update_metric_record,
+    clamp_gradient,
+    save_results
 )
 from loss import calculate_loss, calculate_metrics
 from truncation import trunc_num_heuristic, test_convergence
@@ -27,10 +28,10 @@ args = parser.parse_args()
 
 # Optimization settings
 
-seed = int(args.id) + 100
+seed = int(args.id) + 3
 random.seed(seed)
 np.random.seed(seed)
-num_epochs = 50  # number of training iterations
+num_epochs = 10  # number of training iterations
 lr = 1e-1  # learning rate
 num_eigenvalues = 10
 total_trunc_num = 140
@@ -61,7 +62,7 @@ def main():
     sq.set_optim_mode(True)
 
     circuit_code = args.code
-    id = int(args.id)
+    run_id = int(args.id)
     N = len(circuit_code)
 
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
@@ -81,6 +82,7 @@ def main():
     converged = True
     # Circuit optimization loop
     for iteration in range(num_epochs):
+        save_results(loss_record, metric_record, args.code, run_id)
         print(f"Iteration {iteration}")
         optimizer = torch.optim.SGD(
             circuit.parameters,
@@ -120,9 +122,10 @@ def main():
         for element in list(circuit._parameters.keys()):
             element._value.grad *= element._value
             if gradient_clipping:
-                torch.nn.utils.clip_grad_norm_(element._value,
-                                               max_norm=gradient_clipping_threshold,
-                                               norm_type=gc_norm_type)
+                # torch.nn.utils.clip_grad_norm_(element._value,
+                #                                max_norm=gradient_clipping_threshold,
+                #                                norm_type=gc_norm_type)
+                clamp_gradient(element, gradient_clipping_threshold)
             element._value.grad *= element._value
             if learning_rate_scheduler:
                 element._value.grad *= (scheduler_decay_rate ** iteration)
@@ -133,15 +136,6 @@ def main():
     if not converged:
         # TODO: Save circuit, throw error
         pass
-
-    save_url = f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/loss_record_{args.code}_{id}.pickle'
-    save_file = open(save_url, 'wb')
-    pickle.dump(loss_record, save_file)
-    save_file.close()
-    save_url = f'/home/groups/safavi/sqcircuit/Qubit-Discovery/results/metric_record_{args.code}_{id}.pickle'
-    save_file = open(save_url, 'wb')
-    pickle.dump(metric_record, save_file)
-    save_file.close()
 
 if __name__ == "__main__":
     main()
