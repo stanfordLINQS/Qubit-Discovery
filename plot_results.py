@@ -143,7 +143,7 @@ def main():
     aggregate_loss_record = {}
     aggregate_metrics_record = {}
     for codename in circuit_codes:
-        for id in range(1, num_runs + 1):
+        for id in range(num_runs):
             loss_record = load_record(f'{RESULTS_DIR}/loss_record_{codename}_{id}.pickle')
             metrics_record = load_record(
                 f'{RESULTS_DIR}/metrics_record_{codename}_{id}.pickle')
