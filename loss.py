@@ -136,3 +136,58 @@ def calculate_metrics(circuit):
     metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
                charge_sensitivity_value)
     return metrics
+
+def init_loss_record(circuit, circuit_code):
+    loss_record = {(circuit, circuit_code, 'frequency_loss'): [],
+            (circuit, circuit_code, 'anharmonicity_loss'): [],
+            (circuit, circuit_code, 'T1_loss'): [],
+            (circuit, circuit_code, 'flux_sensitivity_loss'): [],
+            (circuit, circuit_code, 'charge_sensitivity_loss'): [],
+            (circuit, circuit_code, 'total_loss'): []}
+    total_loss, loss_values = calculate_loss(circuit)
+    update_loss_record(circuit, circuit_code, loss_record, loss_values)
+    return loss_record
+
+
+def init_metric_record(circuit, circuit_code):
+    metric_record = {(circuit, circuit_code, 'T1'): [],
+                   (circuit, circuit_code, 'total_loss'): [],
+                   (circuit, circuit_code, 'A'): [],
+                   (circuit, circuit_code, 'omega'): [],
+                   (circuit, circuit_code, 'flux_sensitivity'): [],
+                   (circuit, circuit_code, 'charge_sensitivity'): []}
+    total_loss, loss_values = calculate_loss(circuit)
+    metrics = calculate_metrics(circuit) + (total_loss,)
+    update_metric_record(circuit, circuit_code, metric_record, metrics)
+    return metric_record
+
+def update_loss_record(circuit, codename, loss_record, loss_values):
+    """Updates loss record based on next iteration of optimization."""
+    frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss, \
+    charge_sensitivity_loss, total_loss = loss_values
+    loss_record[(circuit, codename, 'frequency_loss')].append(
+        frequency_loss.detach().numpy())
+    loss_record[(circuit, codename, 'anharmonicity_loss')].append(
+        anharmonicity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'T1_loss')].append(T1_loss.detach().numpy())
+    loss_record[(circuit, codename, 'flux_sensitivity_loss')].append(
+        flux_sensitivity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'charge_sensitivity_loss')].append(
+        charge_sensitivity_loss.detach().numpy())
+    loss_record[(circuit, codename, 'total_loss')].append(
+        total_loss.detach().numpy())
+
+
+def update_metric_record(circuit, codename, metric_record, metrics):
+    """Updates metric record with information from new iteration of optimization."""
+    omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
+    metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
+    metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
+    metric_record[(circuit, codename, 'omega')].append(
+        omega_10.detach().numpy())
+    metric_record[(circuit, codename, 'flux_sensitivity')].append(
+        flux_sensitivity.detach().numpy())
+    metric_record[(circuit, codename, 'charge_sensitivity')].append(
+        charge_sensitivity.detach().numpy())
+    metric_record[(circuit, codename, 'total_loss')].append(
+        total_loss.detach().numpy())

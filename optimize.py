@@ -5,14 +5,18 @@ import random
 from functions import (
     create_sampler,
     get_element_counts,
-    init_loss_record,
-    init_metric_record,
-    update_loss_record,
-    update_metric_record,
     clamp_gradient,
     save_results
 )
-from loss import calculate_loss, calculate_metrics
+from loss import (
+    calculate_loss,
+    calculate_metrics,
+    init_loss_record,
+    init_metric_record,
+    update_loss_record,
+    update_metric_record
+)
+
 from truncation import trunc_num_heuristic, test_convergence
 
 import argparse
