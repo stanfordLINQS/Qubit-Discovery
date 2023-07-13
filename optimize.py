@@ -28,10 +28,10 @@ args = parser.parse_args()
 
 # Optimization settings
 
-seed = int(args.id) + 3
+seed = int(args.id) + 240
 random.seed(seed)
 np.random.seed(seed)
-num_epochs = 10  # number of training iterations
+num_epochs = 50  # number of training iterations
 lr = 1e-1  # learning rate
 num_eigenvalues = 10
 total_trunc_num = 140
@@ -109,12 +109,10 @@ def main():
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
             break
-            # TODO: In addition to breaking, also arXiv circuit
 
         # Calculate loss, backprop
         total_loss, loss_values = calculate_loss(circuit)
         metrics = calculate_metrics(circuit) + (total_loss, )
-        # TODO: update loss values
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
         total_loss.backward()
@@ -133,9 +131,6 @@ def main():
         optimizer.zero_grad()
         circuit.update()
 
-    if not converged:
-        # TODO: Save circuit, throw error
-        pass
 
 if __name__ == "__main__":
     main()
