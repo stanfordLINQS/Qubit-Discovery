@@ -75,13 +75,13 @@ def main():
     trunc_nums = circuit.truncate_circuit(total_trunc_num)
     print("Circuit truncated...")
 
-    metric_record = init_metric_record(circuit, circuit_code)
-    loss_record = init_loss_record(circuit, circuit_code)
-
     junction_count, inductor_count, _ = get_element_counts(circuit)
 
     circuit.diag(num_eigenvalues)
     print("Circuit diagonalized")
+
+    metric_record = init_metric_record(circuit, circuit_code)
+    loss_record = init_loss_record(circuit, circuit_code)
 
     converged = True
     # Circuit optimization loop
