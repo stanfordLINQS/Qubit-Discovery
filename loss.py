@@ -19,7 +19,7 @@ def frequency_loss(circuit):
     return (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2
 
 
-def anharmonicity_loss(circuit, alpha=1, epsilon=1e-9):
+def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
     """Designed to penalize energy level occupancy in the vicinity of ground state
     or twice resonant frequency"""
     assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
