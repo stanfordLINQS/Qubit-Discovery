@@ -10,6 +10,7 @@ from SQcircuit import Circuit, CircuitSampler
 from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
 from typing import Tuple
 
+from loss import calculate_loss, calculate_metrics
 from settings import RESULTS_DIR
 
 
@@ -145,14 +146,6 @@ def get_element_counts(circuit):
     return junction_count, inductor_count, capacitor_count
 
 
-'''loss_record[(circuit, codename, 'frequency_loss')] = []
-    loss_record[(circuit, codename, 'anharmonicity_loss')] = []
-    loss_record[(circuit, codename, 'T1_loss')] = []
-    loss_record[(circuit, codename, 'flux_sensitivity_loss')] = []
-    loss_record[(circuit, codename, 'charge_sensitivity_loss')] = []
-    loss_record[(circuit, codename, 'total_loss')] = []'''
-
-
 def update_loss_record(circuit, codename, loss_record, loss_values):
     """Updates loss record based on next iteration of optimization."""
     frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss, \
@@ -208,30 +201,37 @@ def code_to_codename(circuit_code):
     return circuit_code
 
 
-def init_loss_record(circuit, codename):
-    return {(circuit, codename, 'frequency_loss'): [],
-            (circuit, codename, 'anharmonicity_loss'): [],
-            (circuit, codename, 'T1_loss'): [],
-            (circuit, codename, 'flux_sensitivity_loss'): [],
-            (circuit, codename, 'charge_sensitivity_loss'): [],
-            (circuit, codename, 'total_loss'): []}
-
-
-def init_metric_record(circuit, codename):
-    loss_record = {}
-    loss_record[(circuit, codename, 'T1')] = []
-    loss_record[(circuit, codename, 'total_loss')] = []
-    loss_record[(circuit, codename, 'A')] = []
-    loss_record[(circuit, codename, 'omega')] = []
-    loss_record[(circuit, codename, 'flux_sensitivity')] = []
-    loss_record[(circuit, codename, 'charge_sensitivity')] = []
+def init_loss_record(circuit, circuit_code):
+    loss_record = {(circuit, circuit_code, 'frequency_loss'): [],
+            (circuit, circuit_code, 'anharmonicity_loss'): [],
+            (circuit, circuit_code, 'T1_loss'): [],
+            (circuit, circuit_code, 'flux_sensitivity_loss'): [],
+            (circuit, circuit_code, 'charge_sensitivity_loss'): [],
+            (circuit, circuit_code, 'total_loss'): []}
+    total_loss, loss_values = calculate_loss(circuit)
+    update_loss_record(circuit, circuit_code, loss_record, loss_values)
     return loss_record
+
+
+def init_metric_record(circuit, circuit_code):
+    metric_record = {(circuit, circuit_code, 'T1'): [],
+                   (circuit, circuit_code, 'total_loss'): [],
+                   (circuit, circuit_code, 'A'): [],
+                   (circuit, circuit_code, 'omega'): [],
+                   (circuit, circuit_code, 'flux_sensitivity'): [],
+                   (circuit, circuit_code, 'charge_sensitivity'): []}
+    total_loss, loss_values = calculate_loss(circuit)
+    metrics = calculate_metrics(circuit) + (total_loss,)
+    update_metric_record(circuit, circuit_code, metric_record, metrics)
+    return metric_record
+
 
 def clamp_gradient(element, epsilon):
   max = torch.squeeze(torch.Tensor([epsilon, ]))
   max = max.double()
   element._value.grad = torch.minimum(max, element._value.grad)
   element._value.grad = torch.maximum(-max, element._value.grad)
+
 
 def save_results(loss_record, metric_record, circuit_code, run_id):
     save_records = {"loss": loss_record, "metrics": metric_record}
