@@ -28,7 +28,7 @@ def calculate_anharmonicity(circuit):
            (circuit.efreqs[1] - circuit.efreqs[0])
 
 
-def charge_sensitivity(circuit, epsilon=1e-14):
+def charge_sensitivity(circuit, epsilon=1e-14, is_torch=True):
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
@@ -38,7 +38,10 @@ def charge_sensitivity(circuit, epsilon=1e-14):
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if sum(circuit.omega == 0) == 0:
-        return torch.as_tensor(epsilon)
+        if is_torch:
+            return torch.as_tensor(epsilon)
+        else:
+            return epsilon
 
     else:
         # For each mode, if charge mode exists then set gate charge to obtain
@@ -52,13 +55,17 @@ def charge_sensitivity(circuit, epsilon=1e-14):
     new_circuit.diag(len(circuit.efreqs))
     c_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
 
-    return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+    if is_torch:
+        return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+    else:
+        return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
 
 def flux_sensitivity(
         circuit,
         flux_point=0.5,
-        delta=0.01
+        delta=0.01,
+        is_torch=True
 ):
     """Return the flux sensitivity of the circuit around half flux quantum."""
 
@@ -70,7 +77,10 @@ def flux_sensitivity(
     _, _ = new_circuit.diag(len(circuit.efreqs))
     f_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
 
-    S = torch.abs((f_delta - f_0) / f_0)
+    if is_torch:
+        S = torch.abs((f_delta - f_0) / f_0)
+    else:
+        S = np.abs((f_delta - f_0) / f_0)
 
     return S
 

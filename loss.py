@@ -8,6 +8,7 @@ from functions import (
     reset_charge_modes,
 )
 
+import numpy as np
 import torch
 
 # Loss function settings
@@ -19,7 +20,7 @@ def frequency_loss(circuit):
     return (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2
 
 
-def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
+def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14, is_torch=True):
     """Designed to penalize energy level occupancy in the vicinity of ground state
     or twice resonant frequency"""
     assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
@@ -27,28 +28,36 @@ def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
     x2 = alpha * (omega_i0 - omega_10) / omega_10
-    return 2 * torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
+    if is_torch:
+        return 2 * torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
+    else:
+        return 2 * np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
 
 
-def T1_loss(circuit):
+def T1_loss(circuit, is_torch=True):
     Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
     Gamma_2 = circuit.dec_rate('inductive', (0, 1))
     Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
     Gamma = Gamma_1 + Gamma_2 + Gamma_3
 
-    return Gamma ** 2
+    loss = Gamma ** 2
+    if is_torch:
+        return loss
+    else:
+        return loss.item()
 
 
 def flux_sensitivity_loss(
         circuit,
         a=0.1,
         b=1,
-        epsilon=1e-14
+        epsilon=1e-14,
+        is_torch=True
 ):
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
 
-    S = flux_sensitivity(circuit)
+    S = flux_sensitivity(circuit, is_torch=is_torch)
 
     # Apply hinge loss
     if S < a:
@@ -59,10 +68,10 @@ def flux_sensitivity_loss(
     return loss, S
 
 
-def charge_sensitivity_loss(circuit, a=0.1, b=1):
+def charge_sensitivity_loss(circuit, a=0.1, b=1, is_torch=True):
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
-    S = charge_sensitivity(circuit)
+    S = charge_sensitivity(circuit, is_torch)
 
     # Hinge loss transform
     if S < a:
@@ -77,16 +86,27 @@ def charge_sensitivity_loss(circuit, a=0.1, b=1):
 def calculate_loss(circuit, use_frequency_loss=True, use_anharmonicity_loss=True,
                          use_flux_sensitivity_loss=True, use_charge_sensitivity_loss=True,
                          use_T1_loss=False, log_loss=False,
-                         loss_normalization = False):
-    loss = torch.zeros((), requires_grad=True)
+                         loss_normalization=False,
+                         is_torch=True):
+    if is_torch:    
+        loss = torch.zeros((), requires_grad=True)
+    else:
+        loss = 0
 
     if loss_normalization:
-        loss_frequency_init = frequency_loss(circuit).detach()
-        loss_anharmonicity_init = anharmonicity_loss(circuit).detach()
-        loss_T1_init = T1_loss(circuit).detach()
-        loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
-        loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[
-            0].detach()
+        if is_torch:
+            loss_frequency_init = frequency_loss(circuit).detach()
+            loss_anharmonicity_init = anharmonicity_loss(circuit).detach()
+            loss_T1_init = T1_loss(circuit).detach()
+            loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
+            loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[
+                0].detach()
+        else:
+            loss_frequency_init = frequency_loss(circuit)
+            loss_anharmonicity_init = anharmonicity_loss(circuit, is_torch=is_torch)
+            loss_T1_init = T1_loss(circuit, is_torch=is_torch)
+            loss_flux_sensitivity_init = flux_sensitivity_loss(circuit, is_torch=is_torch)[0]
+            loss_charge_sensitivity_init = charge_sensitivity_loss(circuit, is_torch=is_torch)[0]
 
     # Calculate frequency
     loss_frequency = frequency_loss(circuit)
@@ -95,44 +115,47 @@ def calculate_loss(circuit, use_frequency_loss=True, use_anharmonicity_loss=True
     if use_frequency_loss:
         loss = loss + loss_frequency
     # Calculate anharmonicity
-    loss_anharmonicity = anharmonicity_loss(circuit)
+    loss_anharmonicity = anharmonicity_loss(circuit, is_torch=is_torch)
     if loss_normalization:
         loss_anharmonicity /= loss_anharmonicity_init
     if use_anharmonicity_loss:
         loss = loss + loss_anharmonicity
     # Calculate T1
-    loss_T1 = T1_loss(circuit)
+    loss_T1 = T1_loss(circuit, is_torch=is_torch)
     if loss_normalization:
         loss_T1 /= loss_T1_init
     if use_T1_loss:
         loss = loss + loss_T1
     # Calculate flux sensitivity loss
     loss_flux_sensitivity, _ = flux_sensitivity_loss(
-        circuit)
+        circuit, is_torch=is_torch)
     if loss_normalization:
         loss_flux_sensitivity /= loss_flux_sensitivity_init
     if use_flux_sensitivity_loss:
         loss = loss + loss_flux_sensitivity
     # Calculate charge sensitivity loss
-    loss_charge_sensitivity, _ = charge_sensitivity_loss(circuit)
+    loss_charge_sensitivity, _ = charge_sensitivity_loss(circuit, is_torch=is_torch)
     if loss_normalization:
         loss_charge_sensitivity /= loss_charge_sensitivity_init
     if use_charge_sensitivity_loss:
         loss = loss + loss_charge_sensitivity
 
     if log_loss:
-        loss = torch.log(1 + loss)
+        if is_torch:
+            loss = torch.log(1 + loss)
+        else:
+            loss = np.log(1 + loss)
 
     all_loss = loss_frequency + loss_anharmonicity + loss_flux_sensitivity + loss_charge_sensitivity
     loss_values = (loss_frequency, loss_anharmonicity, loss_T1, loss_flux_sensitivity, loss_charge_sensitivity, all_loss)
     return loss, loss_values
 
-def calculate_metrics(circuit):
+def calculate_metrics(circuit, is_torch=True):
     frequency = first_resonant_frequency(circuit)
     anharmonicity = calculate_anharmonicity(circuit)
-    T1_time = 1 / T1_loss(circuit)
-    flux_sensitivity_value = flux_sensitivity(circuit)
-    charge_sensitivity_value = charge_sensitivity(circuit)
+    T1_time = 1 / T1_loss(circuit, is_torch=is_torch)
+    flux_sensitivity_value = flux_sensitivity(circuit, is_torch=is_torch)
+    charge_sensitivity_value = charge_sensitivity(circuit, is_torch=is_torch)
     metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
                charge_sensitivity_value)
     return metrics
