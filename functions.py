@@ -175,10 +175,50 @@ def clamp_gradient(element, epsilon):
   element._value.grad = torch.maximum(-max, element._value.grad)
 
 
-def save_results(loss_record, metric_record, circuit_code, run_id):
+def save_results(loss_record, metric_record, circuit_code, run_id, prefix=""):
     save_records = {"loss": loss_record, "metrics": metric_record}
+    if prefix != "":
+        prefix += '_'
     for record_type, record in save_records.items():
-        save_url = f'{RESULTS_DIR}/{record_type}_record_{circuit_code}_{run_id}.pickle'
+        save_url = f'{RESULTS_DIR}/{prefix}{record_type}_record_{circuit_code}_{run_id}.pickle'
         save_file = open(save_url, 'wb')
         pickle.dump(record, save_file)
         save_file.close()
+
+def set_params(circuit: Circuit, params: torch.Tensor) -> None:
+    for i, element in enumerate(circuit._parameters.keys()):
+        element._value = params[i].clone().detach().requires_grad_(True)
+
+    circuit.update()
+
+def get_grad(circuit: Circuit) -> torch.Tensor:
+
+    grad_list = []
+
+    for val in circuit._parameters.values():
+        grad_list.append(val.grad)
+
+    if None in grad_list:
+        return grad_list
+
+    return torch.stack(grad_list)
+
+def set_grad_zero(circuit: Circuit) -> None:
+
+    for key in circuit._parameters.keys():
+        circuit._parameters[key].grad = None
+
+def get_optimal_key(loss_record, code=None):
+  optimal_loss = 1e100
+  optimal_key = None
+
+  for circuit, circuit_code, l in loss_record.keys():
+    key = (circuit, circuit_code, 'total_loss')
+    if len(loss_record[key]) == 0:
+        continue
+    loss = loss_record[key][-1]
+    if loss < optimal_loss and (code in key or code is None):
+        optimal_loss = loss
+        optimal_key = key
+
+  return optimal_key

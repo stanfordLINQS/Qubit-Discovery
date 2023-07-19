@@ -3,7 +3,12 @@
 
 from collections import OrderedDict
 
-from functions import code_to_codename, flatten, get_element_counts
+from functions import(
+    code_to_codename,
+    flatten,
+    get_element_counts,
+    get_optimal_key
+)
 from loss import OMEGA_TARGET
 from settings import RESULTS_DIR
 
@@ -16,6 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--codes', type=str, required=True)
 parser.add_argument("num_runs", type=int)
 parser.add_argument('-b', '--best_n', type=int)
+parser.add_argument('-o', '--optimization_type', type=str)
 args = parser.parse_args()
 
 num_runs = int(args.num_runs)
@@ -52,24 +58,13 @@ def get_optimal_n_keys(loss_record, n, code=None):
     return list(optimal_keys_losses.keys())
 
 
-def get_optimal_key(loss_record, code=None):
-  optimal_loss = 1e100
-  optimal_key = None
-
-  for circuit, circuit_code, l in loss_record.keys():
-    key = (circuit, circuit_code, 'total_loss')
-    loss = loss_record[key][-1]
-    if loss < optimal_loss and (code in key or code is None):
-        optimal_loss = loss
-        optimal_key = key
-
-  return optimal_key
-
-def plot_results(loss_record, circuit_codes, type='metrics'):
+def plot_results(loss_record, circuit_codes, type='metrics', title='',
+                 save_prefix=''):
     plot_scheme = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
 
     fig, axs = plt.subplots(2, 3, figsize=(22, 11))
+    fig.suptitle(title, fontsize = 32)
     metric_titles = ['Total Loss', 'Frequency', 'Flux Sensitivity',
                      'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
     metric_keys = ['total_loss', 'omega', 'flux_sensitivity',
@@ -80,8 +75,6 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
                    'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
     plot_titles = metric_titles if type == 'metrics' else loss_titles
     record_keys = metric_keys if type == 'metrics' else loss_keys
-
-    # fig.suptitle('Scaling from N=2 to N=3 Inductive Elements')
 
     def plot_circuit_metrics(circuit, loss_record, code, optimal_keys,
                              show_label=False):
@@ -136,21 +129,41 @@ def plot_results(loss_record, circuit_codes, type='metrics'):
                              show_label=show_label)
 
     # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
-    plt.savefig(f'{RESULTS_DIR}/{type}_record.png')
+    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{type}_record.png')
+
+def build_save_prefix():
+    save_prefix = ""
+    for code in args.codes:
+        save_prefix += code
+    if args.num_runs is not None:
+        save_prefix += f"_n_{args.num_runs}"
+    if args.best_n is not None:
+        save_prefix += f"_b_{args.best_n}"
+    if args.optimization_type is not None:
+        save_prefix += f"_{args.optimization_type}"
+
+    return save_prefix
 
 def main():
     circuit_codes = [code for code in args.codes.split(',')]
     aggregate_loss_record = {}
     aggregate_metrics_record = {}
+    prefix = args.optimization_type
+    if prefix != "":
+        prefix += '_'
     for codename in circuit_codes:
         for id in range(num_runs):
-            loss_record = load_record(f'{RESULTS_DIR}/loss_record_{codename}_{id}.pickle')
+            loss_record = load_record(f'{RESULTS_DIR}/{prefix}loss_record_{codename}_{id}.pickle')
             metrics_record = load_record(
-                f'{RESULTS_DIR}/metrics_record_{codename}_{id}.pickle')
+                f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{id}.pickle')
             aggregate_loss_record.update(loss_record)
             aggregate_metrics_record.update(metrics_record)
-    plot_results(aggregate_loss_record, circuit_codes, type='loss')
-    plot_results(aggregate_metrics_record, circuit_codes, type='metrics')
+    save_prefix = build_save_prefix()
+    title = f"Optimization with {args.optimization_type}"
+    plot_results(aggregate_loss_record, circuit_codes, type='loss', title=title,
+                 save_prefix=save_prefix)
+    plot_results(aggregate_metrics_record, circuit_codes, type='metrics', title=title,
+                 save_prefix=save_prefix)
 
 
 if __name__ == "__main__":
