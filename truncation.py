@@ -188,3 +188,19 @@ def test_convergence(
       return False, epsilon_1, epsilon_2
 
     return True, epsilon_1, epsilon_2
+
+def verify_convergence(circuit, trunc_nums, num_eigenvalues):
+    if len(circuit.m) == 1:
+        converged = circuit.test_convergence(trunc_nums)
+    elif len(circuit.m) == 2:
+        trunc_nums = trunc_num_heuristic(circuit,
+                                         K=4000,
+                                         eig_vec_idx=1,
+                                         axes=None)
+        circuit.set_trunc_nums(trunc_nums)
+        circuit.diag(num_eigenvalues)
+
+        # converged = circuit.test_convergence(trunc_nums)
+        converged, _, _ = test_convergence(circuit, eig_vec_idx=1)
+
+    return converged
