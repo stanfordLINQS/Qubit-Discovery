@@ -104,12 +104,14 @@ def run_BFGS(
     return params, loss_record
 
 
-def not_param_in_bounds(param, bounds) -> bool:
+def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
+    for param_idx, param in enumerate(params):
+        circuit_element_type = circuit_element_types[param_idx]
+        lower_bound, upper_bound = bounds[circuit_element_type]
+        if param < lower_bound or param > upper_bound:
+            return True
 
-    lower_bound = bounds[0]
-    upper_bound = bounds[1]
-
-    return not ((param>lower_bound).all() and (param<upper_bound).all())
+    return False
 
 def line_search(
     circuit,
@@ -124,10 +126,12 @@ def line_search(
     rho=0.1
 ):
     alpha = lr
+    circuit_elements = list(circuit.elements.values())[0]
+    circuit_element_types = [type(element) for element in circuit_elements]
 
     if bounds is not None:
         while (
-            not_param_in_bounds(params + alpha * p, bounds)
+            not_param_in_bounds(params + alpha * p, bounds, circuit_element_types)
         ):
             alpha *= rho
 
