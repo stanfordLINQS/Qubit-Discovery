@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.special import comb
 from scipy.stats import qmc
 from scipy.ndimage import maximum_filter1d
+import sys
 
 from functions import (
     create_sampler,
@@ -17,6 +19,7 @@ from loss import (
     update_loss_record,
     update_metric_record
 )
+import SQcircuit as sq
 from truncation import trunc_num_heuristic, test_convergence
 
 class Swarm:
@@ -207,7 +210,7 @@ class CircuitSwarm(Swarm):
             raise ValueError('Too many particles requested.')
             
         if nec_bits > 28: ## default number of bits is 30
-            sampler = Sobol(d=n, bits=(nec_bits + 2))
+            sampler = qmc.Sobol(d=n, bits=(nec_bits + 2))
         else:
             sampler = qmc.Sobol(d=n)
         return sampler.random(k)
@@ -273,7 +276,7 @@ class CircuitSwarm(Swarm):
         coupling.
         """
         inductive_elems = len(circuit_code)
-        capactive_elems = scipy.special.comb(inductive_elems, 2)
+        capactive_elems = comb(inductive_elems, 2)
         return int(inductive_elems + capactive_elems)
 
     @staticmethod
