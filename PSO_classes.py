@@ -19,14 +19,6 @@ from loss import (
 )
 from truncation import trunc_num_heuristic, test_convergence
 
-def num_elems(circuit_code):
-    """
-    Return number of elements in loop circuit with all-to-all capacitor
-    """
-    inductive_elems = len(circuit_code)
-    capactive_elems = scipy.special.comb(inductive_elems, 2)
-    return int(inductive_elems + capactive_elems)
-
 class Swarm:
     """
     The PSO optimiser operates on the abstraction that the position is just a matrix X of vectors.
@@ -86,15 +78,17 @@ class BasicSwarm(Swarm):
     def _init_pos(self):
         if self.init_strat == 'uniform':
             self.X = np.zeros((self.swarm_size, self.dimensions))
-            for i, (lower, upper) in enumerate(self.init_constraints):
-                self.X[:,i] = self.rng.uniform(lower, upper, self.swarm_size)
+            self.X = self.rng.uniform(self.lower_bound, self.upper_bound,
+                                      size=(self.swarm_size, self.dimensions))
         elif self.init_strat == 'loguniform':
             self.X = np.zeros((self.swarm_size, self.dimensions))
-            for i, (lower, upper) in enumerate(self.init_constraints):
-                try:
-                    self.X[:,i] = np.exp(self.rng.uniform(np.log(lower), np.log(upper)), self.swarm_size)
-                except RuntimeWarning:
-                    sys.exit('All bounds must be positive for log-uniform sampling.')
+            try:
+                log_lower_bound = np.log(self.lower_bound)
+                log_upper_bound = np.log(self.upper_bound)
+            except RuntimeWarning:
+                sys.exit('All bounds must be positive for log-uniform sampling.')
+            self.X = np.exp(self.rng.uniform(log_lower_bound, log_upper_bound,
+                                             size=(self.swarm_size, self.dimensions)))          
         else:
             raise ValueError(f'{self.init_strat} is not a valid initialisation strategy.')
 
@@ -120,17 +114,24 @@ class BasicSwarm(Swarm):
         return out
 
 class CircuitSwarm(Swarm):
+    """
+
+    If `conserve_memory` is False, we maintain a population of `num_circuits`
+    distinct `Circuit` objects. Otherwise only the parameters are maintained 
+    internally, and we initialise a new circuit for each one when necessary.
+    """
     def __init__(self, 
                  num_circuits, 
                  circuit_code,
                  capacitor_range, inductor_range, junction_range,
                  num_eigenvalues=10, total_trunc_num=140,
-                 sampling_method='loguniform', is_log=False):
+                 sampling_method='loguniform', is_log=False,
+                 parallel=False, conserve_memory=False):
                      
         self._num_circuits = num_circuits
         self._circuit_code = circuit_code
         self._num_inductive_elements = len(circuit_code)
-        self._num_elements = num_elems(circuit_code)
+        self._num_elements = self.num_elems(circuit_code)
 
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
@@ -139,6 +140,7 @@ class CircuitSwarm(Swarm):
         self.num_eigenvalues = num_eigenvalues
         self.total_trunc_num = total_trunc_num
 
+        self.conserve_memory = conserve_memory
         self._sampling_method = sampling_method
         self._sample_circuits()
         self.history = []
@@ -147,7 +149,7 @@ class CircuitSwarm(Swarm):
 
     def _get_actual_bounds(self):
         bounds = []
-        for elem in self.ordered_elements(self.circuits[0][0]):
+        for elem in self.ordered_elements(self.model_circuit):
             if isinstance(elem, sq.elements.Junction):
                 bounds.append(self.junction_range)
             elif isinstance(elem, sq.elements.Inductor):
@@ -167,6 +169,10 @@ class CircuitSwarm(Swarm):
 
     @staticmethod
     def voroni_sampling(k, n):
+        """
+        Sample `k` points in the `n`-dimenisional unit hypercube with an 
+        approximation of a central Voroni tessellation. 
+        """
         alpha_1 = 0.5 #np.random.uniform(0, 1) #0
         alpha_2 = 1 - alpha_1
         beta_1 = 0.5 #np.random.uniform(0, 1) #0
@@ -185,12 +191,17 @@ class CircuitSwarm(Swarm):
                 if not np.any(closest_samples):
                     break
                 mean_pt = np.mean(samples[closest_samples, :], axis=0)
-                pts[pt_idx,:] = ((alpha_1 * c[pt_idx] + beta_1) * pts[pt_idx,:] + (alpha_2 * c[pt_idx] + beta_2) * mean_pt)/(c[pt_idx] + 1)
+                pts[pt_idx,:] = ((alpha_1 * c[pt_idx] + beta_1) * pts[pt_idx,:] \
+                                 + (alpha_2 * c[pt_idx] + beta_2) * mean_pt)/(c[pt_idx] + 1)
                 c[pt_idx] += 1
         return pts
 
     @staticmethod
     def sobol_sampling(k, n):
+        """
+        Sample `k` points in the `n`-dimensional unit hypercube using a Sobol
+        sequence.
+        """
         nec_bits = int(np.ceil(np.log2(k)))
         if nec_bits > 62:
             raise ValueError('Too many particles requested.')
@@ -202,17 +213,30 @@ class CircuitSwarm(Swarm):
         return sampler.random(k)
 
     def _sample_circuits(self):
-        self.circuits = []
-        self.all_trunc_nums = []
+        # Retain circuit/parameters internally
+        if self.conserve_memory:
+            self.circuit_params = np.zeros((self._num_circuits, self._num_elements))
+        else:
+            self.circuits = []
+        self.circuit_metadata = []
+        
         # Construct circuits
-        for _ in range(self._num_circuits):
+        for i in range(self._num_circuits):
             sampler = create_sampler(self._num_inductive_elements, self.capacitor_range, 
                                      self.inductor_range, self.junction_range)
             circuit = sampler.sample_circuit_code(self._circuit_code)
-            # Choose baseline truncation numbers based on _total_trunc_num
+
+            if i==0:
+                self.model_circuit = circuit
+
+            # Choose baseline truncation numbers based on total_trunc_num
             trunc_nums = circuit.truncate_circuit(self.total_trunc_num)
-            
-            self.circuits.append([circuit, trunc_nums, None])
+
+            if self.conserve_memory:
+                self.circuit_params[i,:] = self.get_values(circuit)
+            else:
+                self.circuits.append(circuit)
+            self.circuit_metadata.append((trunc_nums, None))
 
         # Sample values in unit hypercube
         if self._sampling_method == 'loguniform':
@@ -243,29 +267,53 @@ class CircuitSwarm(Swarm):
         return self._num_circuits
 
     @staticmethod
+    def num_elems(circuit_code):
+        """
+        Return number of elements in loop circuit with all-to-all capacitive
+        coupling.
+        """
+        inductive_elems = len(circuit_code)
+        capactive_elems = scipy.special.comb(inductive_elems, 2)
+        return int(inductive_elems + capactive_elems)
+
+    @staticmethod
     def ordered_elements(circuit):
         for edge in circuit.elements.values():
             for elem in edge:
                 yield elem
 
+    def get_values(self, cr):
+        vals = []
+        for elem in self.ordered_elements(cr):
+            vals.append(elem.get_value())
+        return np.array(vals)
+
     @property
     def position(self):
-        X = np.zeros((self.swarm_size, self.dimensions))
-        for i, (cr, _, _) in enumerate(self.circuits):
-            for j, elem in enumerate(self.ordered_elements(cr)):
-                X[i,j] = elem.get_value()
+        if self.conserve_memory:
+            X = self.circuit_params.copy()
+        else:
+            X = np.zeros((self.swarm_size, self.dimensions))
+            for i, cr in enumerate(self.circuits):
+                for j, elem in enumerate(self.ordered_elements(cr)):
+                    X[i,j] = elem.get_value()
 
         if self.is_log:
             return np.log10(X)
         return X
 
+    def set_circuit_params(self, cr, params):
+        for i, elem in enumerate(self.ordered_elements(cr)):
+            ## UPDATE IF JUNCTION `set_value` FIXED
+            elem._value = params[i]
+
     def _set_actual_position(self, X):
-        for i, (cr, _, _) in enumerate(self.circuits):
-            for j, elem in enumerate(self.ordered_elements(cr)):
-                ## UPDATE IF JUNCTION `set_value` FIXED
-                elem._value = X[i,j]
-            cr.update()
-            
+        if self.conserve_memory:
+            self.circuit_params = X.copy()
+        else:
+            for i, cr in enumerate(self.circuits):
+                self.set_circuit_params(cr, X[i,:])
+                cr.update()
 
     def set_position(self, X):
         if self.is_log:
@@ -273,29 +321,27 @@ class CircuitSwarm(Swarm):
         else:
             self._set_actual_position(X)
 
-    def _diag_circuit(self, idx):
-        cr = self.circuits[idx][0]
+    def _diag_circuit(self, cr, trunc_nums):
+        # TODO: check this is all correct re: convergence checking
+        # update with verify_convergence from truncation.py, if desired
         cr.diag(self.num_eigenvalues)
         if len(cr.m) == 1:
-            converged = cr.test_convergence(self.circuits[idx][1])
+            is_converged = cr.test_convergence(trunc_nums)
         elif len(cr.m) == 2:
             trunc_nums = trunc_num_heuristic(cr,
-                                             K=4000,
+                                             K=self.total_trunc_num,
                                              eig_vec_idx=1,
                                              axes=None)
-            self.circuits[idx][1] = trunc_nums
-            cr.set_trunc_nums(self.circuits[idx][1])
+            cr.set_trunc_nums(trunc_nums)
             cr.diag(self.num_eigenvalues)
 
-            converged, _, _ = test_convergence(cr, eig_vec_idx=1)
+            is_converged, _, _ = test_convergence(cr, eig_vec_idx=1)
 
-        self.circuits[idx][2] = converged
-        return converged
+        return trunc_nums, is_converged
 
-    def _calc_loss(self, idx):
-        cr = self.circuits[idx][0]
-        total_loss, loss_values = calculate_loss(cr, is_torch=False)
-        metric_values = calculate_metrics(cr, is_torch=False) + (total_loss, )
+    def _calc_loss(self, cr):
+        total_loss, loss_values = calculate_loss(cr)
+        metric_values = calculate_metrics(cr) + (total_loss, )
         return total_loss, loss_values, metric_values
     
     def eval_position(self):
@@ -303,9 +349,20 @@ class CircuitSwarm(Swarm):
         all_metrics = []
         all_losses = []
         for idx in range(self._num_circuits):
-            converged = self._diag_circuit(idx)
-            if converged:
-                total_loss, loss_values, metric_values = self._calc_loss(idx)
+            if self.conserve_memory:
+                self.set_circuit_params(self.model_circuit, 
+                                        self.circuit_params[idx,:])
+                self.model_circuit.update()
+                cr = self.model_circuit
+            else:
+                cr = self.circuits[idx]
+
+            trunc_nums, is_converged = self._diag_circuit(cr,
+                                                self.circuit_metadata[idx][0])
+            self.circuit_metadata[idx] = [trunc_nums, is_converged]
+
+            if is_converged:
+                total_loss, loss_values, metric_values = self._calc_loss(cr)
                 tot_losses[idx] = total_loss
                 all_metrics.append(metric_values)
                 all_losses.append(loss_values)
@@ -332,6 +389,9 @@ class PSO(Optimiser):
     Topologies are
         - gbest
         - lbest
+
+    Not yet implemented
+        - von neumann
         - lbest-closest
 
     For the moment we'll require constraints
