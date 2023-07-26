@@ -73,10 +73,12 @@ def main():
                 num_epochs
                 )
     elif args.optimization_type == "BFGS":
-        bounds = [
-            torch.tensor([junction_range[0], inductor_range[0], capacitor_range[0]]),
-            torch.tensor([junction_range[1], inductor_range[1], capacitor_range[1]])
-        ]
+        bounds = {
+            sq.Junction: torch.tensor([junction_range[0], junction_range[1]]),
+            sq.Inductor: torch.tensor([inductor_range[0], inductor_range[1]]),
+            sq.Capacitor: torch.tensor([capacitor_range[0], capacitor_range[1]])
+        }
+
         run_BFGS(circuit,
                  circuit_code,
                  run_id,
