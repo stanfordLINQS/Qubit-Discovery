@@ -8,6 +8,7 @@ import dill as pickle
 from numpy import ndarray
 from SQcircuit import Circuit, CircuitSampler
 from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
+from SQcircuit.settings import get_optim_mode
 from typing import Tuple
 
 from settings import RESULTS_DIR
@@ -28,7 +29,7 @@ def calculate_anharmonicity(circuit):
            (circuit.efreqs[1] - circuit.efreqs[0])
 
 
-def charge_sensitivity(circuit, epsilon=1e-14, is_torch=True):
+def charge_sensitivity(circuit, epsilon=1e-14):
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
@@ -38,7 +39,7 @@ def charge_sensitivity(circuit, epsilon=1e-14, is_torch=True):
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if sum(circuit.omega == 0) == 0:
-        if is_torch:
+        if get_optim_mode():
             return torch.as_tensor(epsilon)
         else:
             return epsilon
@@ -55,7 +56,7 @@ def charge_sensitivity(circuit, epsilon=1e-14, is_torch=True):
     new_circuit.diag(len(circuit.efreqs))
     c_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
 
-    if is_torch:
+    if get_optim_mode():
         return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
     else:
         return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
@@ -64,8 +65,7 @@ def charge_sensitivity(circuit, epsilon=1e-14, is_torch=True):
 def flux_sensitivity(
         circuit,
         flux_point=0.5,
-        delta=0.01,
-        is_torch=True
+        delta=0.01
 ):
     """Return the flux sensitivity of the circuit around half flux quantum."""
 
@@ -77,7 +77,7 @@ def flux_sensitivity(
     _, _ = new_circuit.diag(len(circuit.efreqs))
     f_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
 
-    if is_torch:
+    if get_optim_mode():
         S = torch.abs((f_delta - f_0) / f_0)
     else:
         S = np.abs((f_delta - f_0) / f_0)
