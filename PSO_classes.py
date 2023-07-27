@@ -347,32 +347,44 @@ class CircuitSwarm(Swarm):
         metric_values = calculate_metrics(cr) + (total_loss, )
         return total_loss, loss_values, metric_values
     
-    def eval_position(self):
+    def eval_position(self, to_eval=None):
         tot_losses = np.zeros(self._num_circuits)
         all_metrics = []
         all_losses = []
+        if to_eval is None:
+            to_eval = np.full(self._num_circuits, True)
         for idx in range(self._num_circuits):
-            if self.conserve_memory:
-                self.set_circuit_params(self.model_circuit, 
-                                        self.circuit_params[idx,:])
-                self.model_circuit.update()
-                cr = self.model_circuit
+            if to_eval[idx]:
+                # Calculate if necessary
+                if self.conserve_memory:
+                    self.set_circuit_params(self.model_circuit, 
+                                            self.circuit_params[idx,:])
+                    self.model_circuit.update()
+                    cr = self.model_circuit
+                else:
+                    cr = self.circuits[idx]
+    
+                trunc_nums, is_converged = self._diag_circuit(cr,
+                                            self.circuit_metadata[idx][0])
+                self.circuit_metadata[idx] = [trunc_nums, is_converged]
+    
+                if is_converged:
+                    total_loss, loss_values, metric_values = self._calc_loss(cr)
+                    all_metrics.append(metric_values)
+                    all_losses.append(loss_values)
+                else:
+                    total_loss = np.inf
+                    metric_values = None
+                    loss_values = None
             else:
-                cr = self.circuits[idx]
-
-            trunc_nums, is_converged = self._diag_circuit(cr,
-                                                self.circuit_metadata[idx][0])
-            self.circuit_metadata[idx] = [trunc_nums, is_converged]
-
-            if is_converged:
-                total_loss, loss_values, metric_values = self._calc_loss(cr)
-                tot_losses[idx] = total_loss
-                all_metrics.append(metric_values)
-                all_losses.append(loss_values)
-            else:
-                tot_losses[idx] = np.inf
-                all_metrics.append(None)
-                all_losses.append(None)
+                # Otherwise pull from history
+                metric_values = self.history[-1][idx][0]
+                loss_values = self.history[-1][1]
+                total_loss = metric_values[-1] if metric_values is not None else np.inf
+            # record
+            tot_losses[idx] = total_loss
+            all_metrics.append(metric_values)
+            all_losses.append(loss_values)
         self.history.append((all_metrics, all_losses))
         return tot_losses
     
@@ -406,7 +418,7 @@ class PSO(Optimiser):
                  max_iter=100, seed=None,
                  bounds_handler='clamp', velocity_delta=None,
                  nbhd_topology='gbest', nbhd_params = None,
-                 verbose=True):
+                 verbose=True, cache=False):
 
         self.swarm = swarm
         self.dimensions = self.swarm.dimensions
@@ -459,6 +471,14 @@ class PSO(Optimiser):
         self.iters_completed = 0
 
         self.verbose = verbose
+
+        # depending on neighbourhood topology, particles may not move for
+        # several iterations (which is its own problem), in which case it 
+        # is wasteful to re-evaluate the function.
+        self.cache = cache
+        if self.cache:
+            self.old_X = None
+            self.pcurr_cost = np.full(self.swarm_size, np.inf)
 
     def sample_sphere(self, n, d):
         points = self.rng.normal(size=(self.swarm_size, self.dimensions))
@@ -550,7 +570,12 @@ class PSO(Optimiser):
         self.X = X_temp
             
     def _eval_current_pos(self):
-        self.pcurr_cost = self.swarm.eval_position()
+        if self.cache:
+            moved = ~np.all(self.X == self.old_X, axis=1)
+            self.pcurr_cost[moved] = self.swarm.eval_position(moved)[moved]
+            self.old_X = self.X
+        else:
+            self.pcurr_cost = self.swarm.eval_position()
     
     def optimise(self, num_iters=None):
         if num_iters is None:
