@@ -16,6 +16,24 @@ from loss import (
 
 from truncation import verify_convergence
 
+from pympler import summary, muppy, asizeof
+import pympler
+
+def check_memory(circuit):
+    all_objects = muppy.get_objects()
+    sum1 = summary.summarize(all_objects)
+    summary.print_(sum1)
+    check_objects = {
+        'circuit': circuit,
+        'memory_ops': circuit._memory_ops,
+        'LC_hamil': circuit._LC_hamil,
+        'hamil': circuit.hamiltonian()
+    }
+    for key, val in check_objects.items():
+        total_size = pympler.asizeof.asizeof(val)
+        print(f"Total {key} size: {total_size}")
+
+
 # Global settings
 log_loss = False
 nesterov_momentum = False
@@ -40,6 +58,7 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
     for iteration in range(num_epochs):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='SGD')
         print(f"Iteration {iteration}")
+        check_memory(circuit)
         optimizer = torch.optim.SGD(
             circuit.parameters,
             nesterov=nesterov_momentum,
@@ -48,12 +67,13 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
         )
 
         circuit.diag(num_eigenvalues)
-        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        # TEMP
+        '''converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
 
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
-            break
+            break'''
 
         # Calculate loss, backprop
         total_loss, loss_values = calculate_loss(circuit)

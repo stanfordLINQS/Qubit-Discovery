@@ -7,7 +7,7 @@ from functions import (
 )
 
 import numpy as np
-import scipy
+import scipy, scipy.signal
 from SQcircuit import Circuit
 
 
