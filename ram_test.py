@@ -52,9 +52,13 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 def objective_func(circuit, x, num_eigenvalues):
+    print("I")
     set_params(circuit, x)
+    print("II")
     circuit.diag(num_eigenvalues)
-    total_loss, _ = calculate_loss(circuit)
+    print("III")
+    total_loss, _ = calculate_loss(circuit, use_flux_sensitivity_loss=False, use_charge_sensitivity_loss=False, use_anharmonicity_loss=False)
+    print("IV")
 
     return total_loss
 
@@ -74,7 +78,8 @@ def main():
 
     # TEMP
     '''trunc_nums = circuit.truncate_circuit(total_trunc_num)'''
-    trunc_nums = [20, 20]
+    trunc_nums = [10, 10]
+
     circuit.set_trunc_nums(trunc_nums)
     print("Circuit truncated...")
 
@@ -83,10 +88,15 @@ def main():
 
     for iteration in range(num_epochs):
         check_memory()
+        print("A")
         params = torch.stack(circuit.parameters).clone()
+        print("B")
         params = params + torch.rand(1) * params * 1e-5
+        print("C")
         loss = objective_func(circuit, params, num_eigenvalues)
+        print("D")
         loss.backward()
+        print("E")
 
 if __name__ == "__main__":
     main()
