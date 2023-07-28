@@ -404,9 +404,9 @@ class PSO(Optimiser):
     Topologies are
         - gbest
         - lbest
+        - von Neumann
 
     Not yet implemented
-        - von neumann
         - lbest-closest
 
     For the moment we'll require constraints
@@ -504,7 +504,7 @@ class PSO(Optimiser):
 
     @staticmethod
     def von_neumann_nbhs(ns):
-        out = np.zeros((ns, 5))
+        out = np.zeros((ns, 5), dtype='int')
     
         num_columns = np.ceil(np.sqrt(ns)).astype(int)
         num_rows = np.ceil(ns/num_columns).astype(int)
@@ -525,7 +525,7 @@ class PSO(Optimiser):
                 out[n, 3] = ((row + 1) % column_lengths[column]) * num_columns + column
                 out[n, 4] = ((row - 1) % column_lengths[column]) * num_columns + column
         
-                if n == ns - 1: return out.astype(int)
+                if n == ns - 1: return out
 
     def get_best_nbh_idx(self):
         return self.nbhd_indices[np.arange(self.swarm_size),
