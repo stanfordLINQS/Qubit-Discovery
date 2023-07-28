@@ -431,6 +431,8 @@ class PSO(Optimiser):
             self.nbhd_indices = self.nearest_index_nbhs(self.swarm_size,
                                                         self.left_nbhs,
                                                         self.right_nbhs)
+        elif self.nbhd_topology == 'von-neumann':
+            self.nbhd_indices = self.von_neumann_nbhs(self.swarm_size)
             
         self.variant = variant
         self.params = params
@@ -500,6 +502,31 @@ class PSO(Optimiser):
         out += np.arange(arr_length)[:,np.newaxis]
         return np.mod(out, arr_length)
 
+    @staticmethod
+    def von_neumann_nbhs(ns):
+        out = np.zeros((ns, 5))
+    
+        num_columns = np.ceil(np.sqrt(ns)).astype(int)
+        num_rows = np.ceil(ns/num_columns).astype(int)
+        extra = (num_columns * num_rows) - ns
+    
+        row_lengths = np.full(num_rows, num_columns)
+        row_lengths[-1] = ns - ((num_rows - 1) * num_columns)
+        column_lengths = np.full(num_columns, num_rows)
+        if extra > 0:
+            column_lengths[-extra:] = num_rows - 1
+        
+        for row in range(num_rows):
+            for column in range(num_columns):
+                n = row * num_columns + column
+                out[n, 0] = n
+                out[n, 1] = row * num_columns + ((column + 1) % row_lengths[row]) 
+                out[n, 2] = row * num_columns + ((column - 1) % row_lengths[row])
+                out[n, 3] = ((row + 1) % column_lengths[column]) * num_columns + column
+                out[n, 4] = ((row - 1) % column_lengths[column]) * num_columns + column
+        
+                if n == ns - 1: return out.astype(int)
+
     def get_best_nbh_idx(self):
         return self.nbhd_indices[np.arange(self.swarm_size),
                                  np.argmin(self.pbest_cost[self.nbhd_indices], axis=1)]
@@ -516,7 +543,7 @@ class PSO(Optimiser):
         if self.nbhd_topology == 'gbest':
             self.sbest = self.pbest[np.argmin(self.pbest_cost), :]
             self.sbest_cost = np.min(self.pbest_cost)
-        elif self.nbhd_topology == 'lbest':
+        elif self.nbhd_topology == 'lbest' or self.nbhd_topology == 'von-neumann':
             best_nbh_idx = self.get_best_nbh_idx()
             self.sbest = self.pbest[best_nbh_idx,:]
             self.sbest_cost = self.pbest_cost[best_nbh_idx]           
