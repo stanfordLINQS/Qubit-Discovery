@@ -122,7 +122,7 @@ def line_search(
     num_eigenvalues,
     bounds=None,
     lr=1.0,
-    c=1e-4,
+    c=1e-14,
     rho=0.1
 ):
     alpha = lr

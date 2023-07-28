@@ -23,9 +23,9 @@ args = parser.parse_args()
 
 # Optimization settings
 
-num_epochs = 10  # number of training iterations
+num_epochs = 50  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 140
+total_trunc_num = 6e3
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
@@ -85,7 +85,8 @@ def main():
                  num_eigenvalues,
                  trunc_nums,
                  bounds=bounds,
-                 max_iter=num_epochs)
+                 max_iter=num_epochs,
+                 tolerance=0)
 
 
 if __name__ == "__main__":
