@@ -11,6 +11,8 @@ from functions import (
 
 from loss import (
     calculate_loss,
+    frequency_loss,
+    anharmonicity_loss
 )
 
 import argparse
@@ -54,9 +56,10 @@ def set_seed(seed):
 def objective_func(circuit, x, num_eigenvalues):
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)
-    total_loss, _ = calculate_loss(circuit)
+    loss_frequency = frequency_loss(circuit)
+    loss_anharmonicity = anharmonicity_loss(circuit)
 
-    return total_loss
+    return loss_frequency + loss_anharmonicity
 
 def main():
     seed = int(args.id)
