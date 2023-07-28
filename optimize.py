@@ -14,6 +14,7 @@ import numpy as np
 import SQcircuit as sq
 import torch
 
+
 # Assign keyword arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("code")
@@ -57,7 +58,10 @@ def main():
     circuit = sampler.sample_circuit_code(circuit_code)
     print("Circuit sampled!")
 
-    trunc_nums = circuit.truncate_circuit(total_trunc_num)
+    # TEMP
+    '''trunc_nums = circuit.truncate_circuit(total_trunc_num)'''
+    trunc_nums = [20, 20]
+    circuit.set_trunc_nums(trunc_nums)
     print("Circuit truncated...")
 
     circuit.diag(num_eigenvalues)

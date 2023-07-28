@@ -18,6 +18,16 @@ from truncation import verify_convergence
 
 import torch
 
+from pympler import summary, muppy
+import pympler
+
+def check_memory(circuit):
+    all_objects = muppy.get_objects()
+    sum1 = summary.summarize(all_objects)
+    summary.print_(sum1)
+    total_size = pympler.asizeof.asizeof(circuit)
+    print(f"Total circuit size: {total_size}")
+
 def run_BFGS(
     circuit,
     circuit_code,
@@ -40,14 +50,16 @@ def run_BFGS(
     for iteration in range(max_iter):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
+        check_memory(circuit)
 
         circuit.diag(num_eigenvalues)
-        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        # TEMP
+        '''converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
 
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
-            break
+            break'''
 
         loss = objective_func(circuit, params, num_eigenvalues)
 
