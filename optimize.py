@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 num_epochs = 50  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 6e3
+total_trunc_num = 1e3
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
@@ -58,14 +58,10 @@ def main():
     circuit = sampler.sample_circuit_code(circuit_code)
     print("Circuit sampled!")
 
-    # TEMP
-    '''trunc_nums = circuit.truncate_circuit(total_trunc_num)'''
-    trunc_nums = [20, 20]
+    trunc_nums = circuit.truncate_circuit(total_trunc_num)
+    # trunc_nums = [100, 100]
     circuit.set_trunc_nums(trunc_nums)
-    print("Circuit truncated...")
-
     circuit.diag(num_eigenvalues)
-    print("Circuit diagonalized")
 
     # circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_epochs
     if args.optimization_type == "SGD":

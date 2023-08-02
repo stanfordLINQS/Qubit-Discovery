@@ -1,4 +1,5 @@
 """Contains code for defining loss functions used in circuit optimization."""
+import time
 
 from functions import (
     calculate_anharmonicity,
@@ -102,6 +103,7 @@ def calculate_loss(circuit, use_frequency_loss=True, use_anharmonicity_loss=True
         loss = loss + loss_anharmonicity
     # Calculate T1
     loss_T1 = T1_loss(circuit)
+    # loss_T1 = 0
     if loss_normalization:
         loss_T1 /= loss_T1_init
     if use_T1_loss:

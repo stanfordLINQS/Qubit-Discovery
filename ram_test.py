@@ -11,6 +11,11 @@ from functions import (
 
 from loss import (
     calculate_loss,
+    frequency_loss,
+    anharmonicity_loss,
+    charge_sensitivity_loss,
+    flux_sensitivity_loss
+
 )
 
 import argparse
@@ -29,7 +34,7 @@ args = parser.parse_args()
 
 # Optimization settings
 
-num_epochs = 100  # number of training iterations
+num_epochs = 1  # number of training iterations
 num_eigenvalues = 10
 total_trunc_num = 140
 
@@ -52,15 +57,29 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 def objective_func(circuit, x, num_eigenvalues):
+    set_params(circuit, x)
+    circuit.diag(num_eigenvalues)
+    total_loss, _ = calculate_loss(circuit)
+
+    return total_loss
+
+'''def objective_func(circuit, x, num_eigenvalues):
     print("I")
     set_params(circuit, x)
     print("II")
     circuit.diag(num_eigenvalues)
     print("III")
-    total_loss, _ = calculate_loss(circuit, use_flux_sensitivity_loss=False, use_charge_sensitivity_loss=False, use_anharmonicity_loss=False)
+    loss_frequency = frequency_loss(circuit)
     print("IV")
+    loss_anharmonicity = anharmonicity_loss(circuit)
+    print("V")
+    # loss_charge = charge_sensitivity_loss(circuit)
+    print("VI")
+    loss_flux = flux_sensitivity_loss(circuit)
+    print("VII")
 
-    return total_loss
+    return loss_frequency + loss_anharmonicity + loss_flux'''
+    
 
 def main():
     seed = int(args.id)
@@ -76,9 +95,8 @@ def main():
     circuit = sampler.sample_circuit_code(circuit_code)
     print("Circuit sampled!")
 
-    # TEMP
-    '''trunc_nums = circuit.truncate_circuit(total_trunc_num)'''
-    trunc_nums = [10, 10]
+    trunc_nums = circuit.truncate_circuit(total_trunc_num)
+    # trunc_nums = [100, 100]
 
     circuit.set_trunc_nums(trunc_nums)
     print("Circuit truncated...")
@@ -88,15 +106,10 @@ def main():
 
     for iteration in range(num_epochs):
         check_memory()
-        print("A")
         params = torch.stack(circuit.parameters).clone()
-        print("B")
         params = params + torch.rand(1) * params * 1e-5
-        print("C")
         loss = objective_func(circuit, params, num_eigenvalues)
-        print("D")
         loss.backward()
-        print("E")
 
 if __name__ == "__main__":
     main()

@@ -18,8 +18,10 @@ from truncation import verify_convergence
 
 import torch
 
+# Temporary
 from pympler import summary, muppy
 import pympler
+import psutil
 
 def check_memory(circuit):
     all_objects = muppy.get_objects()
@@ -27,6 +29,8 @@ def check_memory(circuit):
     summary.print_(sum1)
     total_size = pympler.asizeof.asizeof(circuit)
     print(f"Total circuit size: {total_size}")
+    print(
+        f"Total RAM usage (in MB): {psutil.Process().memory_info().rss / (1024 * 1024)}")
 
 def run_BFGS(
     circuit,
@@ -53,13 +57,12 @@ def run_BFGS(
         check_memory(circuit)
 
         circuit.diag(num_eigenvalues)
-        # TEMP
-        '''converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
 
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
-            break'''
+            break
 
         loss = objective_func(circuit, params, num_eigenvalues)
 
@@ -138,7 +141,7 @@ def line_search(
     rho=0.1
 ):
     alpha = lr
-    circuit_elements = list(circuit.elements.values())[0]
+    circuit_elements = circuit.get_all_circuit_elements()
     circuit_element_types = [type(element) for element in circuit_elements]
 
     if bounds is not None:

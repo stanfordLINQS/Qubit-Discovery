@@ -53,7 +53,6 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
     metric_record = init_metric_record(circuit, circuit_code)
     loss_record = init_loss_record(circuit, circuit_code)
 
-    converged = True
     # Circuit optimization loop
     for iteration in range(num_epochs):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='SGD')
@@ -67,13 +66,12 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
         )
 
         circuit.diag(num_eigenvalues)
-        # TEMP
-        '''converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
 
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
-            break'''
+            break
 
         # Calculate loss, backprop
         total_loss, loss_values = calculate_loss(circuit)
