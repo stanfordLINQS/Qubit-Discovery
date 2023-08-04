@@ -1,3 +1,5 @@
+from copy import copy
+
 from functions import (
     set_grad_zero,
     get_grad,
@@ -18,19 +20,6 @@ from truncation import verify_convergence
 
 import torch
 
-# Temporary
-from pympler import summary, muppy
-import pympler
-import psutil
-
-def check_memory(circuit):
-    all_objects = muppy.get_objects()
-    sum1 = summary.summarize(all_objects)
-    summary.print_(sum1)
-    total_size = pympler.asizeof.asizeof(circuit)
-    print(f"Total circuit size: {total_size}")
-    print(
-        f"Total RAM usage (in MB): {psutil.Process().memory_info().rss / (1024 * 1024)}")
 
 def run_BFGS(
     circuit,
@@ -48,13 +37,13 @@ def run_BFGS(
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
-    metric_record = init_metric_record(circuit, circuit_code)
-    loss_record = init_loss_record(circuit, circuit_code)
+    test_circuit = copy(circuit)
+    metric_record = init_metric_record(circuit, test_circuit, circuit_code)
+    loss_record = init_loss_record(circuit, test_circuit, circuit_code)
 
     for iteration in range(max_iter):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
-        check_memory(circuit)
 
         circuit.diag(num_eigenvalues)
         converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
@@ -64,26 +53,29 @@ def run_BFGS(
             # TODO: ArXiv circuits that do not converge
             break
 
-        loss = objective_func(circuit, params, num_eigenvalues)
-
         # Compute loss and metrics, update records
-        total_loss, loss_values = calculate_loss(circuit)
-        metrics = calculate_metrics(circuit) + (total_loss,)
+        total_loss, loss_values = calculate_loss(circuit,
+                                                 test_circuit,
+                                                 use_frequency_loss=False,
+                                                 use_anharmonicity_loss=False,
+                                                 use_charge_sensitivity_loss=False)
+        metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
 
+        loss = objective_func(circuit, test_circuit, params, num_eigenvalues)
         loss.backward()
         gradient = get_grad(circuit)
         set_grad_zero(circuit)
 
         p = -torch.matmul(H, gradient)
 
-        alpha = line_search(circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
+        alpha = line_search(circuit, test_circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
         delta_params = alpha * p
 
         params_next = (params + delta_params).clone().detach().requires_grad_(True)
 
-        loss_next = objective_func(circuit, params_next, num_eigenvalues)
+        loss_next = objective_func(circuit, test_circuit, params_next, num_eigenvalues)
         loss_next.backward()
         next_gradient = get_grad(circuit)
         set_grad_zero(circuit)
@@ -130,6 +122,7 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 def line_search(
     circuit,
+    test_circuit,
     objective_func,
     params,
     gradient,
@@ -151,16 +144,16 @@ def line_search(
             alpha *= rho
 
     while (
-        objective_func(circuit, params + alpha * p, num_eigenvalues)
-        > objective_func(circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
+        objective_func(circuit, test_circuit, params + alpha * p, num_eigenvalues)
+        > objective_func(circuit, test_circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
     return alpha
 
-def objective_func(circuit, x, num_eigenvalues):
+def objective_func(circuit, test_circuit, x, num_eigenvalues):
 
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)
-    total_loss, _ = calculate_loss(circuit)
+    total_loss, _ = calculate_loss(circuit, test_circuit)
 
     return total_loss

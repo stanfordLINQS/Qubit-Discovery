@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 num_epochs = 50  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 1e3
+total_trunc_num = 200
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F

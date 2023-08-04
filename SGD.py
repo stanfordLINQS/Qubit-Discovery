@@ -1,3 +1,5 @@
+from copy import copy
+
 import torch
 
 from functions import (
@@ -13,26 +15,7 @@ from loss import (
     update_loss_record,
     update_metric_record
 )
-
 from truncation import verify_convergence
-
-from pympler import summary, muppy, asizeof
-import pympler
-
-def check_memory(circuit):
-    all_objects = muppy.get_objects()
-    sum1 = summary.summarize(all_objects)
-    summary.print_(sum1)
-    check_objects = {
-        'circuit': circuit,
-        'memory_ops': circuit._memory_ops,
-        'LC_hamil': circuit._LC_hamil,
-        'hamil': circuit.hamiltonian()
-    }
-    for key, val in check_objects.items():
-        total_size = pympler.asizeof.asizeof(val)
-        print(f"Total {key} size: {total_size}")
-
 
 # Global settings
 log_loss = False
@@ -46,18 +29,20 @@ gradient_clipping_threshold = 2
 gc_norm_type = 'inf'
 learning_rate = 1e-1
 
+
 def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs):
 
     junction_count, inductor_count, _ = get_element_counts(circuit)
 
-    metric_record = init_metric_record(circuit, circuit_code)
-    loss_record = init_loss_record(circuit, circuit_code)
+    test_circuit = copy(circuit)
+    metric_record = init_metric_record(circuit, test_circuit, circuit_code)
+    loss_record = init_loss_record(circuit, test_circuit, circuit_code)
 
     # Circuit optimization loop
     for iteration in range(num_epochs):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='SGD')
         print(f"Iteration {iteration}")
-        check_memory(circuit)
+
         optimizer = torch.optim.SGD(
             circuit.parameters,
             nesterov=nesterov_momentum,
@@ -74,11 +59,13 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
             break
 
         # Calculate loss, backprop
-        total_loss, loss_values = calculate_loss(circuit)
-        metrics = calculate_metrics(circuit) + (total_loss,)
+        optimizer.zero_grad()
+        total_loss, loss_values = calculate_loss(circuit, test_circuit,
+                                                 use_flux_sensitivity_loss=True)
+        total_loss.backward()
+        metrics = calculate_metrics(circuit, test_circuit) + (total_loss.detach(),)
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
-        total_loss.backward()
 
         for element in list(circuit._parameters.keys()):
             element._value.grad *= element._value
@@ -91,5 +78,4 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, trunc_nums, num_epochs
             if learning_rate_scheduler:
                 element._value.grad *= (scheduler_decay_rate ** iteration)
         optimizer.step()
-        optimizer.zero_grad()
         circuit.update()
