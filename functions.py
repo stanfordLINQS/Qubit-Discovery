@@ -76,7 +76,7 @@ def flux_sensitivity(
     new_loop = Loop()
     new_loop.set_flux(flux_point + delta)
     test_circuit.loops[0] = new_loop
-    test_circuit.diag(len(circuit.efreqs), grad=False)
+    test_circuit.diag(len(circuit.efreqs))
     f_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
 
     return torch.abs((f_delta - f_0) / f_0)
