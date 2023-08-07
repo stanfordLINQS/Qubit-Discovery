@@ -44,7 +44,7 @@ def charge_sensitivity(circuit, test_circuit, epsilon=1e-14):
     # new_circuit = copy(circuit)
     # For each mode, if charge mode exists then set gate charge to obtain
     # minimum frequency
-    for charge_island_idx in new_circuit.charge_islands.keys():
+    for charge_island_idx in test_circuit.charge_islands.keys():
         charge_mode = charge_island_idx + 1
         # Set gate charge to 0.5 in each mode
         # (to extremize relative to n_g=0)
@@ -53,6 +53,10 @@ def charge_sensitivity(circuit, test_circuit, epsilon=1e-14):
     test_circuit.diag(len(circuit.efreqs))
     c_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
 
+    for charge_island_idx in test_circuit.charge_islands.keys():
+        charge_mode = charge_island_idx + 1
+        # Reset charge modes in test circuit
+        test_circuit.set_charge_offset(charge_mode, 0.)
 
     return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
@@ -78,6 +82,7 @@ def flux_sensitivity(
     test_circuit.loops[0] = new_loop
     test_circuit.diag(len(circuit.efreqs))
     f_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
+    test_circuit.loops[0].set_flux(flux_point)
 
     return torch.abs((f_delta - f_0) / f_0)
 

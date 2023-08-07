@@ -24,9 +24,10 @@ args = parser.parse_args()
 
 # Optimization settings
 
-num_epochs = 50  # number of training iterations
+num_epochs = 20  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 200
+total_trunc_num = 4000
+baseline_trunc_num = 1000
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
@@ -58,9 +59,9 @@ def main():
     circuit = sampler.sample_circuit_code(circuit_code)
     print("Circuit sampled!")
 
-    trunc_nums = circuit.truncate_circuit(total_trunc_num)
+    baseline_trunc_nums = circuit.truncate_circuit(baseline_trunc_num)
     # trunc_nums = [100, 100]
-    circuit.set_trunc_nums(trunc_nums)
+    circuit.set_trunc_nums(baseline_trunc_nums)
     circuit.diag(num_eigenvalues)
 
     # circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_epochs
@@ -69,7 +70,7 @@ def main():
                 circuit_code,
                 run_id,
                 num_eigenvalues,
-                trunc_nums,
+                total_trunc_num,
                 num_epochs
                 )
     elif args.optimization_type == "BFGS":
@@ -83,7 +84,7 @@ def main():
                  circuit_code,
                  run_id,
                  num_eigenvalues,
-                 trunc_nums,
+                 total_trunc_num,
                  bounds=bounds,
                  max_iter=num_epochs,
                  tolerance=0)

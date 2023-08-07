@@ -8,15 +8,13 @@ from functions import (
 )
 
 from loss import (
-    calculate_loss,
-    calculate_metrics,
-    init_loss_record,
-    init_metric_record,
+    calculate_loss_metrics,
+    init_records,
     update_metric_record,
     update_loss_record
 )
 
-from truncation import verify_convergence
+from truncation import assign_trunc_nums, test_convergence
 
 import torch
 
@@ -26,7 +24,7 @@ def run_BFGS(
     circuit_code,
     seed,
     num_eigenvalues,
-    trunc_nums,
+    total_trunc_num,
     bounds=None,
     lr=1.0,
     max_iter=100,
@@ -38,15 +36,15 @@ def run_BFGS(
     H = identity
 
     test_circuit = copy(circuit)
-    metric_record = init_metric_record(circuit, test_circuit, circuit_code)
-    loss_record = init_loss_record(circuit, test_circuit, circuit_code)
+    loss_record, metric_record = init_records(circuit, test_circuit, circuit_code)
 
     for iteration in range(max_iter):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
 
+        assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
-        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        converged, _ = test_convergence(circuit, eig_vec_idx=1)
 
         if not converged:
             print("Warning: Circuit did not converge")
@@ -54,12 +52,13 @@ def run_BFGS(
             break
 
         # Compute loss and metrics, update records
-        total_loss, loss_values = calculate_loss(circuit,
-                                                 test_circuit,
-                                                 use_frequency_loss=False,
-                                                 use_anharmonicity_loss=False,
-                                                 use_charge_sensitivity_loss=False)
-        metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
+        total_loss, loss_values, metrics = calculate_loss_metrics(circuit,
+                                                                  test_circuit,
+                                                                  use_frequency_loss=True,
+                                                                  use_anharmonicity_loss=True,
+                                                                  use_flux_sensitivity_loss=False,
+                                                                  use_charge_sensitivity_loss=False)
+        # metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
 
@@ -154,6 +153,11 @@ def objective_func(circuit, test_circuit, x, num_eigenvalues):
 
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)
-    total_loss, _ = calculate_loss(circuit, test_circuit)
+    total_loss, _, _ = calculate_loss_metrics(circuit,
+                                              test_circuit,
+                                              use_frequency_loss=True,
+                                              use_anharmonicity_loss=True,
+                                              use_flux_sensitivity_loss=False,
+                                              use_charge_sensitivity_loss=False)
 
     return total_loss

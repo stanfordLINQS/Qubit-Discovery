@@ -169,6 +169,12 @@ def test_convergence(
 ) -> Tuple[bool, float, float]:
 
     assert len(circuit._efreqs) != 0, "Circuit should be diagonalized first"
+
+    if len(circuit.m) == 1:
+        return circuit.test_convergence([circuit.m[0], ], eig_vec_idx=eig_vec_idx)
+
+    # Below treats case of two modes (test for more modes not yet implemented)
+
     eigvec_mag, mode_1_magnitudes, mode_2_magnitudes = get_reshaped_eigvec(
         circuit,
         eig_vec_idx,
@@ -187,20 +193,16 @@ def test_convergence(
     if epsilon_1 > threshold or epsilon_2 > threshold:
       return False, epsilon_1, epsilon_2
 
-    return True, epsilon_1, epsilon_2
+    return True, (epsilon_1, epsilon_2)
 
-def verify_convergence(circuit, trunc_nums, num_eigenvalues):
+def assign_trunc_nums(circuit, total_trunc_num):
     if len(circuit.m) == 1:
-        converged = circuit.test_convergence(trunc_nums)
+        print("test_convergence (one mode)")
+        circuit.set_trunc_nums([total_trunc_num, ])
     elif len(circuit.m) == 2:
+        print("test_convergence (two modes)")
         trunc_nums = trunc_num_heuristic(circuit,
-                                         K=4000,
+                                         K=total_trunc_num,
                                          eig_vec_idx=1,
                                          axes=None)
         circuit.set_trunc_nums(trunc_nums)
-        circuit.diag(num_eigenvalues)
-
-        # converged = circuit.test_convergence(trunc_nums)
-        converged, _, _ = test_convergence(circuit, eig_vec_idx=1)
-
-    return converged
