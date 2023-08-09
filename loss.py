@@ -104,11 +104,18 @@ def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=True, use_a
         loss = 0
 
     if loss_normalization:
-        loss_frequency_init, _ = frequency_loss(circuit).detach()
-        loss_anharmonicity_init, _ = anharmonicity_loss(circuit).detach()
-        loss_T1_init, _ = T1_loss(circuit).detach()
-        loss_flux_sensitivity_init, _ = flux_sensitivity_loss(circuit)
-        loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
+        if get_optim_mode():
+            loss_frequency_init = frequency_loss(circuit)[0].detach()
+            loss_anharmonicity_init = anharmonicity_loss(circuit)[0].detach()
+            loss_T1_init = T1_loss(circuit)[0].detach()
+            loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
+            loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[0].detach()
+        else:
+            loss_frequency_init, _ = frequency_loss(circuit)
+            loss_anharmonicity_init, _ = anharmonicity_loss(circuit)
+            loss_T1_init, _ = T1_loss(circuit)
+            loss_flux_sensitivity_init, _ = flux_sensitivity_loss(circuit)
+            loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
 
     # Calculate frequency
     with torch.set_grad_enabled(use_frequency_loss):
