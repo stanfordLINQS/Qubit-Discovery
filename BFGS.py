@@ -1,3 +1,5 @@
+from copy import copy
+
 from functions import (
     set_grad_zero,
     get_grad,
@@ -6,24 +8,23 @@ from functions import (
 )
 
 from loss import (
-    calculate_loss,
-    calculate_metrics,
-    init_loss_record,
-    init_metric_record,
+    calculate_loss_metrics,
+    init_records,
     update_metric_record,
     update_loss_record
 )
 
-from truncation import verify_convergence
+from truncation import assign_trunc_nums, test_convergence
 
 import torch
+
 
 def run_BFGS(
     circuit,
     circuit_code,
     seed,
     num_eigenvalues,
-    trunc_nums,
+    total_trunc_num,
     bounds=None,
     lr=1.0,
     max_iter=100,
@@ -34,41 +35,46 @@ def run_BFGS(
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
-    metric_record = init_metric_record(circuit, circuit_code)
-    loss_record = init_loss_record(circuit, circuit_code)
+    test_circuit = copy(circuit)
+    loss_record, metric_record = init_records(circuit, test_circuit, circuit_code)
 
     for iteration in range(max_iter):
         save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
 
+        assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
-        converged = verify_convergence(circuit, trunc_nums, num_eigenvalues)
+        converged, _ = test_convergence(circuit, eig_vec_idx=1)
 
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
             break
 
-        loss = objective_func(circuit, params, num_eigenvalues)
-
         # Compute loss and metrics, update records
-        total_loss, loss_values = calculate_loss(circuit)
-        metrics = calculate_metrics(circuit) + (total_loss,)
+        total_loss, loss_values, metrics = calculate_loss_metrics(circuit,
+                                                                  test_circuit,
+                                                                  use_frequency_loss=True,
+                                                                  use_anharmonicity_loss=True,
+                                                                  use_flux_sensitivity_loss=False,
+                                                                  use_charge_sensitivity_loss=False)
+        # metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
 
+        loss = objective_func(circuit, test_circuit, params, num_eigenvalues)
         loss.backward()
         gradient = get_grad(circuit)
         set_grad_zero(circuit)
 
         p = -torch.matmul(H, gradient)
 
-        alpha = line_search(circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
+        alpha = line_search(circuit, test_circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
         delta_params = alpha * p
 
         params_next = (params + delta_params).clone().detach().requires_grad_(True)
 
-        loss_next = objective_func(circuit, params_next, num_eigenvalues)
+        loss_next = objective_func(circuit, test_circuit, params_next, num_eigenvalues)
         loss_next.backward()
         next_gradient = get_grad(circuit)
         set_grad_zero(circuit)
@@ -115,6 +121,7 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 def line_search(
     circuit,
+    test_circuit,
     objective_func,
     params,
     gradient,
@@ -122,11 +129,11 @@ def line_search(
     num_eigenvalues,
     bounds=None,
     lr=1.0,
-    c=1e-4,
+    c=1e-14,
     rho=0.1
 ):
     alpha = lr
-    circuit_elements = list(circuit.elements.values())[0]
+    circuit_elements = circuit.get_all_circuit_elements()
     circuit_element_types = [type(element) for element in circuit_elements]
 
     if bounds is not None:
@@ -136,16 +143,21 @@ def line_search(
             alpha *= rho
 
     while (
-        objective_func(circuit, params + alpha * p, num_eigenvalues)
-        > objective_func(circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
+        objective_func(circuit, test_circuit, params + alpha * p, num_eigenvalues)
+        > objective_func(circuit, test_circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
     return alpha
 
-def objective_func(circuit, x, num_eigenvalues):
+def objective_func(circuit, test_circuit, x, num_eigenvalues):
 
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)
-    total_loss, _ = calculate_loss(circuit)
+    total_loss, _, _ = calculate_loss_metrics(circuit,
+                                              test_circuit,
+                                              use_frequency_loss=True,
+                                              use_anharmonicity_loss=True,
+                                              use_flux_sensitivity_loss=False,
+                                              use_charge_sensitivity_loss=False)
 
     return total_loss

@@ -13,6 +13,8 @@ from typing import Tuple
 
 from settings import RESULTS_DIR
 
+# TEMP
+import psutil
 
 # Helper functions
 
@@ -29,13 +31,11 @@ def calculate_anharmonicity(circuit):
            (circuit.efreqs[1] - circuit.efreqs[0])
 
 
-def charge_sensitivity(circuit, epsilon=1e-14):
+def charge_sensitivity(circuit, test_circuit, epsilon=1e-14):
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
     flux operation point)."""
-    c_0 = circuit.efreqs[1] - circuit.efreqs[0]
-    new_circuit = copy(circuit)
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if sum(circuit.omega == 0) == 0:
@@ -44,17 +44,23 @@ def charge_sensitivity(circuit, epsilon=1e-14):
         else:
             return epsilon
 
-    else:
-        # For each mode, if charge mode exists then set gate charge to obtain
-        # minimum frequency
-        for charge_island_idx in new_circuit.charge_islands.keys():
-            charge_mode = charge_island_idx + 1
-            # Set gate charge to 0.5 in each mode
-            # (to extremize relative to n_g=0)
-            new_circuit.set_charge_offset(charge_mode, 0.5)
+    c_0 = circuit.efreqs[1] - circuit.efreqs[0]
+    # new_circuit = copy(circuit)
+    # For each mode, if charge mode exists then set gate charge to obtain
+    # minimum frequency
+    for charge_island_idx in test_circuit.charge_islands.keys():
+        charge_mode = charge_island_idx + 1
+        # Set gate charge to 0.5 in each mode
+        # (to extremize relative to n_g=0)
+        test_circuit.set_charge_offset(charge_mode, 0.5)
 
-    new_circuit.diag(len(circuit.efreqs))
-    c_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
+    test_circuit.diag(len(circuit.efreqs))
+    c_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
+
+    for charge_island_idx in test_circuit.charge_islands.keys():
+        charge_mode = charge_island_idx + 1
+        # Reset charge modes in test circuit
+        test_circuit.set_charge_offset(charge_mode, 0.)
 
     if get_optim_mode():
         return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
@@ -64,18 +70,26 @@ def charge_sensitivity(circuit, epsilon=1e-14):
 
 def flux_sensitivity(
         circuit,
+        test_circuit,
         flux_point=0.5,
         delta=0.01
 ):
     """Return the flux sensitivity of the circuit around half flux quantum."""
+    # NOTE: Instead of passing in `test_circuit`, originally tried to call
+    # `new_circuit = copy(circuit)`. However, had an issue with PyTorch
+    # retaining the intermediate gradient and leading to RAM accumulation.
 
+    # Issue seems to disappear when using a single circuit copy for all
+    # subsequent perturbations (ex. testing different charge/flux values).
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
-    new_circuit = copy(circuit)
+
+    # new_circuit = copy(circuit)
     new_loop = Loop()
     new_loop.set_flux(flux_point + delta)
-    new_circuit.loops[0] = new_loop
-    _, _ = new_circuit.diag(len(circuit.efreqs))
-    f_delta = new_circuit.efreqs[1] - new_circuit.efreqs[0]
+    test_circuit.loops[0] = new_loop
+    test_circuit.diag(len(circuit.efreqs))
+    f_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
+    test_circuit.loops[0].set_flux(flux_point)
 
     if get_optim_mode():
         S = torch.abs((f_delta - f_0) / f_0)
