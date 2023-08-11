@@ -14,14 +14,6 @@ import numpy as np
 import SQcircuit as sq
 import torch
 
-
-# Assign keyword arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("code")
-parser.add_argument("id")
-parser.add_argument("optimization_type")
-args = parser.parse_args()
-
 # Optimization settings
 
 num_epochs = 20  # number of training iterations
@@ -40,12 +32,19 @@ junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]  # Hz
 element_verbose = False
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def main():
+def main() -> None:
+    # Assign keyword arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("code")
+    parser.add_argument("id")
+    parser.add_argument("optimization_type")
+    args = parser.parse_args()
+
     seed = int(args.id)
     set_seed(seed)
 

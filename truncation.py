@@ -1,12 +1,13 @@
 """Contains helper functions for estimating optimal truncation numbers"""
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 from functions import (
     get_reshaped_eigvec,
 )
 
 import numpy as np
+from matplotlib.axes import Axes
 import scipy, scipy.signal
 from SQcircuit import Circuit
 
@@ -16,7 +17,7 @@ def fit_mode(
         trunc_nums,
         num_points=15,
         peak_height_threshold=5e-3,
-        axis=None,
+        axis: Optional[Axes]=None,
         both_parities=False
 ) -> List[Tuple[float, float, int]]:
     '''For an input vector corresponding to the absolute eigenvector magnitudes
@@ -99,12 +100,12 @@ def get_slow_fit(fit_results, ignore_threshold=1e-5) -> Tuple[float, float]:
             return k2, m2, peak2
 
 def trunc_num_heuristic(
-        circuit,
+        circuit: Circuit,
         eig_vec_idx: int = 0,
-        K=1000,
-        seed=11,
-        min_trunc=4,
-        axes=None
+        K: int=1000,
+        seed: int=11,
+        min_trunc: int=4,
+        axes: Optional[Axes]=None
 ) -> float:
     '''For a diagonalized circuit with internal trunc numbers, suggests a set of
     trunc numbers for rediagonalization that will maximize likelihood of
@@ -195,7 +196,8 @@ def test_convergence(
 
     return True, (epsilon_1, epsilon_2)
 
-def assign_trunc_nums(circuit, total_trunc_num):
+def assign_trunc_nums(circuit: Circuit, 
+                      total_trunc_num: int) -> None:
     if len(circuit.m) == 1:
         print("test_convergence (one mode)")
         circuit.set_trunc_nums([total_trunc_num, ])

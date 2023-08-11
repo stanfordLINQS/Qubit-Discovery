@@ -2,6 +2,7 @@
 # spectrum_optimal_circuit(loss_record, codename="Fluxonium")
 
 from collections import OrderedDict
+from typing import Any, List
 
 from functions import(
     code_to_codename,
@@ -30,13 +31,13 @@ if args.best_n is not None:
 else:
     best_n = num_runs
 
-def load_record(url):
+def load_record(url: str) -> Any:
     file = open(url, 'rb')
     record = pickle.load(file)
     file.close()
     return record
 
-def get_optimal_n_keys(loss_record, n, code=None):
+def get_optimal_n_keys(loss_record, n: int, code=None):
     optimal_keys_losses = OrderedDict({})
 
     for circuit, circuit_code, l in loss_record.keys():
@@ -58,8 +59,11 @@ def get_optimal_n_keys(loss_record, n, code=None):
     return list(optimal_keys_losses.keys())
 
 
-def plot_results(loss_record, circuit_codes, type='metrics', title='',
-                 save_prefix=''):
+def plot_results(loss_record, 
+                 circuit_codes: List[str], 
+                 type='metrics', 
+                 title='',
+                 save_prefix='') -> None:
     plot_scheme = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
 
@@ -76,8 +80,11 @@ def plot_results(loss_record, circuit_codes, type='metrics', title='',
     plot_titles = metric_titles if type == 'metrics' else loss_titles
     record_keys = metric_keys if type == 'metrics' else loss_keys
 
-    def plot_circuit_metrics(circuit, loss_record, code, optimal_keys,
-                             show_label=False):
+    def plot_circuit_metrics(circuit: Circuit, 
+                             loss_record, 
+                             code: str, 
+                             optimal_keys,
+                             show_label=False) -> None:
         codename = code_to_codename(code)
         label = codename if show_label else None
         for plot_idx in range(6):
@@ -113,8 +120,8 @@ def plot_results(loss_record, circuit_codes, type='metrics', title='',
 
     optimal_keys = [get_optimal_key(loss_record, code=code) for code
                     in circuit_codes]
-    optimal_n_keys = flatten([get_optimal_n_keys(loss_record, n=best_n, code=code) for code
-                    in circuit_codes])
+    optimal_n_keys = flatten([get_optimal_n_keys(loss_record, n=best_n, code=code) 
+                              for code in circuit_codes])
 
     plotted_codenames = set()
     for key in optimal_n_keys:
@@ -131,7 +138,7 @@ def plot_results(loss_record, circuit_codes, type='metrics', title='',
     # plt.savefig('/home/mckeehan/sqcircuit/Qubit-Discovery/results/output.png')
     plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{type}_record.png')
 
-def build_save_prefix():
+def build_save_prefix() -> str:
     save_prefix = ""
     for code in args.codes:
         save_prefix += code
@@ -144,7 +151,7 @@ def build_save_prefix():
 
     return save_prefix
 
-def main():
+def main() -> None:
     circuit_codes = [code for code in args.codes.split(',')]
     aggregate_loss_record = {}
     aggregate_metrics_record = {}

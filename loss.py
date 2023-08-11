@@ -1,5 +1,6 @@
 """Contains code for defining loss functions used in circuit optimization."""
 import time
+from typing import Dict, List, Tuple, TypeAlias
 
 from functions import (
     calculate_anharmonicity,
@@ -7,7 +8,9 @@ from functions import (
     flux_sensitivity,
     first_resonant_frequency,
     reset_charge_modes,
+    SQValType,
 )
+from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
 
 import numpy as np
@@ -22,12 +25,14 @@ def check_memory():
         f"Total RAM usage (in MB): {psutil.Process().memory_info().rss / (1024 * 1024)}")'''
 
 
-def frequency_loss(circuit):
+def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     omega = first_resonant_frequency(circuit)
     return (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2, omega
 
 
-def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
+def anharmonicity_loss(circuit: Circuit, 
+                       alpha=1, 
+                       epsilon=1e-14) -> Tuple[SQValType, SQValType]:
     """Designed to penalize energy level occupancy in the vicinity of ground state
     or twice resonant frequency"""
     assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
@@ -45,7 +50,7 @@ def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
     return loss, anharmonicity
 
 
-def T1_loss(circuit):
+def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
     Gamma_2 = circuit.dec_rate('inductive', (0, 1))
     Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
@@ -59,12 +64,12 @@ def T1_loss(circuit):
 
 
 def flux_sensitivity_loss(
-        circuit,
-        test_circuit,
+        circuit: Circuit,
+        test_circuit: Circuit,
         a=0.1,
         b=1,
         epsilon=1e-14
-):
+) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
 
@@ -79,7 +84,10 @@ def flux_sensitivity_loss(
     return loss, S
 
 
-def charge_sensitivity_loss(circuit, test_circuit, a=0.1, b=1):
+def charge_sensitivity_loss(circuit: Circuit, 
+                            test_circuit: Circuit, 
+                            a=0.1, 
+                            b=1) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
     S = charge_sensitivity(circuit, test_circuit)
@@ -94,10 +102,14 @@ def charge_sensitivity_loss(circuit, test_circuit, a=0.1, b=1):
     return loss, S
 
 
-def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=True, use_anharmonicity_loss=True,
-                         use_flux_sensitivity_loss=True, use_charge_sensitivity_loss=True,
-                         use_T1_loss=False, log_loss=False,
-                         loss_normalization=False):
+def calculate_loss_metrics(circuit: Circuit, 
+                           test_circuit: Circuit,
+                           use_frequency_loss=True, 
+                           use_anharmonicity_loss=True,
+                           use_flux_sensitivity_loss=True, 
+                           use_charge_sensitivity_loss=True,
+                           use_T1_loss=False, log_loss=False,
+                           loss_normalization=False):
     if get_optim_mode():    
         loss = torch.zeros((), requires_grad=True)
     else:
@@ -194,10 +206,15 @@ def calculate_metrics(circuit, test_circuit):
                charge_sensitivity_value)
     return metrics'''
 
+LossRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
+MetricRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
 @torch.no_grad()
-def init_records(circuit, test_circuit, circuit_code):
+def init_records(circuit: Circuit, 
+                 test_circuit: Circuit, 
+                 circuit_code: str
+) -> Tuple[LossRecordType, MetricRecordType]:
     # Init loss record
-    loss_record = {(circuit, circuit_code, 'frequency_loss'): [],
+    loss_record: LossRecordType = {(circuit, circuit_code, 'frequency_loss'): [],
             (circuit, circuit_code, 'anharmonicity_loss'): [],
             (circuit, circuit_code, 'T1_loss'): [],
             (circuit, circuit_code, 'flux_sensitivity_loss'): [],
@@ -207,7 +224,7 @@ def init_records(circuit, test_circuit, circuit_code):
     update_loss_record(circuit, circuit_code, loss_record, loss_values)
 
     # Init metric record
-    metric_record = {(circuit, circuit_code, 'T1'): [],
+    metric_record: MetricRecordType = {(circuit, circuit_code, 'T1'): [],
                      (circuit, circuit_code, 'total_loss'): [],
                      (circuit, circuit_code, 'A'): [],
                      (circuit, circuit_code, 'omega'): [],
@@ -229,7 +246,10 @@ def init_metric_record(circuit, test_circuit, circuit_code):
     return metric_record'''
 
 @torch.no_grad()
-def update_loss_record(circuit, codename, loss_record, loss_values):
+def update_loss_record(circuit: Circuit, 
+                       codename: str, 
+                       loss_record: LossRecordType, 
+                       loss_values: Tuple[torch.Tensor, ...]) -> None:
     """Updates loss record based on next iteration of optimization."""
     frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss, \
     charge_sensitivity_loss, total_loss = loss_values
@@ -246,7 +266,10 @@ def update_loss_record(circuit, codename, loss_record, loss_values):
         total_loss.detach().numpy())
 
 @torch.no_grad()
-def update_metric_record(circuit, codename, metric_record, metrics):
+def update_metric_record(circuit: Circuit, 
+                         codename: str, 
+                         metric_record: MetricRecordType, 
+                         metrics: Tuple[torch.Tensor, ...]) -> None:
     """Updates metric record with information from new iteration of optimization."""
     omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
     metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())

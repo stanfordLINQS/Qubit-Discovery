@@ -1,4 +1,10 @@
 from copy import copy
+from typing import Callable, Optional, Tuple
+
+import torch
+from torch import Tensor
+
+from SQcircuit import Circuit
 
 from functions import (
     set_grad_zero,
@@ -11,26 +17,24 @@ from loss import (
     calculate_loss_metrics,
     init_records,
     update_metric_record,
-    update_loss_record
+    update_loss_record,
+    LossRecordType
 )
-
 from truncation import assign_trunc_nums, test_convergence
-
-import torch
 
 
 def run_BFGS(
-    circuit,
-    circuit_code,
-    seed,
-    num_eigenvalues,
-    total_trunc_num,
+    circuit: Circuit,
+    circuit_code: str,
+    seed: Optional[int],
+    num_eigenvalues: int,
+    total_trunc_num: int,
     bounds=None,
     lr=1.0,
     max_iter=100,
     tolerance=1e-7,
     verbose=False
-):
+) -> Tuple[Tensor, LossRecordType]: 
     params = torch.stack(circuit.parameters).clone()
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
@@ -120,18 +124,18 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
     return False
 
 def line_search(
-    circuit,
-    test_circuit,
-    objective_func,
+    circuit: Circuit,
+    test_circuit: Circuit,
+    objective_func: Callable[[Circuit, Circuit, Tensor, int], Tensor],
     params,
     gradient,
     p,
-    num_eigenvalues,
+    num_eigenvalues: int,
     bounds=None,
     lr=1.0,
     c=1e-14,
     rho=0.1
-):
+) -> float:
     alpha = lr
     circuit_elements = circuit.get_all_circuit_elements()
     circuit_element_types = [type(element) for element in circuit_elements]
@@ -149,7 +153,10 @@ def line_search(
         alpha *= rho
     return alpha
 
-def objective_func(circuit, test_circuit, x, num_eigenvalues):
+def objective_func(circuit: Circuit, 
+                   test_circuit: Circuit, 
+                   x, 
+                   num_eigenvalues: int):
 
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)

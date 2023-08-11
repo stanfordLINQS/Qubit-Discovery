@@ -1,72 +1,76 @@
-import matplotlib.pyplot as plt
+from abc import abstractmethod, abstractproperty
+from collections.abc import Iterator, Sequence
+from typing import Optional, Protocol, TypeAlias, Union
+
 import numpy as np
+from numpy.typing import ArrayLike
 from scipy.special import comb
 from scipy.stats import qmc
-from scipy.ndimage import maximum_filter1d
 import sys
 
 from functions import (
     create_sampler,
-    get_element_counts,
-    clamp_gradient,
-    save_results
 )
 from loss import (
     calculate_loss,
     calculate_metrics,
-    init_loss_record,
-    init_metric_record,
-    update_loss_record,
-    update_metric_record
 )
-import SQcircuit as sq
 from truncation import trunc_num_heuristic, test_convergence
 
-class Swarm:
+import SQcircuit as sq
+
+IndexingType: TypeAlias = Union[list[int], np.ndarray]
+
+class Swarm(Protocol):
     """
-    The PSO optimiser operates on the abstraction that the position is just a matrix X of vectors.
-    This provides a way to change how that works.
+    The PSO optimiser operates on the abstraction that the position is just 
+    a matrix X of vectors. This provides a way to change how that works.
     """
-    @property
+    @abstractproperty
     def position(self) -> np.ndarray:
         """
         Returns a numpy array with shape `(self.swarm_size, self.dimensions)`.
         """
-        raise NotImplementedError
+        ...
 
-    @property
+    @abstractproperty
     def swarm_size(self) -> int:
-        raise NotImplementedError
+        ...
 
-    @property
+    @abstractproperty
     def dimensions(self) -> int:
-        raise NotImplementedError
+        ...
 
-    def set_position(self, X):
+    @abstractmethod
+    def set_position(self, X) -> None:
         """
         Accepts a numpy array `X` with shape `(self.swarm_size, self.dimensions)`.
         """
-        raise NotImplementedError
+        ...
 
-    def eval_position(self) -> np.ndarray:
+    @abstractmethod
+    def eval_position(self, 
+                      to_eval: Optional[IndexingType] = None
+                      ) -> np.ndarray:
         """
-        Returns a numpy array with shape `(self.swarm_size,)`.
+        Returns a numpy array with shape `(self.swarm_size,)`. If `to_eval` is
+        not None, only evaluates the particles given by `to_eval`.
         """
-        raise NotImplementedError
+        ...
 
 
 class BasicSwarm(Swarm):
-    def __init__(self, swarm_size, dimensions, init_constraints, loss_func,
-                 init_strat='uniform',
-                 seed=None):
-        self._swarm_size = swarm_size
-        self._dimensions = dimensions
+    def __init__(self, swarm_size: int, 
+                 dimensions: int, 
+                 init_constraints,
+                 loss_func,
+                 init_strat: str = 'uniform',
+                 seed: Optional[int] = None):
+        self._swarm_size: int = swarm_size
+        self._dimensions: int = dimensions
         self.loss_func = loss_func
 
-        if seed is None:
-            self.rng = np.random.default_rng()
-        else:
-            self.rng = np.random.default_rng(seed) 
+        self.rng = np.random.default_rng(seed=seed)
                      
         if len(init_constraints) != self._dimensions:
             raise ValueError('Length of initialisation must be equal to the number of dimensions!')
@@ -78,7 +82,7 @@ class BasicSwarm(Swarm):
         self.init_strat = init_strat
         self._init_pos()
 
-    def _init_pos(self):
+    def _init_pos(self) -> None:
         if self.init_strat == 'uniform':
             self.X = np.zeros((self.swarm_size, self.dimensions))
             self.X = self.rng.uniform(self.lower_bound, self.upper_bound,
@@ -96,24 +100,31 @@ class BasicSwarm(Swarm):
             raise ValueError(f'{self.init_strat} is not a valid initialisation strategy.')
 
     @property
-    def dimensions(self):
+    def dimensions(self) -> int:
         return self._dimensions
 
     @property
-    def swarm_size(self):
+    def swarm_size(self) -> int:
         return self._swarm_size
 
     @property
-    def position(self):
+    def position(self) -> np.ndarray:
         return self.X
         
-    def set_position(self, X):
+    def set_position(self, X: np.ndarray) -> None:
         self.X = X
 
-    def eval_position(self):
-        out = np.zeros(self._swarm_size)
-        for i in range(len(out)):
-            out[i] = self.loss_func(self.X[i,:])
+    def eval_position(self, 
+                      to_eval: Optional[IndexingType] = None
+                      ) -> np.ndarray:
+        if to_eval is None:
+            out = np.zeros(self._swarm_size)
+            for i in range(len(out)):
+                out[i] = self.loss_func(self.X[i,:])
+        else:
+            out = np.zeros_like(to_eval)
+            for out_idx, particle_idx in enumerate(to_eval):
+                out[out_idx] = self.loss_func(self.X[particle_idx,:])
         return out
 
 class CircuitSwarm(Swarm):
@@ -124,12 +135,12 @@ class CircuitSwarm(Swarm):
     internally, and we initialise a new circuit for each one when necessary.
     """
     def __init__(self, 
-                 num_circuits, 
-                 circuit_code,
+                 num_circuits: int, 
+                 circuit_code: str,
                  capacitor_range, inductor_range, junction_range,
-                 num_eigenvalues=10, total_trunc_num=140,
-                 sampling_method='loguniform', is_log=False,
-                 parallel=False, conserve_memory=False):
+                 num_eigenvalues: int = 10, total_trunc_num: int = 140,
+                 sampling_method: str = 'loguniform', is_log: bool = False,
+                 parallel: bool = False, conserve_memory: bool = False):
                      
         self._num_circuits = num_circuits
         self._circuit_code = circuit_code
@@ -140,15 +151,15 @@ class CircuitSwarm(Swarm):
         self.inductor_range = inductor_range
         self.junction_range = junction_range
 
-        self.num_eigenvalues = num_eigenvalues
-        self.total_trunc_num = total_trunc_num
+        self.num_eigenvalues: int = num_eigenvalues
+        self.total_trunc_num: int = total_trunc_num
 
-        self.conserve_memory = conserve_memory
-        self._sampling_method = sampling_method
+        self.conserve_memory: bool = conserve_memory
+        self._sampling_method: str= sampling_method
         self._sample_circuits()
         self.history = []
 
-        self.is_log = is_log
+        self.is_log: bool = is_log
 
     def _get_actual_bounds(self):
         bounds = []
@@ -171,7 +182,7 @@ class CircuitSwarm(Swarm):
         return bounds
 
     @staticmethod
-    def voroni_sampling(k, n):
+    def voroni_sampling(k: int, n: int) -> np.ndarray:
         """
         Sample `k` points in the `n`-dimenisional unit hypercube with an 
         approximation of a central Voroni tessellation. 
@@ -200,7 +211,7 @@ class CircuitSwarm(Swarm):
         return pts
 
     @staticmethod
-    def sobol_sampling(k, n):
+    def sobol_sampling(k: int, n: int) -> np.ndarray:
         """
         Sample `k` points in the `n`-dimensional unit hypercube using a Sobol
         sequence.
@@ -215,7 +226,7 @@ class CircuitSwarm(Swarm):
             sampler = qmc.Sobol(d=n)
         return sampler.random(k)
 
-    def _sample_circuits(self):
+    def _sample_circuits(self) -> None:
         # Retain circuit/parameters internally
         if self.conserve_memory:
             self.circuit_params = np.zeros((self._num_circuits, self._num_elements))
@@ -262,15 +273,15 @@ class CircuitSwarm(Swarm):
         self._set_actual_position(new_vals)
 
     @property
-    def dimensions(self):
+    def dimensions(self) -> int:
         return self._num_elements
 
     @property
-    def swarm_size(self):
+    def swarm_size(self) -> int:
         return self._num_circuits
 
     @staticmethod
-    def num_elems(circuit_code):
+    def num_elems(circuit_code: str) -> int:
         """
         Return number of elements in loop circuit with all-to-all capacitive
         coupling.
@@ -280,19 +291,19 @@ class CircuitSwarm(Swarm):
         return int(inductive_elems + capactive_elems)
 
     @staticmethod
-    def ordered_elements(circuit):
+    def ordered_elements(circuit: sq.Circuit) -> Iterator[sq.Element]:
         for edge in circuit.elements.values():
             for elem in edge:
                 yield elem
 
-    def get_values(self, cr):
+    def get_values(self, cr: sq.Circuit) -> np.ndarray:
         vals = []
         for elem in self.ordered_elements(cr):
             vals.append(elem.get_value())
         return np.array(vals)
 
     @property
-    def position(self):
+    def position(self) -> np.ndarray:
         if self.conserve_memory:
             X = self.circuit_params.copy()
         else:
@@ -305,12 +316,12 @@ class CircuitSwarm(Swarm):
             return np.log10(X)
         return X
 
-    def set_circuit_params(self, cr, params):
+    def set_circuit_params(self, cr: sq.Circuit, params) -> None:
         for i, elem in enumerate(self.ordered_elements(cr)):
             ## UPDATE IF JUNCTION `set_value` FIXED
             elem._value = params[i]
 
-    def _set_actual_position(self, X):
+    def _set_actual_position(self, X: np.ndarray) -> None:
         if self.conserve_memory:
             self.circuit_params = X.copy()
         else:
@@ -318,13 +329,13 @@ class CircuitSwarm(Swarm):
                 self.set_circuit_params(cr, X[i,:])
                 cr.update()
 
-    def set_position(self, X):
+    def set_position(self, X: np.ndarray) -> None:
         if self.is_log:
             self._set_actual_position(np.power(10, X))
         else:
             self._set_actual_position(X)
 
-    def _diag_circuit(self, cr, trunc_nums):
+    def _diag_circuit(self, cr: sq.Circuit, trunc_nums: int) -> tuple[int, bool]:
         # TODO: check this is all correct re: convergence checking
         # update with verify_convergence from truncation.py, if desired
         cr.diag(self.num_eigenvalues)
@@ -342,12 +353,14 @@ class CircuitSwarm(Swarm):
 
         return trunc_nums, is_converged
 
-    def _calc_loss(self, cr):
+    def _calc_loss(self, cr: sq.Circuit):
         total_loss, loss_values = calculate_loss(cr)
         metric_values = calculate_metrics(cr) + (total_loss, )
         return total_loss, loss_values, metric_values
     
-    def eval_position(self, to_eval=None):
+    def eval_position(self, 
+                      to_eval: Optional[IndexingType] = None
+                      ) -> np.ndarray:
         tot_losses = np.zeros(self._num_circuits)
         all_metrics = []
         all_losses = []
@@ -386,14 +399,16 @@ class CircuitSwarm(Swarm):
             all_metrics.append(metric_values)
             all_losses.append(loss_values)
         self.history.append((all_metrics, all_losses))
-        return tot_losses
+        return tot_losses[to_eval]
     
-class Optimiser:
-    def is_converged(self):
-        raise NotImplementedError
+class Optimiser(Protocol):
+    @abstractmethod
+    def is_converged(self) -> bool:
+        ...
 
-    def optimise(self):
-        raise NotImplementedError
+    @abstractmethod
+    def optimise(self) -> None:
+        ...
 
 class PSO(Optimiser):
     """
@@ -409,16 +424,22 @@ class PSO(Optimiser):
     Not yet implemented
         - lbest-closest
 
-    For the moment we'll require constraints
-        
+    For the moment constraints are required for possible parameters.
     """
-    def __init__(self, constraints, swarm,
-                 v_start_delta=0,
-                 variant='constrict', params={'c1': 2.05, 'c2': 2.05, 'kappa': 1},
-                 max_iter=100, seed=None,
-                 bounds_handler='clamp', velocity_delta=None,
-                 nbhd_topology='gbest', nbhd_params = None,
-                 verbose=True, cache=False):
+    def __init__(self, 
+                 constraints: Sequence[tuple[float, float]], 
+                 swarm: Swarm,
+                 v_start_delta: float = 0,
+                 variant: str = 'constrict', 
+                 params: dict[str, float] = {'c1': 2.05, 'c2': 2.05, 'kappa': 1},
+                 max_iter: int = 100, 
+                 seed: Optional[int] = None,
+                 bounds_handler: str = 'clamp', 
+                 velocity_delta: Optional[float] = None,
+                 nbhd_topology: str='gbest', 
+                 nbhd_params: Optional[dict[str, float]]= None,
+                 verbose: bool = True, 
+                 cache: bool = False):
 
         self.swarm = swarm
         self.dimensions = self.swarm.dimensions
@@ -426,12 +447,14 @@ class PSO(Optimiser):
 
         self.nbhd_topology = nbhd_topology
         if self.nbhd_topology == 'lbest':
-            self.left_nbhs = nbhd_params['n']//2
-            self.right_nbhs = nbhd_params['n'] - self.left_nbhs
+            assert nbhd_params is not None
+            self.left_nbhs = int(nbhd_params['n'] // 2)
+            self.right_nbhs = int(nbhd_params['n'] - self.left_nbhs)
             self.nbhd_indices = self.nearest_index_nbhs(self.swarm_size,
                                                         self.left_nbhs,
                                                         self.right_nbhs)
         elif self.nbhd_topology == 'von-neumann':
+            assert nbhd_params is not None
             self.nbhd_indices = self.von_neumann_nbhs(self.swarm_size)
             
         self.variant = variant
@@ -465,10 +488,10 @@ class PSO(Optimiser):
             tmp_V = self.sample_sphere(self.swarm_size, self.dimensions)
             tmp_V *= v_start_delta * (self.upper_bound - self.lower_bound)
             self.V = tmp_V
-        self.pbest = None
-        self.pbest_cost = None
+        self.pbest: Optional[np.ndarray] = None
+        self.pbest_cost: Optional[np.ndarray] = None
 
-        self.history = []
+        self.history: list[dict[str, np.ndarray]] = []
         self.max_iter = max_iter
         self.iters_completed = 0
 
@@ -479,60 +502,137 @@ class PSO(Optimiser):
         # is wasteful to re-evaluate the function.
         self.cache = cache
         if self.cache:
-            self.old_X = None
+            self.old_X: Optional[np.ndarray] = None
             self.pcurr_cost = np.full(self.swarm_size, np.inf)
 
-    def sample_sphere(self, n, d):
-        points = self.rng.normal(size=(self.swarm_size, self.dimensions))
+    def sample_sphere(self, n: int, d: int) -> np.ndarray:
+        """
+        Samples `n` points uniformly over the surface of `d`-dimensional
+        unit sphere. Returns a `(n, d)` Numpy array.
+        """
+        points = self.rng.normal(size=(n, d))
         points = points / np.linalg.norm(points, axis=1)[:,np.newaxis]
         return points
 
-    def is_converged(self):
+    def is_converged(self) -> bool:
+        """
+        Returns whether the swarm has converged. Currently not implemented.
+        """
         return False
 
-    def _record_pos(self):
-        # Should write out each time
-        self.history.append({'X': self.X.copy(), 'V': self.V.copy(), 'pcurr_cost': self.pcurr_cost.copy(),
-                             'pbest': self.pbest.copy(), 'pbest_cost': self.pbest_cost.copy(), 
-                             'sbest': self.sbest.copy(), 'sbest_cost': self.sbest_cost})
+    def _record_pos(self) -> None:
+        """
+        Record the position and current loss values into `self.history`.
+        """
+        # Only call after evaluating best positions
+        assert self.pbest is not None
+        assert self.pbest_cost is not None
+
+        # TODO: Write to file intermittently?
+        self.history.append({'X': self.X.copy(), 
+                             'V': self.V.copy(), 
+                             'pcurr_cost': self.pcurr_cost.copy(),
+                             'pbest': self.pbest.copy(), 
+                             'pbest_cost': self.pbest_cost.copy(), 
+                             'sbest': self.sbest.copy(), 
+                             'sbest_cost': self.sbest_cost.copy()})
 
     @staticmethod
-    def nearest_index_nbhs(arr_length, left, right):
-        out = np.tile(np.arange(-left,right+1),(arr_length, 1))
+    def nearest_index_nbhs(arr_length: int, 
+                           left_nbh_count: int, 
+                           right_nbh_count: int
+                           ) -> np.ndarray:
+        """
+        Returns an `(arr_length, left_nbh_count + right_nbh_count + 1)` array
+        where the ith row has the indices 
+            `left_nbh_count`, `left_nbh_count` + 1, ..., i, ..., 
+            `right_nbh_count` - 1, `right_nbh_count`
+        (wrapping on `arr_length`). 
+        """
+        out = np.tile(np.arange(-left_nbh_count,right_nbh_count+1),
+                      (arr_length, 1))
         out += np.arange(arr_length)[:,np.newaxis]
         return np.mod(out, arr_length)
 
     @staticmethod
-    def von_neumann_nbhs(ns):
+    def von_neumann_nbhs(ns: int) -> np.ndarray:
+        """
+        Returns a `(ns, 5)` numpy array where the ith row gives the adjacent
+        edges to the ith vertex in an approximation of a "von Neummman" graph
+        on `ns` vertices, where we consider a vertex to be self-adjacent.
+
+        To approximate a von Neumann graph, arrange the `ns` numbers
+        in a ceil(sqrt(ns)) by ceil(sqrt(ns)) grid and connecting to N/E/S/W
+        neighbours, wrapping where necessary.
+        """
+        # Initialise output array
         out = np.zeros((ns, 5), dtype='int')
     
+        # Calculate num_columns and num_rows to get the smallest grid
+        # that has `ceil(sqrt(ns))`` columns and at least `ns` spaces.
         num_columns = np.ceil(np.sqrt(ns)).astype(int)
         num_rows = np.ceil(ns/num_columns).astype(int)
-        extra = (num_columns * num_rows) - ns
+        extra_spaces = (num_columns * num_rows) - ns
     
+        # If `row_lengths* column_spaces > ns`, there will be extra spaces
+        # in the grid. Assume they're all at the end (in row-major order)
+        # and calculate the actual row and column lengths for a ragged grid
+        # when these are omitted
         row_lengths = np.full(num_rows, num_columns)
         row_lengths[-1] = ns - ((num_rows - 1) * num_columns)
         column_lengths = np.full(num_columns, num_rows)
-        if extra > 0:
-            column_lengths[-extra:] = num_rows - 1
+        if extra_spaces > 0:
+            column_lengths[-extra_spaces:] = num_rows - 1
         
-        for row in range(num_rows):
-            for column in range(num_columns):
-                n = row * num_columns + column
+        # Iterate through all spaces in the ragged grid and find the 
+        # N/E/S/W neighbours, wrapping as necessary
+        for row_idx in range(num_rows):
+            for column_idx in range(num_columns):
+                # calculate the current position
+                # this is always accurate even though the grid is 'ragged'
+                # since we fill *and* iterate in row-major order
+                n = row_idx * num_columns + column_idx
+                # self
                 out[n, 0] = n
-                out[n, 1] = row * num_columns + ((column + 1) % row_lengths[row]) 
-                out[n, 2] = row * num_columns + ((column - 1) % row_lengths[row])
-                out[n, 3] = ((row + 1) % column_lengths[column]) * num_columns + column
-                out[n, 4] = ((row - 1) % column_lengths[column]) * num_columns + column
+                # E
+                out[n, 1] = row_idx * num_columns \
+                            + ((column_idx + 1) % row_lengths[row_idx]) 
+                # W
+                out[n, 2] = row_idx * num_columns \
+                            + ((column_idx - 1) % row_lengths[row_idx])
+                # N
+                out[n, 3] = ((row_idx + 1) % column_lengths[column_idx]) * num_columns \
+                            + column_idx
+                # S
+                out[n, 4] = ((row_idx - 1) % column_lengths[column_idx]) * num_columns \
+                            + column_idx
         
                 if n == ns - 1: return out
+        raise ValueError(f"Something's gone wrong with intput ns={ns}")
 
-    def get_best_nbh_idx(self):
+    def get_best_nbh_idx(self) -> np.ndarray:
+        """
+        Returns an array of the neighbour with the lowest `pbest_cost` for each 
+        particle in the swarm, where the set of neighbours are determined by
+        `self.nbhd_indices`.
+        """
+        assert self.pbest_cost is not None
+
         return self.nbhd_indices[np.arange(self.swarm_size),
-                                 np.argmin(self.pbest_cost[self.nbhd_indices], axis=1)]
+                                 np.argmin(self.pbest_cost[self.nbhd_indices],
+                                            axis=1)]
     
-    def _update_best(self):
+    def _update_best(self) -> None:
+        """
+        Updates ther personal best (`self.pbest`) and social best 
+        (`self.sbest`) positions. 
+        
+        The personal best position is always best position seen by the
+        particle. The social best position depends on the neighbourhood
+        topology (`self.nbhd_topology`).
+        """
         if self.pbest_cost is not None:
+            assert self.pbest is not None # should always match self.pbest_cost
             update_mask = self.pcurr_cost <= self.pbest_cost
             self.pbest[update_mask, :] = self.X[update_mask, :]
             self.pbest_cost[update_mask] = self.pcurr_cost[update_mask]
@@ -548,7 +648,16 @@ class PSO(Optimiser):
             self.sbest = self.pbest[best_nbh_idx,:]
             self.sbest_cost = self.pbest_cost[best_nbh_idx]           
 
-    def _update_velocity(self):
+    def _update_velocity(self) -> None:
+        """
+        Updates the velocity of the swarm based on the velocity update rule
+        given in `self.variant`. Does any velocity clamping determined by
+        `self.velocity_delta`.
+        """
+        # Must calculate `pbest` first
+        assert self.pbest is not None
+        assert self.pbest_cost is not None
+
         # Update (putative velocity)
         if self.variant == 'constrict':
             r1 = self.rng.uniform(size=(self.swarm_size, self.dimensions))
@@ -573,7 +682,13 @@ class PSO(Optimiser):
 
         self.V = V_temp
     
-    def _update_position(self):
+    def _update_position(self) -> None:
+        """
+        Updates the position in three steps
+            1. Adds `self.V` to `self.X`;
+            2. Does any desired boundary handling;
+            3. Sets the swarm position to `self.X`.
+        """
         X_temp = self.X + self.V
         too_high = X_temp > self.upper_bound
         too_low = X_temp < self.lower_bound
@@ -585,9 +700,9 @@ class PSO(Optimiser):
                 X_temp = np.where(too_low, self.lower_bound, X_temp)
                 X_temp = np.where(too_high, self.upper_bound, X_temp)
             if self.bounds_handler == 'random':
-                # A little wasteful to generate all of them
+                # A little wasteful to generate all of them, but there it is
                 random_pos = self.rng.uniform(self.lower_bound, self.upper_bound,
-                                          size=(self.swarm_size, self.dimension))
+                                          size=(self.swarm_size, self.dimensions))
                 X_temp = np.where(too_low | too_high, random_pos, X_temp)
             if self.bounds_handler == 'reflect':
                 X_temp = np.where(too_low, 2 * self.lower_bound - X_temp, X_temp)
@@ -596,15 +711,24 @@ class PSO(Optimiser):
         self.swarm.set_position(X_temp)
         self.X = X_temp
             
-    def _eval_current_pos(self):
+    def _eval_current_pos(self) -> None:
+        """
+        Evaluates the current position of the swarm and saves it to 
+        `self.pcurr_cost`. 
+        """
         if self.cache:
             moved = ~np.all(self.X == self.old_X, axis=1)
-            self.pcurr_cost[moved] = self.swarm.eval_position(moved)[moved]
+            self.pcurr_cost[moved] = self.swarm.eval_position(to_eval=moved)
             self.old_X = self.X
         else:
             self.pcurr_cost = self.swarm.eval_position()
     
-    def optimise(self, num_iters=None):
+    def optimise(self, num_iters: Optional[int] = None) -> None:
+        """
+        Runs particle swarm optimization for a maximum of `num_iters` more 
+        iterations, if provided, or `max_iter`, if not. Breaks if
+        `self.is_converged()` returns True.
+        """
         if num_iters is None:
             num_iters = self.max_iter
         for iter in range(num_iters):

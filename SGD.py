@@ -1,6 +1,9 @@
 from copy import copy
+from typing import Optional
 
 import torch
+
+from SQcircuit import Circuit
 
 from functions import (
     get_element_counts,
@@ -28,7 +31,12 @@ gc_norm_type = 'inf'
 learning_rate = 1e-1
 
 
-def run_SGD(circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_epochs):
+def run_SGD(circuit: Circuit, 
+            circuit_code: str, 
+            seed: Optional[int], 
+            num_eigenvalues: int,
+            total_trunc_num: int,
+            num_epochs: int) -> None:
 
     junction_count, inductor_count, _ = get_element_counts(circuit)
 
