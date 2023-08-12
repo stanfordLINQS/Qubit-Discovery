@@ -6,7 +6,7 @@ from torch import Tensor
 
 from SQcircuit import Circuit
 
-from functions import (
+from .utils import (
     set_grad_zero,
     get_grad,
     set_params,
@@ -146,9 +146,10 @@ def line_search(
         ):
             alpha *= rho
 
+    base_value = objective_func(circuit, test_circuit, params, num_eigenvalues)
     while (
         objective_func(circuit, test_circuit, params + alpha * p, num_eigenvalues)
-        > objective_func(circuit, test_circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
+        > base_value + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
     return alpha

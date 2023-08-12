@@ -1,8 +1,7 @@
 """Contains code for defining loss functions used in circuit optimization."""
-import time
-from typing import Dict, List, Tuple, TypeAlias
+from typing import Tuple
 
-from functions import (
+from .functions import (
     calculate_anharmonicity,
     charge_sensitivity,
     flux_sensitivity,
@@ -18,12 +17,6 @@ import torch
 
 # Loss function settings
 OMEGA_TARGET = 0.64 # GHz
-
-'''import psutil
-def check_memory():
-    print(
-        f"Total RAM usage (in MB): {psutil.Process().memory_info().rss / (1024 * 1024)}")'''
-
 
 def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     omega = first_resonant_frequency(circuit)
@@ -101,7 +94,13 @@ def charge_sensitivity_loss(circuit: Circuit,
     reset_charge_modes(circuit)
     return loss, S
 
-
+LOSS_NAMES = [
+    'frequency_loss', 'anharmonicity_loss', 'T1_loss', 'flux_sensitivity_loss',
+    'charge_sensitivity_loss', 'total_loss'
+]
+METRIC_NAMES = [
+    'omega', 'A', 'T1', 'flux_sensitivity', 'charge_sensitivity', 'total_loss'
+]
 def calculate_loss_metrics(circuit: Circuit, 
                            test_circuit: Circuit,
                            use_frequency_loss=True, 
@@ -194,91 +193,3 @@ def calculate_loss_metrics(circuit: Circuit,
                    loss.detach())
 
     return loss, loss_values, metrics
-
-'''@torch.no_grad()
-def calculate_metrics(circuit, test_circuit):
-    frequency = first_resonant_frequency(circuit)
-    anharmonicity = calculate_anharmonicity(circuit)
-    T1_time = 1 / T1_loss(circuit)
-    flux_sensitivity_value = flux_sensitivity(circuit, test_circuit)
-    charge_sensitivity_value = charge_sensitivity(circuit, test_circuit)
-    metrics = (frequency, anharmonicity, T1_time, flux_sensitivity_value,
-               charge_sensitivity_value)
-    return metrics'''
-
-LossRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
-MetricRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
-@torch.no_grad()
-def init_records(circuit: Circuit, 
-                 test_circuit: Circuit, 
-                 circuit_code: str
-) -> Tuple[LossRecordType, MetricRecordType]:
-    # Init loss record
-    loss_record: LossRecordType = {(circuit, circuit_code, 'frequency_loss'): [],
-            (circuit, circuit_code, 'anharmonicity_loss'): [],
-            (circuit, circuit_code, 'T1_loss'): [],
-            (circuit, circuit_code, 'flux_sensitivity_loss'): [],
-            (circuit, circuit_code, 'charge_sensitivity_loss'): [],
-            (circuit, circuit_code, 'total_loss'): []}
-    total_loss, loss_values, metrics = calculate_loss_metrics(circuit, test_circuit)
-    update_loss_record(circuit, circuit_code, loss_record, loss_values)
-
-    # Init metric record
-    metric_record: MetricRecordType = {(circuit, circuit_code, 'T1'): [],
-                     (circuit, circuit_code, 'total_loss'): [],
-                     (circuit, circuit_code, 'A'): [],
-                     (circuit, circuit_code, 'omega'): [],
-                     (circuit, circuit_code, 'flux_sensitivity'): [],
-                     (circuit, circuit_code, 'charge_sensitivity'): []}
-    update_metric_record(circuit, circuit_code, metric_record, metrics)
-    return loss_record, metric_record
-
-'''@torch.no_grad()
-def init_metric_record(circuit, test_circuit, circuit_code):
-    metric_record = {(circuit, circuit_code, 'T1'): [],
-                   (circuit, circuit_code, 'total_loss'): [],
-                   (circuit, circuit_code, 'A'): [],
-                   (circuit, circuit_code, 'omega'): [],
-                   (circuit, circuit_code, 'flux_sensitivity'): [],
-                   (circuit, circuit_code, 'charge_sensitivity'): []}
-    _, _, metrics = calculate_loss_metrics(circuit, test_circuit)
-    update_metric_record(circuit, circuit_code, metric_record, metrics)
-    return metric_record'''
-
-@torch.no_grad()
-def update_loss_record(circuit: Circuit, 
-                       codename: str, 
-                       loss_record: LossRecordType, 
-                       loss_values: Tuple[torch.Tensor, ...]) -> None:
-    """Updates loss record based on next iteration of optimization."""
-    frequency_loss, anharmonicity_loss, T1_loss, flux_sensitivity_loss, \
-    charge_sensitivity_loss, total_loss = loss_values
-    loss_record[(circuit, codename, 'frequency_loss')].append(
-        frequency_loss.detach().numpy())
-    loss_record[(circuit, codename, 'anharmonicity_loss')].append(
-        anharmonicity_loss.detach().numpy())
-    loss_record[(circuit, codename, 'T1_loss')].append(T1_loss.detach().numpy())
-    loss_record[(circuit, codename, 'flux_sensitivity_loss')].append(
-        flux_sensitivity_loss.detach().numpy())
-    loss_record[(circuit, codename, 'charge_sensitivity_loss')].append(
-        charge_sensitivity_loss.detach().numpy())
-    loss_record[(circuit, codename, 'total_loss')].append(
-        total_loss.detach().numpy())
-
-@torch.no_grad()
-def update_metric_record(circuit: Circuit, 
-                         codename: str, 
-                         metric_record: MetricRecordType, 
-                         metrics: Tuple[torch.Tensor, ...]) -> None:
-    """Updates metric record with information from new iteration of optimization."""
-    omega_10, A, T1, flux_sensitivity, charge_sensitivity, total_loss = metrics
-    metric_record[(circuit, codename, 'T1')].append(T1.detach().numpy())
-    metric_record[(circuit, codename, 'A')].append(A.detach().numpy())
-    metric_record[(circuit, codename, 'omega')].append(
-        omega_10.detach().numpy())
-    metric_record[(circuit, codename, 'flux_sensitivity')].append(
-        flux_sensitivity.detach().numpy())
-    metric_record[(circuit, codename, 'charge_sensitivity')].append(
-        charge_sensitivity.detach().numpy())
-    metric_record[(circuit, codename, 'total_loss')].append(
-        total_loss.detach().numpy())

@@ -4,13 +4,13 @@
 from collections import OrderedDict
 from typing import Any, List
 
-from functions import(
+from plot_utils import(
     code_to_codename,
-    flatten,
     get_element_counts,
     get_optimal_key
 )
-from loss import OMEGA_TARGET
+from optimization.utils import flatten
+from losses.loss import OMEGA_TARGET
 from settings import RESULTS_DIR
 
 import argparse

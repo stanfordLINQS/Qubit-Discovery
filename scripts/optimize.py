@@ -2,10 +2,10 @@
 
 import random
 
-from BFGS import run_BFGS
-from SGD import run_SGD
+from optimizers.BFGS import run_BFGS
+from optimizers.SGD import run_SGD
 
-from functions import (
+from .utils.functions import (
     create_sampler,
 )
 

@@ -8,14 +8,10 @@ from scipy.special import comb
 from scipy.stats import qmc
 import sys
 
-from functions import (
+from .utils import (
     create_sampler,
 )
-from loss import (
-    calculate_loss,
-    calculate_metrics,
-)
-from truncation import trunc_num_heuristic, test_convergence
+from .truncation import trunc_num_heuristic, test_convergence
 
 import SQcircuit as sq
 

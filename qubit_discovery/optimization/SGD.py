@@ -1,22 +1,19 @@
 from copy import copy
-from typing import Optional
+from typing import Callable, List, Optional, Tuple, TypeAlias
 
 import torch
 
 from SQcircuit import Circuit
 
-from functions import (
+from .utils import (
     get_element_counts,
     clamp_gradient,
-    save_results
-)
-from loss import (
-    calculate_loss_metrics,
+    save_results,
     init_records,
     update_loss_record,
     update_metric_record
 )
-from truncation import assign_trunc_nums, test_convergence
+from .truncation import assign_trunc_nums, test_convergence
 
 # Global settings
 log_loss = False
@@ -31,8 +28,13 @@ gc_norm_type = 'inf'
 learning_rate = 1e-1
 
 
+LossFunctionType: TypeAlias = Callable[[Circuit], 
+                                       Tuple[torch.Tensor, 
+                                             Tuple[torch.tensor, ...], 
+                                             Tuple[torch.tensor, ...]]]
 def run_SGD(circuit: Circuit, 
             circuit_code: str, 
+            loss: Tuple[LossFunctionType, List[str], List[str]],
             seed: Optional[int], 
             num_eigenvalues: int,
             total_trunc_num: int,
@@ -41,7 +43,12 @@ def run_SGD(circuit: Circuit,
     junction_count, inductor_count, _ = get_element_counts(circuit)
 
     test_circuit = copy(circuit)
-    loss_record, metric_record = init_records(circuit, test_circuit, circuit_code)
+    loss_function, loss_names, metric_names = loss
+    loss_record, metric_record = init_records(circuit, 
+                                              test_circuit, 
+                                              circuit_code,
+                                              loss_names,
+                                              metric_names)
 
     # Circuit optimization loop
     for iteration in range(num_epochs):
@@ -66,11 +73,7 @@ def run_SGD(circuit: Circuit,
 
         # Calculate loss, backprop
         optimizer.zero_grad()
-        total_loss, loss_values, metrics = calculate_loss_metrics(circuit, test_circuit,
-                                                                  use_frequency_loss=True,
-                                                                  use_anharmonicity_loss=True,
-                                                                  use_flux_sensitivity_loss=False,
-                                                                  use_charge_sensitivity_loss=False)
+        total_loss, loss_values, metrics = loss_function(circuit)
         total_loss.backward()
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)

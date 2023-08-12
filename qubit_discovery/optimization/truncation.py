@@ -2,14 +2,31 @@
 
 from typing import Tuple, List, Optional
 
-from functions import (
-    get_reshaped_eigvec,
-)
-
 import numpy as np
 from matplotlib.axes import Axes
 import scipy, scipy.signal
 from SQcircuit import Circuit
+
+def get_reshaped_eigvec(
+        circuit: Circuit,
+        eig_vec_idx: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return the eigenvec, index1_eigenvec and index2_eigenvec part of
+  the eigenvectors."""
+
+    assert len(circuit._efreqs) != 0, "circuit should be diagonalizecd first."
+
+    # Reshape eigenvector dimensions to correspond to individual modes
+    eigenvector = np.array(circuit._evecs[eig_vec_idx].detach().numpy())
+    eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
+
+    # Extract maximum magnitudes of eigenvector entries along each mode axis
+    mode_2_magnitudes = np.amax(np.abs(eigenvector_reshaped) ** 2, axis=1)
+    offset_idx = np.argmax(mode_2_magnitudes)
+    mode_1_magnitudes = np.abs(eigenvector_reshaped[offset_idx, :]) ** 2
+    eigvec_mag = np.abs(eigenvector) ** 2
+
+    return eigvec_mag, mode_1_magnitudes, mode_2_magnitudes
 
 
 def fit_mode(
