@@ -17,7 +17,7 @@ def load_record(url: str) -> Any:
         with open(url, 'rb') as f:
             record = pickle.load(f)
         return record
-    except FileExistsError:
+    except FileNotFoundError:
         return None
 
 def get_optimal_n_runs(loss_record, n: int, code=None):
