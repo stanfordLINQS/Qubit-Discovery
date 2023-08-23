@@ -13,9 +13,12 @@ from qubit_discovery.losses.loss import OMEGA_TARGET
 from settings import RESULTS_DIR
 
 def load_record(url: str) -> Any:
-    with open(url, 'rb') as f:
-        record = pickle.load(f)
-    return record
+    try:
+        with open(url, 'rb') as f:
+            record = pickle.load(f)
+        return record
+    except FileExistsError:
+        return None
 
 def get_optimal_n_runs(loss_record, n: int, code=None):
     if code is not None:
@@ -134,8 +137,9 @@ def main() -> None:
                 f'{RESULTS_DIR}/{prefix}loss_record_{codename}_{id}.pickle')
             metrics_record = load_record(
                 f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{id}.pickle')
-            aggregate_loss_record.append(loss_record)
-            aggregate_metrics_record.append(metrics_record)
+            if loss_record is not None and metrics_record is not None:
+                aggregate_loss_record.append(loss_record)
+                aggregate_metrics_record.append(metrics_record)
 
     save_prefix = build_save_prefix(args)
     title = f"Optimization with {args.optimization_type}"
