@@ -26,7 +26,9 @@ def get_optimal_n_runs(loss_record, n: int, code=None):
                        run['circuit_code'] == code]
 
     sort_key = 'total_loss' if 'total_loss' in loss_record[0] else 'all_loss'
-    return sorted(loss_record, key=lambda run: run[sort_key][-1])[:n]
+    sorted_runs = sorted(loss_record, key=lambda x: x[1][sort_key][-1])
+    print(f'Top {n} runs in order are {[i for i, run in sorted_runs[:n]]} for code {code}')
+    return [run for i, run in sorted_runs[:n]]
 
 
 def plot_results(loss_record, 
@@ -93,7 +95,7 @@ def plot_results(loss_record,
         for run in runs_list[1:]:
             plot_circuit_metrics(run, code, False, False)
 
-    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{type}_record.png')
+    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{type}_record.png', dpi=300)
 
 def build_save_prefix(args) -> str:
     save_prefix = ""
@@ -138,8 +140,8 @@ def main() -> None:
             metrics_record = load_record(
                 f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{id}.pickle')
             if loss_record is not None and metrics_record is not None:
-                aggregate_loss_record.append(loss_record)
-                aggregate_metrics_record.append(metrics_record)
+                aggregate_loss_record.append((id, loss_record))
+                aggregate_metrics_record.append((id, metrics_record))
 
     save_prefix = build_save_prefix(args)
     title = f"Optimization with {args.optimization_type}"

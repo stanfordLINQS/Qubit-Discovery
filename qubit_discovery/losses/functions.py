@@ -1,6 +1,5 @@
 """Contains helper functions used in remainder of code."""
 
-from copy import copy
 from typing import Union
 
 import numpy as np
@@ -74,12 +73,6 @@ def flux_sensitivity(
         delta=0.01
 ) -> SQValType:
     """Return the flux sensitivity of the circuit around half flux quantum."""
-    # NOTE: Instead of passing in `test_circuit`, originally tried to call
-    # `new_circuit = copy(circuit)`. However, had an issue with PyTorch
-    # retaining the intermediate gradient and leading to RAM accumulation.
-
-    # Issue seems to disappear when using a single circuit copy for all
-    # subsequent perturbations (ex. testing different charge/flux values).
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
 
     loop = circuit.loops[0]

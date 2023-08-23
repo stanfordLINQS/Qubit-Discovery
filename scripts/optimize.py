@@ -16,8 +16,8 @@ from settings import RESULTS_DIR
 
 num_epochs = 50  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 140
-baseline_trunc_num = 100
+total_trunc_num = 600
+baseline_trunc_num = 500
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
