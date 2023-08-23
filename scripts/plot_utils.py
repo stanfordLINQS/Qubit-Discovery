@@ -26,21 +26,6 @@ def code_to_codename(circuit_code: str) -> str:
         return "Fluxonium"
     return circuit_code
 
-def get_optimal_key(loss_record, code: Optional[str]=None):
-  optimal_loss = 1e100
-  optimal_key = None
-
-  for circuit, circuit_code, l in loss_record.keys():
-    key = (circuit, circuit_code, 'total_loss')
-    if len(loss_record[key]) == 0:
-        continue
-    loss = loss_record[key][-1]
-    if loss < optimal_loss and (code in key or code is None):
-        optimal_loss = loss
-        optimal_key = key
-
-  return optimal_key
-
 def get_element_counts(circuit: Circuit) -> Tuple[int, int, int]:
     """Gets counts of each type of circuit element."""
     inductor_count = sum([type(xi) is Inductor for xi in

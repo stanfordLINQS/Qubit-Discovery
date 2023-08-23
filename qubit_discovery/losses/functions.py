@@ -1,18 +1,14 @@
 """Contains helper functions used in remainder of code."""
 
 from copy import copy
-from typing import Iterable, List, TypeAlias, TypeVar, Union
+from typing import Union
 
-import dill as pickle
 import numpy as np
 import torch
 
-from SQcircuit import Element, Circuit, CircuitSampler
-from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
+from SQcircuit import Circuit, CircuitSampler
+from SQcircuit.elements import Loop
 from SQcircuit.settings import get_optim_mode
-from typing import Tuple, Optional
-
-from settings import RESULTS_DIR
 
 SQArrType = Union[np.ndarray, torch.Tensor]
 SQValType = Union[float, torch.Tensor]
@@ -33,12 +29,13 @@ def calculate_anharmonicity(circuit: Circuit) -> SQValType:
 
 
 def charge_sensitivity(circuit: Circuit, 
-                       test_circuit: Circuit, 
                        epsilon=1e-14) -> SQValType:
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
     flux operation point)."""
+
+    return torch.as_tensor(epsilon) # temporary
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if sum(circuit.omega == 0) == 0:
@@ -73,7 +70,6 @@ def charge_sensitivity(circuit: Circuit,
 
 def flux_sensitivity(
         circuit: Circuit,
-        test_circuit: Circuit,
         flux_point=0.5,
         delta=0.01
 ) -> SQValType:
@@ -86,13 +82,14 @@ def flux_sensitivity(
     # subsequent perturbations (ex. testing different charge/flux values).
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
 
-    # new_circuit = copy(circuit)
-    new_loop = Loop()
-    new_loop.set_flux(flux_point + delta)
-    test_circuit.loops[0] = new_loop
-    test_circuit.diag(len(circuit.efreqs))
-    f_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
-    test_circuit.loops[0].set_flux(flux_point)
+    loop = circuit.loops[0]
+    org_flux = loop.value() # should be `flux_point`
+
+    loop.set_flux(flux_point + delta)
+    circuit.diag(len(circuit.efreqs))
+    f_delta = circuit.efreqs[1] - circuit.efreqs[0]
+
+    loop.set_flux(org_flux)
 
     if get_optim_mode():
         S = torch.abs((f_delta - f_0) / f_0)
@@ -110,13 +107,3 @@ def reset_charge_modes(circuit: Circuit) -> None:
         for charge_island_idx in circuit.charge_islands.keys():
             charge_mode = charge_island_idx + 1
             circuit.set_charge_offset(charge_mode, default_n_g)
-
-def save_results(loss_record, metric_record, circuit_code, run_id, prefix="") -> None:
-    save_records = {"loss": loss_record, "metrics": metric_record}
-    if prefix != "":
-        prefix += '_'
-    for record_type, record in save_records.items():
-        save_url = f'{RESULTS_DIR}/{prefix}{record_type}_record_{circuit_code}_{run_id}.pickle'
-        save_file = open(save_url, 'wb')
-        pickle.dump(record, save_file)
-        save_file.close()

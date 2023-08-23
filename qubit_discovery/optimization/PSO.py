@@ -8,9 +8,7 @@ from scipy.special import comb
 from scipy.stats import qmc
 import sys
 
-from .utils import (
-    create_sampler,
-)
+from .utils import create_sampler
 from .truncation import trunc_num_heuristic, test_convergence
 
 import SQcircuit as sq

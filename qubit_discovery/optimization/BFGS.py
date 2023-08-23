@@ -10,40 +10,40 @@ from .utils import (
     set_grad_zero,
     get_grad,
     set_params,
-    save_results
 )
-
-from loss import (
+from qubit_discovery.losses.loss import (
     calculate_loss_metrics,
-    init_records,
-    update_metric_record,
-    update_loss_record,
-    LossRecordType
 )
-from truncation import assign_trunc_nums, test_convergence
+from .utils import (
+    init_records,
+    update_record,
+    save_results,
+    LossFunctionType,
+    RecordType
+)
+from .truncation import assign_trunc_nums, test_convergence
 
 
 def run_BFGS(
     circuit: Circuit,
     circuit_code: str,
+    loss_function: LossFunctionType,
     seed: Optional[int],
     num_eigenvalues: int,
     total_trunc_num: int,
+    save_loc: str,
     bounds=None,
     lr=1.0,
     max_iter=100,
     tolerance=1e-7,
     verbose=False
-) -> Tuple[Tensor, LossRecordType]: 
+    ) -> Tuple[Tensor, RecordType]: 
     params = torch.stack(circuit.parameters).clone()
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
-    test_circuit = copy(circuit)
-    loss_record, metric_record = init_records(circuit, test_circuit, circuit_code)
-
+    loss_record, metric_record = None, None
     for iteration in range(max_iter):
-        save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
 
         assign_trunc_nums(circuit, total_trunc_num)
@@ -56,29 +56,34 @@ def run_BFGS(
             break
 
         # Compute loss and metrics, update records
-        total_loss, loss_values, metrics = calculate_loss_metrics(circuit,
-                                                                  test_circuit,
+        loss, loss_values, metric_values = calculate_loss_metrics(circuit,
                                                                   use_frequency_loss=True,
                                                                   use_anharmonicity_loss=True,
                                                                   use_flux_sensitivity_loss=False,
                                                                   use_charge_sensitivity_loss=False)
-        # metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
-        update_metric_record(circuit, circuit_code, metric_record, metrics)
-        update_loss_record(circuit, circuit_code, loss_record, loss_values)
+        if loss_record is None: 
+            loss_record, metric_record = init_records(circuit_code, 
+                                                      loss_values, 
+                                                      metric_values)
+        update_record(circuit, metric_record, metric_values)
+        update_record(circuit, loss_record, loss_values)
+        save_results(loss_record, metric_record, circuit_code, seed, 
+                     save_loc, prefix='BFGS')
 
-        loss = objective_func(circuit, test_circuit, params, num_eigenvalues)
+
+        loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()
         gradient = get_grad(circuit)
         set_grad_zero(circuit)
 
         p = -torch.matmul(H, gradient)
 
-        alpha = line_search(circuit, test_circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
+        alpha = line_search(circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
         delta_params = alpha * p
 
         params_next = (params + delta_params).clone().detach().requires_grad_(True)
 
-        loss_next = objective_func(circuit, test_circuit, params_next, num_eigenvalues)
+        loss_next = objective_func(circuit, params_next, num_eigenvalues)
         loss_next.backward()
         next_gradient = get_grad(circuit)
         set_grad_zero(circuit)
@@ -125,7 +130,6 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 def line_search(
     circuit: Circuit,
-    test_circuit: Circuit,
     objective_func: Callable[[Circuit, Circuit, Tensor, int], Tensor],
     params,
     gradient,
@@ -161,11 +165,9 @@ def objective_func(circuit: Circuit,
 
     set_params(circuit, x)
     circuit.diag(num_eigenvalues)
-    total_loss, _, _ = calculate_loss_metrics(circuit,
-                                              test_circuit,
-                                              use_frequency_loss=True,
-                                              use_anharmonicity_loss=True,
-                                              use_flux_sensitivity_loss=False,
-                                              use_charge_sensitivity_loss=False)
-
-    return total_loss
+    return calculate_loss_metrics(circuit,
+                                  test_circuit,
+                                  use_frequency_loss=True,
+                                  use_anharmonicity_loss=True,
+                                  use_flux_sensitivity_loss=False,
+                                  use_charge_sensitivity_loss=False)

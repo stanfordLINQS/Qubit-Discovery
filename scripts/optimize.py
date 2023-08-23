@@ -1,25 +1,23 @@
-"""Contains code for optimization of single circuit instance."""
-
+import argparse
 import random
 
-from optimizers.BFGS import run_BFGS
-from optimizers.SGD import run_SGD
+from qubit_discovery.optimization.utils import create_sampler
+from qubit_discovery.optimization import run_BFGS
+from qubit_discovery.optimization import run_SGD
+from qubit_discovery.losses import calculate_loss_metrics
 
-from .utils.functions import (
-    create_sampler,
-)
-
-import argparse
 import numpy as np
 import SQcircuit as sq
 import torch
 
+from settings import RESULTS_DIR
+
 # Optimization settings
 
-num_epochs = 20  # number of training iterations
+num_epochs = 50  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 4000
-baseline_trunc_num = 1000
+total_trunc_num = 140
+baseline_trunc_num = 100
 
 # Target parameter range
 capacitor_range = [1e-15, 12e-12]  # F
@@ -43,7 +41,7 @@ def main() -> None:
     parser.add_argument("code")
     parser.add_argument("id")
     parser.add_argument("optimization_type")
-    args = parser.parse_args()
+    args = parser.parse_args(['JL', '0', 'SGD'])
 
     seed = int(args.id)
     set_seed(seed)
@@ -67,10 +65,12 @@ def main() -> None:
     if args.optimization_type == "SGD":
         run_SGD(circuit,
                 circuit_code,
+                calculate_loss_metrics,
                 run_id,
                 num_eigenvalues,
                 total_trunc_num,
-                num_epochs
+                num_epochs,
+                RESULTS_DIR
                 )
     elif args.optimization_type == "BFGS":
         bounds = {

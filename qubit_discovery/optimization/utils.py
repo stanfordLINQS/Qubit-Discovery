@@ -1,13 +1,18 @@
-from typing import (Dict, Iterable, List, 
+from typing import (Callable, Dict, Iterable, List, 
                     Tuple, TypeAlias, TypeVar, Union)
 
+import dill as pickle
+import numpy as np
 from SQcircuit import (Circuit, CircuitSampler, 
                        Element, Inductor, Junction, Capacitor)
 import torch
 
-SQValType = Union[float, torch.Tensor]
-
 ## General utilities
+SQValType = Union[float, torch.Tensor]
+LossFunctionType: TypeAlias = Callable[[Circuit], 
+                                       Tuple[torch.Tensor, 
+                                             Dict[str, List[torch.tensor]],
+                                             Dict[str, List[torch.tensor]]]]
 
 T = TypeVar('T')
 
@@ -94,53 +99,50 @@ def print_new_circuit_sampled_message(total_l=131) -> None:
 
 ## Loss record utilities
 
-LossRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
-MetricRecordType: TypeAlias = Dict[Tuple[Circuit, str, str], List[np.ndarray]]
+RecordType: TypeAlias = Dict[str, Union[str,
+                                        List[torch.Tensor], 
+                                        List[Circuit]]]
 @torch.no_grad()
-def init_records(circuit: Circuit, 
-                 test_circuit: Circuit, 
-                 circuit_code: str,
-                 loss_names: List[str],
-                 metric_names: List[str]
-) -> Tuple[LossRecordType, MetricRecordType]:
+def init_records(circuit_code: str,
+                 loss_values: Dict[str, List[torch.tensor]],
+                 metric_values: Dict[str, List[torch.tensor]]
+) -> Tuple[RecordType, RecordType]:
     # Init loss record
-    loss_record: LossRecordType = {(circuit, circuit_code, name): []
-                                   for name in loss_names}
-    metric_record: MetricRecordType = {(circuit, circuit_code, name): []
-                                       for name in metric_names}
-    total_loss, loss_values, metrics = calculate_loss_metrics(circuit, test_circuit) #!
-    update_loss_record(circuit, circuit_code, loss_record, loss_values)
+    loss_record: RecordType = {
+        loss_type: [] for loss_type in loss_values.keys()
+    }
+    loss_record['circuit_code'] = circuit_code
+    loss_record['circuit'] = []
 
     # Init metric record
-    metric_record: MetricRecordType = {(circuit, circuit_code, 'T1'): [],
-                     (circuit, circuit_code, 'total_loss'): [],
-                     (circuit, circuit_code, 'A'): [],
-                     (circuit, circuit_code, 'omega'): [],
-                     (circuit, circuit_code, 'flux_sensitivity'): [],
-                     (circuit, circuit_code, 'charge_sensitivity'): []}
-    update_metric_record(circuit, circuit_code, metric_record, metrics) #!
+    metric_record: RecordType = {
+        metric_type: [] for metric_type in metric_values.keys()
+    }
+    metric_record['circuit_code'] = circuit_code
+    metric_record['circuit'] = []
+
     return loss_record, metric_record
 
 @torch.no_grad()
-def update_loss_record(circuit: Circuit, 
-                       codename: str, 
-                       loss_record: LossRecordType, 
-                       loss_values: Tuple[torch.Tensor, ...],
-                       loss_names: List[str]) -> None:
-    """Updates loss record based on next iteration of optimization."""
-    for idx, name in enumerate(loss_names):
-        loss_record[(circuit, codename, name)].append(
-            loss_values[idx].detach().numpy()
-        )
+def update_record(circuit: Circuit,  
+                  record: RecordType, 
+                  values: Dict[str, List[torch.Tensor]]) -> None:
+    """Updates record based on next iteration of optimization."""
+    for key in values.keys():
+        record[key].append(values[key].detach().numpy())
+    record['circuit'].append(None) # TODO REVERSE TO circuit.picklecopy())
 
-@torch.no_grad()
-def update_metric_record(circuit: Circuit, 
-                         codename: str, 
-                         metric_record: MetricRecordType, 
-                         metrics: Tuple[torch.Tensor, ...],
-                         metric_names: List[str]) -> None:
-    """Updates metric record with information from new iteration of optimization."""
-    for idx, name in enumerate(metric_names):
-        metric_record[(circuit, codename, name)].append(
-            metrics[idx].detach.numpy()
-        )
+def save_results(loss_record: RecordType, 
+                 metric_record: RecordType, 
+                 circuit_code: str,
+                 run_id: int, 
+                 save_loc: str,
+                 prefix=""
+                 ) -> None:
+    save_records = {"loss": loss_record, "metrics": metric_record}
+    if prefix != "":
+        prefix += '_'
+    for record_type, record in save_records.items():
+        save_url = f'{save_loc}/{prefix}{record_type}_record_{circuit_code}_{run_id}.pickle'
+        with open(save_url, 'wb') as f:
+            pickle.dump(record, f)
