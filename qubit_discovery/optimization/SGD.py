@@ -75,6 +75,7 @@ def run_SGD(circuit: Circuit,
                      save_loc, prefix='SGD')
 
         with torch.no_grad():
+            # without .no_grad() the eleement._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
                 element._value.grad *= element._value
                 if gradient_clipping:

@@ -1,5 +1,5 @@
 from typing import (Callable, Dict, Iterable, List, 
-                    Tuple, TypeAlias, TypeVar, Union)
+                    Tuple, TypeVar, Union)
 
 import dill as pickle
 import numpy as np
@@ -9,10 +9,10 @@ import torch
 
 ## General utilities
 SQValType = Union[float, torch.Tensor]
-LossFunctionType: TypeAlias = Callable[[Circuit], 
-                                       Tuple[torch.Tensor, 
-                                             Dict[str, List[torch.tensor]],
-                                             Dict[str, List[torch.tensor]]]]
+LossFunctionType = Callable[[Circuit],
+                            Tuple[torch.Tensor,
+                                  Dict[str, List[torch.tensor]], 
+                                  Dict[str, List[torch.tensor]]]]
 
 T = TypeVar('T')
 
@@ -99,9 +99,9 @@ def print_new_circuit_sampled_message(total_l=131) -> None:
 
 ## Loss record utilities
 
-RecordType: TypeAlias = Dict[str, Union[str,
-                                        List[torch.Tensor], 
-                                        List[Circuit]]]
+RecordType = Dict[str, Union[str,
+                             List[torch.Tensor],
+                             List[Circuit]]]
 @torch.no_grad()
 def init_records(circuit_code: str,
                  loss_values: Dict[str, List[torch.tensor]],

@@ -113,7 +113,7 @@ def main() -> None:
     parser.add_argument('-b', '--best_n', type=int)
     parser.add_argument('-o', '--optimization_type', type=str)
     parser.add_argument('-s', '--save_circuits', action='store_true') #TODO: implement
-    args = parser.parse_args(['5', '-c', 'JL', '-o', 'SGD'])
+    args = parser.parse_args() # ['5', '-c', 'JL', '-o', 'SGD'])
 
     num_runs = int(args.num_runs)
     if args.best_n is not None:

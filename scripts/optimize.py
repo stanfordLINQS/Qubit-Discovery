@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument("code")
     parser.add_argument("id")
     parser.add_argument("optimization_type")
-    args = parser.parse_args(['JL', '0', 'SGD'])
+    args = parser.parse_args() # ['JL', '0', 'SGD']
 
     seed = int(args.id)
     set_seed(seed)

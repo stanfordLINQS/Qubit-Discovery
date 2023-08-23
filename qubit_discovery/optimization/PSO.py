@@ -1,6 +1,6 @@
 from abc import abstractmethod, abstractproperty
 from collections.abc import Iterator, Sequence
-from typing import Optional, Protocol, TypeAlias, Union
+from typing import Optional, Protocol, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -13,7 +13,7 @@ from .truncation import trunc_num_heuristic, test_convergence
 
 import SQcircuit as sq
 
-IndexingType: TypeAlias = Union[list[int], np.ndarray]
+IndexingType = Union[list[int], np.ndarray]
 
 class Swarm(Protocol):
     """
