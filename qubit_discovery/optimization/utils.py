@@ -130,7 +130,7 @@ def update_record(circuit: Circuit,
     """Updates record based on next iteration of optimization."""
     for key in values.keys():
         record[key].append(values[key].detach().numpy())
-    record['circuit'].append(None) # TODO REVERSE TO circuit.picklecopy())
+    record['circuit'].append(circuit.picklecopy())
 
 def save_results(loss_record: RecordType, 
                  metric_record: RecordType, 

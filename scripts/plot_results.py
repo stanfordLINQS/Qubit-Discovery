@@ -22,10 +22,9 @@ def load_record(url: str) -> Any:
 
 def get_optimal_n_runs(loss_record, n: int, code=None):
     if code is not None:
-        loss_record = [run for run in loss_record if 
+        loss_record = [(i, run) for i, run in loss_record if 
                        run['circuit_code'] == code]
-
-    sort_key = 'total_loss' if 'total_loss' in loss_record[0] else 'all_loss'
+    sort_key = 'total_loss' if 'total_loss' in loss_record[0][1] else 'all_loss'
     sorted_runs = sorted(loss_record, key=lambda x: x[1][sort_key][-1])
     print(f'Top {n} runs in order are {[i for i, run in sorted_runs[:n]]} for code {code}')
     return [run for i, run in sorted_runs[:n]]
