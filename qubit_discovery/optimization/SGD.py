@@ -30,7 +30,7 @@ learning_rate = 1e-1
 def run_SGD(circuit: Circuit, 
             circuit_code: str, 
             loss_metric_function: LossFunctionType,
-            seed: Optional[int], 
+            seed: int, 
             num_eigenvalues: int,
             total_trunc_num: int,
             num_epochs: int,

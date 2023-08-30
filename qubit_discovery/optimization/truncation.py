@@ -105,7 +105,7 @@ def fit_mode(
     return fit_results
 
 
-def get_slow_fit(fit_results, ignore_threshold=1e-5) -> Tuple[float, float]:
+def get_slow_fit(fit_results, ignore_threshold=1e-5) -> Tuple[float, float, float]:
     if len(fit_results) == 1:
         return fit_results[0]
 
@@ -142,7 +142,7 @@ def trunc_num_heuristic(
     # numbers as proportion of `min_trunc`
     K = int(K / min_trunc ** 2)
 
-    _, mode_1_magnitudes, mode_2_magnitudes = get_reshaped_eigvec(
+    _, (mode_1_magnitudes, mode_2_magnitudes) = get_reshaped_eigvec(
         circuit,
         eig_vec_idx,
     )
@@ -242,7 +242,7 @@ def test_convergence(
     if len(circuit.m) == 1:
         return circuit.test_convergence([circuit.m[0], ], eig_vec_idx=eig_vec_idx)
     elif len(circuit.m) == 2:
-        eigvec_mag, mode_1_magnitudes, mode_2_magnitudes = get_reshaped_eigvec(
+        eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes) = get_reshaped_eigvec(
                 circuit,
                 eig_vec_idx,
         )
