@@ -13,10 +13,10 @@ from settings import RESULTS_DIR
 
 # Optimization settings
 
-num_epochs = 20  # number of training iterations
+num_epochs = 100  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 600
-baseline_trunc_num = 500 # ≤ total_trunc_nums; initial guess at necessary size
+total_trunc_num = 140
+baseline_trunc_num = 100 # ≤ total_trunc_nums; initial guess at necessary size
 
 # Target parameter range
 capacitor_range = (1e-15, 12e-12)  # F
@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("code")
     parser.add_argument("id")
     parser.add_argument("optimization_type")
+    parser.add_argument('-n', '--no-save-circuit', action='store_false')
     args = parser.parse_args() # ['JL', '0', 'SGD']
 
     seed = int(args.id)
@@ -62,7 +63,8 @@ def main() -> None:
             num_eigenvalues,
             total_trunc_num,
             num_epochs,
-            RESULTS_DIR
+            RESULTS_DIR,
+            f'{circuit_code}_{seed}'
         )
         return
 
@@ -80,12 +82,14 @@ def main() -> None:
                                                   use_frequency_loss=True, 
                                                   use_anharmonicity_loss=True,
                                                   use_flux_sensitivity_loss=True, 
-                                                  use_charge_sensitivity_loss=False),
+                                                  use_charge_sensitivity_loss=True,
+                                                  use_T1_loss=False),
                 run_id,
                 num_eigenvalues,
                 total_trunc_num,
                 num_epochs,
-                RESULTS_DIR
+                RESULTS_DIR,
+                save_circuit=args.no_save_circuit
                 )
     elif args.optimization_type == "BFGS":
         bounds = {

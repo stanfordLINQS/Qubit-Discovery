@@ -183,20 +183,20 @@ def calculate_loss_metrics(circuit: Circuit,
     with torch.no_grad():
         all_loss = loss_frequency + loss_anharmonicity + loss_flux_sensitivity + loss_charge_sensitivity
         loss_values: LossOut = {
-            'frequency_loss': loss_frequency.detach(),
-            'anharmonicity_loss': loss_anharmonicity.detach(),
-            'T1_loss': loss_T1.detach(),
-            'flux_sensitivity_loss': loss_flux_sensitivity.detach(),
-            'charge_sensitivity_loss': loss_charge_sensitivity.detach(),
-            'total_loss': loss.detach()
+            'frequency_loss': loss_frequency.detach() if get_optim_mode() else loss_frequency,
+            'anharmonicity_loss': loss_anharmonicity.detach() if get_optim_mode() else loss_anharmonicity,
+            'T1_loss': loss_T1.detach() if get_optim_mode() else loss_T1,
+            'flux_sensitivity_loss': loss_flux_sensitivity.detach() if get_optim_mode() else loss_flux_sensitivity,
+            'charge_sensitivity_loss': loss_charge_sensitivity.detach() if get_optim_mode() else loss_charge_sensitivity,
+            'total_loss': loss.detach() if get_optim_mode() else loss
         }
         metrics: MetricOut = {
-            'omega': frequency.detach(),
-            'A': anharmonicity.detach(),
-            'T1': T1_time.detach(),
-            'flux_sensitivity': flux_sensitivity_value.detach(),
-            'charge_sensitivity': charge_sensitivity_value.detach(),
-            'all_loss': all_loss.detach()
+            'omega': frequency.detach() if get_optim_mode() else frequency,
+            'A': anharmonicity.detach() if get_optim_mode() else anharmonicity,
+            'T1': T1_time.detach() if get_optim_mode() else T1_time,
+            'flux_sensitivity': flux_sensitivity_value.detach() if get_optim_mode() else flux_sensitivity_value,
+            'charge_sensitivity': charge_sensitivity_value.detach() if get_optim_mode() else charge_sensitivity_value,
+            'all_loss': all_loss.detach() if get_optim_mode() else all_loss
         }
 
     return loss, loss_values, metrics

@@ -160,7 +160,10 @@ class CircuitSwarm(Swarm):
         # `history` has two parts: a dictionary indexed by particle index with 
         # detailed metric and loss data for each circuit, and a running list of 
         # total_losses for the swarm
-        self.history = {i: {'metrics': [], 'losses': []} for i in range(self._num_circuits)}
+        HistoryType = dict[Union[int, str], 
+                           Union[list[np.ndarray], 
+                                 dict[str, list[Optional[dict[str, SQValType]]]]]]
+        self.history: HistoryType = {i: {'metrics': [], 'losses': []} for i in range(self._num_circuits)}
         self.history['total_loss'] = []
 
         self.is_log: bool = is_log
@@ -234,7 +237,7 @@ class CircuitSwarm(Swarm):
         # Retain circuit/parameters internally
         if self.conserve_memory:
             self.circuit_params = np.zeros((self._num_circuits, self._num_elements))
-            self.circuit_metadata = []
+            self.circuit_metadata: list[tuple[Optional[bool], list[int]]] = []
         else:
             self.circuits = []
         
@@ -323,11 +326,12 @@ class CircuitSwarm(Swarm):
     def set_circuit_params(self, 
                            cr: sq.Circuit, 
                            params: np.ndarray,
-                           trunc_nums: list[int]) -> None:
+                           trunc_nums: Optional[list[int]] = None) -> None:
         for i, elem in enumerate(self.ordered_elements(cr)):
             ## UPDATE IF JUNCTION `set_value` FIXED
             elem._value = params[i]
-        cr.set_trunc_nums(trunc_nums)
+        if trunc_nums is not None:
+            cr.set_trunc_nums(trunc_nums)
 
     def _set_actual_position(self, X: np.ndarray) -> None:
         if self.conserve_memory:
@@ -379,7 +383,7 @@ class CircuitSwarm(Swarm):
                 if self.conserve_memory:
                     self.set_circuit_params(self.model_circuit, 
                                             self.circuit_params[idx,:],
-                                            self.circuit_metadata[idx][0])
+                                            self.circuit_metadata[idx][1])
                     self.model_circuit.update()
                     cr = self.model_circuit
                 else:
@@ -389,11 +393,10 @@ class CircuitSwarm(Swarm):
                 is_converged, trunc_nums = self._diag_circuit(cr)
                 # and save new truncation numbers, if they changed
                 if self.conserve_memory:
-                    # If we didn't reassign truncation numbers, don't update
+                    # If we didn't reassign truncation numbers, don't update         
                     if trunc_nums is None:
-                        self.circuit_metadata[idx][0] = is_converged
-                    else:
-                        self.circuit_metadata[idx] = (is_converged, trunc_nums)
+                        trunc_nums = self.circuit_metadata[idx][1]
+                    self.circuit_metadata[idx] = (is_converged, trunc_nums)
     
                 if is_converged:
                     total_loss, loss_values, metric_values = self._calc_loss(cr)
@@ -776,7 +779,7 @@ class PSO(Optimiser):
                     pickle.dump(self.history, f)
                 if hasattr(self.swarm, 'history'):
                     with open(f'{save_loc}/{save_id}_swarm.pickle', 'wb') as f:
-                        pickle.dump(self.swarm.history)
+                        pickle.dump(self.swarm.history, f)
 
 def run_PSO(
         circuit_code: str,
@@ -787,7 +790,7 @@ def run_PSO(
         seed: Optional[int],
         num_eigenvalues: int, 
         total_trunc_num: int,
-        num_iters: str,
+        num_iters: int,
         save_loc: str,
         save_id: str
 ) -> None:
