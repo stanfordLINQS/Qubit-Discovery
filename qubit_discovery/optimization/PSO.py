@@ -343,7 +343,7 @@ class CircuitSwarm(Swarm):
         else:
             self._set_actual_position(X)
 
-    def _diag_circuit(self, cr: sq.Circuit) -> tuple[bool, Optional[list(int)]]:
+    def _diag_circuit(self, cr: sq.Circuit) -> tuple[bool, Optional[list[int]]]:
         trunc_nums = None
         cr.diag(self.num_eigenvalues)
 
@@ -359,8 +359,8 @@ class CircuitSwarm(Swarm):
         return is_converged, trunc_nums
 
     def _calc_loss(self, cr: sq.Circuit) -> tuple[SQValType, 
-                                                  dict(str, SQValType),
-                                                  dict(str, SQValType)]:
+                                                  dict[str, SQValType],
+                                                  dict[str, SQValType]]:
         return self.loss_function(cr)
     
     def eval_position(self, 
