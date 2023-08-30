@@ -189,14 +189,26 @@ def trunc_num_heuristic(
     return [mode_1_result * min_trunc, mode_2_result * min_trunc]
 
 def assign_trunc_nums(circuit: Circuit, 
-                      total_trunc_num: int) -> None:
+                      total_trunc_num: int) -> List[int]:
     """
     Heuristically re-assign truncation numbers for a circuit with one
-    or two modes (not yet implemented for more)
+    or two modes (not yet implemented for more).
+
+    Parameters
+    ----------
+        circuit:
+            Circuit to assign truncation numbers to
+        total_trunc_num:
+            Maximum allowed total truncation number
+    Returns
+    ----------
+        trunc_nums:
+            List of truncation numbers for each mode of circuit
     """
     if len(circuit.m) == 1:
         print("re-allocate truncation numbers (one mode)")
         circuit.set_trunc_nums([total_trunc_num, ])
+        return [total_trunc_num, ]
     elif len(circuit.m) == 2:
         print("re-allocate truncation numbers (two modes)")
         trunc_nums = trunc_num_heuristic(circuit,
@@ -204,6 +216,7 @@ def assign_trunc_nums(circuit: Circuit,
                                          eig_vec_idx=1,
                                          axes=None)
         circuit.set_trunc_nums(trunc_nums)
+        return trunc_nums
     else:
         raise NotImplementedError
 

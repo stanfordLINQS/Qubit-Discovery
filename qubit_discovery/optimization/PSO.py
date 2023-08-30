@@ -8,10 +8,12 @@ from scipy.special import comb
 from scipy.stats import qmc
 import sys
 
-from .utils import create_sampler
-from .truncation import trunc_num_heuristic, test_convergence
-
+import dill as pickle
 import SQcircuit as sq
+
+from .utils import create_sampler, LossFunctionType
+from .truncation import assign_trunc_nums, test_convergence
+from ..losses.functions import SQValType
 
 IndexingType = Union[list[int], np.ndarray]
 
@@ -132,6 +134,7 @@ class CircuitSwarm(Swarm):
                  num_circuits: int, 
                  circuit_code: str,
                  capacitor_range, inductor_range, junction_range,
+                 loss_metric_function: LossFunctionType,
                  num_eigenvalues: int = 10, total_trunc_num: int = 140,
                  sampling_method: str = 'loguniform', is_log: bool = False,
                  parallel: bool = False, conserve_memory: bool = False):
@@ -140,6 +143,8 @@ class CircuitSwarm(Swarm):
         self._circuit_code = circuit_code
         self._num_inductive_elements = len(circuit_code)
         self._num_elements = self.num_elems(circuit_code)
+
+        self.loss_function = loss_metric_function
 
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
@@ -151,7 +156,12 @@ class CircuitSwarm(Swarm):
         self.conserve_memory: bool = conserve_memory
         self._sampling_method: str= sampling_method
         self._sample_circuits()
-        self.history = []
+
+        # `history` has two parts: a dictionary indexed by particle index with 
+        # detailed metric and loss data for each circuit, and a running list of 
+        # total_losses for the swarm
+        self.history = {i: {'metrics': [], 'losses': []} for i in range(self._num_circuits)}
+        self.history['total_loss'] = []
 
         self.is_log: bool = is_log
 
@@ -224,9 +234,9 @@ class CircuitSwarm(Swarm):
         # Retain circuit/parameters internally
         if self.conserve_memory:
             self.circuit_params = np.zeros((self._num_circuits, self._num_elements))
+            self.circuit_metadata = []
         else:
             self.circuits = []
-        self.circuit_metadata = []
         
         # Construct circuits
         for i in range(self._num_circuits):
@@ -242,9 +252,9 @@ class CircuitSwarm(Swarm):
 
             if self.conserve_memory:
                 self.circuit_params[i,:] = self.get_values(circuit)
+                self.circuit_metadata.append((None, trunc_nums))
             else:
                 self.circuits.append(circuit)
-            self.circuit_metadata.append((trunc_nums, None))
 
         # Sample values in unit hypercube
         if self._sampling_method == 'loguniform':
@@ -310,10 +320,14 @@ class CircuitSwarm(Swarm):
             return np.log10(X)
         return X
 
-    def set_circuit_params(self, cr: sq.Circuit, params) -> None:
+    def set_circuit_params(self, 
+                           cr: sq.Circuit, 
+                           params: np.ndarray,
+                           trunc_nums: list[int]) -> None:
         for i, elem in enumerate(self.ordered_elements(cr)):
             ## UPDATE IF JUNCTION `set_value` FIXED
             elem._value = params[i]
+        cr.set_trunc_nums(trunc_nums)
 
     def _set_actual_position(self, X: np.ndarray) -> None:
         if self.conserve_memory:
@@ -329,70 +343,76 @@ class CircuitSwarm(Swarm):
         else:
             self._set_actual_position(X)
 
-    def _diag_circuit(self, cr: sq.Circuit, trunc_nums: int) -> tuple[int, bool]:
-        # TODO: check this is all correct re: convergence checking
-        # update with verify_convergence from truncation.py, if desired
+    def _diag_circuit(self, cr: sq.Circuit) -> tuple[bool, Optional[list(int)]]:
+        trunc_nums = None
         cr.diag(self.num_eigenvalues)
-        if len(cr.m) == 1:
-            is_converged = cr.test_convergence(trunc_nums)
-        elif len(cr.m) == 2:
-            trunc_nums = trunc_num_heuristic(cr,
-                                             K=self.total_trunc_num,
-                                             eig_vec_idx=1,
-                                             axes=None)
-            cr.set_trunc_nums(trunc_nums)
+
+        # Check if converged with old truncation numbers
+        is_converged, _  = test_convergence(cr, eig_vec_idx=1)
+        if not is_converged:
+            # Attempt to re-allocate using our heuristic
+            trunc_nums = assign_trunc_nums(cr, self.total_trunc_num)
             cr.diag(self.num_eigenvalues)
+            is_converged, _ = test_convergence(cr, eig_vec_idx=1)
+            
+        # If it still hasn't converged after re-allocating, give up
+        return is_converged, trunc_nums
 
-            is_converged, _, _ = test_convergence(cr, eig_vec_idx=1)
-
-        return trunc_nums, is_converged
-
-    def _calc_loss(self, cr: sq.Circuit):
-        total_loss, loss_values = calculate_loss(cr)
-        metric_values = calculate_metrics(cr) + (total_loss, )
-        return total_loss, loss_values, metric_values
+    def _calc_loss(self, cr: sq.Circuit) -> tuple[SQValType, 
+                                                  dict(str, SQValType),
+                                                  dict(str, SQValType)]:
+        return self.loss_function(cr)
     
     def eval_position(self, 
                       to_eval: Optional[IndexingType] = None
                       ) -> np.ndarray:
-        tot_losses = np.zeros(self._num_circuits)
-        all_metrics = []
-        all_losses = []
+        # Array to hold total loss values for this iteration
+        tot_losses = np.full(self._num_circuits, np.nan)
+
         if to_eval is None:
             to_eval = np.full(self._num_circuits, True)
+        # Iterate through circuits and evaluate if desired
         for idx in range(self._num_circuits):
             if to_eval[idx]:
-                # Calculate if necessary
+                # If conserve_memory is on, update our model circuit's parameters
+                # and reset its trucation numbers
                 if self.conserve_memory:
                     self.set_circuit_params(self.model_circuit, 
-                                            self.circuit_params[idx,:])
+                                            self.circuit_params[idx,:],
+                                            self.circuit_metadata[idx][0])
                     self.model_circuit.update()
                     cr = self.model_circuit
                 else:
                     cr = self.circuits[idx]
-    
-                trunc_nums, is_converged = self._diag_circuit(cr,
-                                            self.circuit_metadata[idx][0])
-                self.circuit_metadata[idx] = [trunc_nums, is_converged]
+
+                # Attempt to diagonalise circuit
+                is_converged, trunc_nums = self._diag_circuit(cr)
+                # and save new truncation numbers, if they changed
+                if self.conserve_memory:
+                    # If we didn't reassign truncation numbers, don't update
+                    if trunc_nums is None:
+                        self.circuit_metadata[idx][0] = is_converged
+                    else:
+                        self.circuit_metadata[idx] = (is_converged, trunc_nums)
     
                 if is_converged:
                     total_loss, loss_values, metric_values = self._calc_loss(cr)
-                    all_metrics.append(metric_values)
-                    all_losses.append(loss_values)
                 else:
                     total_loss = np.inf
                     metric_values = None
                     loss_values = None
             else:
                 # Otherwise pull from history
-                metric_values = self.history[-1][idx][0]
-                loss_values = self.history[-1][1]
-                total_loss = metric_values[-1] if metric_values is not None else np.inf
+                metric_values = self.history[idx]['metrics'][-1]
+                loss_values = self.history[idx]['losses'][-1]
+                total_loss = self.history['total_loss'][-1][idx]
+            
             # record
+            self.history[idx]['metrics'].append(metric_values)
+            self.history[idx]['losses'].append(loss_values)
             tot_losses[idx] = total_loss
-            all_metrics.append(metric_values)
-            all_losses.append(loss_values)
-        self.history.append((all_metrics, all_losses))
+
+        self.history['total_loss'].append(tot_losses)
         return tot_losses[to_eval]
     
 class Optimiser(Protocol):
@@ -717,7 +737,11 @@ class PSO(Optimiser):
         else:
             self.pcurr_cost = self.swarm.eval_position()
     
-    def optimise(self, num_iters: Optional[int] = None) -> None:
+    def optimise(self,
+                 num_iters: Optional[int] = None,
+                 save_loc: Optional[str] = None,
+                 save_id: Optional[str] = None
+                 ) -> None:
         """
         Runs particle swarm optimization for a maximum of `num_iters` more 
         iterations, if provided, or `max_iter`, if not. Breaks if
@@ -746,3 +770,35 @@ class PSO(Optimiser):
             self.iters_completed += 1
             if self.verbose:
                 print(f'Finished iteration {iter}/{num_iters}.')
+
+            if save_loc is not None and save_id is not None:
+                with open(f'{save_loc}/{save_id}_pso.pickle', 'wb') as f:
+                    pickle.dump(self.history, f)
+                if hasattr(self.swarm, 'history'):
+                    with open(f'{save_loc}/{save_id}_swarm.pickle', 'wb') as f:
+                        pickle.dump(self.swarm.history)
+
+def run_PSO(
+        circuit_code: str,
+        capacitor_range: tuple[float, float],
+        inductor_range: tuple[float, float],
+        junction_range: tuple[float, float],
+        loss_function: LossFunctionType,
+        seed: Optional[int],
+        num_eigenvalues: int, 
+        total_trunc_num: int,
+        num_iters: str,
+        save_loc: str,
+        save_id: str
+) -> None:
+    sq.set_optim_mode(False)
+    CS = CircuitSwarm(48,
+                      circuit_code, 
+                      capacitor_range, inductor_range, junction_range, 
+                      loss_function,
+                      num_eigenvalues=num_eigenvalues,
+                      total_trunc_num=total_trunc_num,
+                      is_log=True, sampling_method='sobol')
+    optim = PSO(swarm=CS, constraints=CS.get_bounds(), max_iter=num_iters, 
+                v_start_delta=0.2, verbose=False, seed=seed)
+    optim.optimise(save_loc=save_loc, save_id=save_id)
