@@ -2,8 +2,7 @@ import argparse
 import random
 
 from qubit_discovery.optimization.utils import create_sampler
-from qubit_discovery.optimization import run_BFGS
-from qubit_discovery.optimization import run_SGD
+from qubit_discovery.optimization import run_SGD, run_BFGS, run_PSO
 from qubit_discovery.losses import calculate_loss_metrics
 
 import numpy as np
@@ -14,15 +13,15 @@ from settings import RESULTS_DIR
 
 # Optimization settings
 
-num_epochs = 50  # number of training iterations
+num_epochs = 20  # number of training iterations
 num_eigenvalues = 10
 total_trunc_num = 600
-baseline_trunc_num = 500
+baseline_trunc_num = 500 # ≤ total_trunc_nums; initial guess at necessary size
 
 # Target parameter range
-capacitor_range = [1e-15, 12e-12]  # F
-inductor_range = [2e-8, 5e-6]  # H
-junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]  # Hz
+capacitor_range = (1e-15, 12e-12)  # F
+inductor_range = (2e-8, 5e-6)  # H
+junction_range = (1e9 * 2 * np.pi, 100e9 * 2 * np.pi)  # Hz
 # capacitor_range = [8e-15, 12e-14] # F
 # inductor_range = [2e-7, 5e-6] # H
 # junction_range = [1e9 * 2 * np.pi, 12e9 * 2 * np.pi] # Hz
@@ -52,20 +51,36 @@ def main() -> None:
     run_id = int(args.id)
     N = len(circuit_code)
 
+    if args.optimization_type == 'PSO':
+        run_PSO(
+            circuit_code,
+            capacitor_range,
+            inductor_range,
+            junction_range,
+            calculate_loss_metrics,
+            seed,
+            num_eigenvalues,
+            total_trunc_num,
+            num_epochs,
+            RESULTS_DIR
+        )
+        return
+
     sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
     circuit = sampler.sample_circuit_code(circuit_code)
     print("Circuit sampled!")
 
-    baseline_trunc_nums = circuit.truncate_circuit(baseline_trunc_num)
-    # trunc_nums = [100, 100]
-    circuit.set_trunc_nums(baseline_trunc_nums)
-    circuit.diag(num_eigenvalues)
+    # Begin by allocating truncation numbers equally amongst all modes
+    circuit.truncate_circuit(baseline_trunc_num)
 
-    # circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_epochs
     if args.optimization_type == "SGD":
         run_SGD(circuit,
                 circuit_code,
-                calculate_loss_metrics,
+                lambda cr: calculate_loss_metrics(cr,
+                                                  use_frequency_loss=True, 
+                                                  use_anharmonicity_loss=True,
+                                                  use_flux_sensitivity_loss=True, 
+                                                  use_charge_sensitivity_loss=False),
                 run_id,
                 num_eigenvalues,
                 total_trunc_num,

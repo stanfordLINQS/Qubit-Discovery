@@ -29,39 +29,55 @@ learning_rate = 1e-1
 
 def run_SGD(circuit: Circuit, 
             circuit_code: str, 
-            loss_function: LossFunctionType,
+            loss_metric_function: LossFunctionType,
             seed: Optional[int], 
             num_eigenvalues: int,
             total_trunc_num: int,
             num_epochs: int,
-            save_loc: str) -> None:
+            save_loc: str,
+            save_circuit=True) -> None:
+    """"
+    Runs SGD for `num_epochs` beginning with `circuit` using
+    `loss_metric_function`.
+
+    `circuit` should have truncation numbers allocated, but need not have 
+    been diagonalised. Diagonalisation is attempted with max total truncation
+    number of `total_trunc_nums`, and with `num_eigenvalues`.
+
+    `seed` and `circuit_code` are just used to add metadata to file saved at
+    `save_loc` (but should be accurate).
+    """
     
     loss_record, metric_record = None, None
-    # Circuit optimization loop
-    for iteration in range(num_epochs):
-        # Initialise optimizer
-        optimizer = torch.optim.SGD(
-            circuit.parameters,
-            nesterov=nesterov_momentum,
-            momentum=momentum_value if nesterov_momentum else 0.0,
-            lr=learning_rate,
-        )
-
+    # Initialise optimiser
+    optimizer = torch.optim.SGD(
+        circuit.parameters,
+        nesterov=nesterov_momentum,
+        momentum=momentum_value if nesterov_momentum else 0.0,
+        lr=learning_rate
+    )
+    # Circuit optimisation loop
+    for iteration in range(num_epochs):       
         # Calculate circuit
         print(f"Iteration {iteration}")
+        optimizer.zero_grad()
 
-        assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
-        converged, _ = test_convergence(circuit, eig_vec_idx=1)
-
+        # Check if converged with old truncation numbers
+        converged, _  = test_convergence(circuit, eig_vec_idx=1)
         if not converged:
-            print("Warning: Circuit did not converge")
-            # TODO: ArXiv circuits that do not converge
-            break
+            # Attempt to re-allocate using our heuristic
+            assign_trunc_nums(circuit, total_trunc_num)
+            circuit.diag(num_eigenvalues)
+            converged, _ = test_convergence(circuit, eig_vec_idx=1)
+            # If it still hasn't converged after re-allocating, give up
+            if not converged:
+                print("Warning: Circuit did not converge")
+                # TODO: ArXiv circuits that do not converge
+                break
 
         # Calculate loss, backprop
-        optimizer.zero_grad()
-        total_loss, loss_values, metric_values = loss_function(circuit)
+        total_loss, loss_values, metric_values = loss_metric_function(circuit)
         total_loss.backward()
 
         # Store history
@@ -71,11 +87,12 @@ def run_SGD(circuit: Circuit,
                                                       metric_values)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(loss_record, metric_record, circuit_code, seed, 
-                     save_loc, prefix='SGD')
+        save_results(loss_record, metric_record, circuit, circuit_code, seed, 
+                     save_loc, prefix='SGD', save_circuit=save_circuit)
 
+        # Clamp gradients, if desired
         with torch.no_grad():
-            # without .no_grad() the eleement._value.grads track grad themselves
+            # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
                 element._value.grad *= element._value
                 if gradient_clipping:
@@ -86,5 +103,7 @@ def run_SGD(circuit: Circuit,
                 element._value.grad *= element._value
                 if learning_rate_scheduler:
                     element._value.grad *= (scheduler_decay_rate ** iteration)
+
+        # Step (to truly step, need to update the circuit as well)
         optimizer.step()
         circuit.update()

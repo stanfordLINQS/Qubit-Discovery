@@ -112,14 +112,13 @@ def init_records(circuit_code: str,
         loss_type: [] for loss_type in loss_values.keys()
     }
     loss_record['circuit_code'] = circuit_code
-    loss_record['circuit'] = []
 
     # Init metric record
     metric_record: RecordType = {
         metric_type: [] for metric_type in metric_values.keys()
     }
     metric_record['circuit_code'] = circuit_code
-    metric_record['circuit'] = []
+    
 
     return loss_record, metric_record
 
@@ -130,14 +129,15 @@ def update_record(circuit: Circuit,
     """Updates record based on next iteration of optimization."""
     for key in values.keys():
         record[key].append(values[key].detach().numpy())
-    record['circuit'].append(circuit.picklecopy())
 
 def save_results(loss_record: RecordType, 
                  metric_record: RecordType, 
+                 circuit: Circuit,
                  circuit_code: str,
                  run_id: int, 
                  save_loc: str,
-                 prefix=""
+                 prefix="",
+                 save_circuit=True,
                  ) -> None:
     save_records = {"loss": loss_record, "metrics": metric_record}
     if prefix != "":
@@ -146,3 +146,9 @@ def save_results(loss_record: RecordType,
         save_url = f'{save_loc}/{prefix}{record_type}_record_{circuit_code}_{run_id}.pickle'
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
+    
+    if save_circuit:
+        circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{run_id}.pickle'
+        with open(circuit_save_url, 'ab+') as f:
+            pickle.dump(circuit.picklecopy(), f)
+    
