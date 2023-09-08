@@ -111,10 +111,11 @@ def calculate_loss_metrics(circuit: Circuit,
                            use_flux_sensitivity_loss=True, 
                            use_charge_sensitivity_loss=True,
                            use_T1_loss=False, log_loss=False,
-                           loss_normalization=False
+                           loss_normalization=False,
+                           master_use_grad=True
                            ) -> Tuple[SQValType, LossOut, MetricOut]: 
     if get_optim_mode():    
-        loss = torch.zeros((), requires_grad=True)
+        loss = torch.zeros((), requires_grad=master_use_grad)
     else:
         loss = 0
 
@@ -133,7 +134,7 @@ def calculate_loss_metrics(circuit: Circuit,
             loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
 
     # Calculate frequency
-    with torch.set_grad_enabled(use_frequency_loss):
+    with torch.set_grad_enabled(use_frequency_loss and master_use_grad):
         loss_frequency, frequency = frequency_loss(circuit)
         if loss_normalization:
             loss_frequency /= loss_frequency_init
@@ -141,7 +142,7 @@ def calculate_loss_metrics(circuit: Circuit,
             loss = loss + loss_frequency
 
     # Calculate anharmonicity
-    with torch.set_grad_enabled(use_anharmonicity_loss):
+    with torch.set_grad_enabled(use_anharmonicity_loss and master_use_grad):
         loss_anharmonicity, anharmonicity = anharmonicity_loss(circuit)
         if loss_normalization:
             loss_anharmonicity /= loss_anharmonicity_init
@@ -149,7 +150,7 @@ def calculate_loss_metrics(circuit: Circuit,
             loss = loss + loss_anharmonicity
 
     # Calculate T1
-    with torch.set_grad_enabled(use_T1_loss):
+    with torch.set_grad_enabled(use_T1_loss and master_use_grad):
     # with torch.no_grad():
         loss_T1, T1_time = T1_loss(circuit)
         # loss_T1 = 0
@@ -159,7 +160,7 @@ def calculate_loss_metrics(circuit: Circuit,
             loss = loss + loss_T1
 
     # Calculate flux sensitivity loss
-    with torch.set_grad_enabled(use_flux_sensitivity_loss):
+    with torch.set_grad_enabled(use_flux_sensitivity_loss and master_use_grad):
         loss_flux_sensitivity, flux_sensitivity_value = flux_sensitivity_loss(circuit)
         if loss_normalization:
             loss_flux_sensitivity /= loss_flux_sensitivity_init
@@ -167,7 +168,7 @@ def calculate_loss_metrics(circuit: Circuit,
             loss = loss + loss_flux_sensitivity
 
     # Calculate charge sensitivity loss
-    with torch.set_grad_enabled(use_charge_sensitivity_loss):
+    with torch.set_grad_enabled(use_charge_sensitivity_loss and master_use_grad):
         loss_charge_sensitivity, charge_sensitivity_value = charge_sensitivity_loss(circuit)
         if loss_normalization:
             loss_charge_sensitivity /= loss_charge_sensitivity_init

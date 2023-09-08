@@ -775,7 +775,7 @@ class PSO(Optimiser):
                 print(f'Finished iteration {iter}/{num_iters}.')
 
             if save_loc is not None and save_id is not None:
-                with open(f'{save_loc}/{save_id}_pso.pickle', 'wb') as f:
+                with open(f'{save_loc}/{save_id}_optim.pickle', 'wb') as f:
                     pickle.dump(self.history, f)
                 if hasattr(self.swarm, 'history'):
                     with open(f'{save_loc}/{save_id}_swarm.pickle', 'wb') as f:

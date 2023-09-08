@@ -13,7 +13,7 @@ from settings import RESULTS_DIR
 
 # Optimization settings
 
-num_epochs = 100  # number of training iterations
+num_epochs = 20  # number of training iterations
 num_eigenvalues = 10
 total_trunc_num = 140
 baseline_trunc_num = 100 # ≤ total_trunc_nums; initial guess at necessary size
@@ -22,9 +22,9 @@ baseline_trunc_num = 100 # ≤ total_trunc_nums; initial guess at necessary size
 capacitor_range = (1e-15, 12e-12)  # F
 inductor_range = (2e-8, 5e-6)  # H
 junction_range = (1e9 * 2 * np.pi, 100e9 * 2 * np.pi)  # Hz
-# capacitor_range = [8e-15, 12e-14] # F
-# inductor_range = [2e-7, 5e-6] # H
-# junction_range = [1e9 * 2 * np.pi, 12e9 * 2 * np.pi] # Hz
+# capacitor_range = (8e-15, 12e-14) # F
+# inductor_range = (2e-7, 5e-6) # H
+# junction_range = (1e9 * 2 * np.pi, 12e9 * 2 * np.pi) # Hz
 
 element_verbose = False
 
@@ -64,7 +64,7 @@ def main() -> None:
             total_trunc_num,
             num_epochs,
             RESULTS_DIR,
-            f'{circuit_code}_{seed}'
+            f'SGD_{circuit_code}_{seed}'
         )
         return
 
@@ -100,12 +100,21 @@ def main() -> None:
 
         run_BFGS(circuit,
                  circuit_code,
+                 lambda cr, master_use_grad=True: calculate_loss_metrics(cr,
+                                                                         use_frequency_loss=True, 
+                                                                         use_anharmonicity_loss=True,
+                                                                         use_flux_sensitivity_loss=True, 
+                                                                         use_charge_sensitivity_loss=False,
+                                                                         use_T1_loss=False,
+                                                                         master_use_grad=master_use_grad),
                  run_id,
                  num_eigenvalues,
                  total_trunc_num,
+                 RESULTS_DIR,
                  bounds=bounds,
                  max_iter=num_epochs,
-                 tolerance=0)
+                 tolerance=0,
+                 verbose=True)
 
 
 if __name__ == "__main__":

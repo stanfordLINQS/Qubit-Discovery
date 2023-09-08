@@ -50,7 +50,7 @@ def get_grad(circuit: Circuit) -> torch.Tensor:
     if None in grad_list:
         return grad_list
 
-    return torch.stack(grad_list)
+    return torch.stack(grad_list).detach().clone()
 
 def set_grad_zero(circuit: Circuit) -> None:
     for key in circuit._parameters.keys():
