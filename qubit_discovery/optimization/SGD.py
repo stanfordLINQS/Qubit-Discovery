@@ -30,7 +30,7 @@ learning_rate = 1e-1
 def run_SGD(circuit: Circuit, 
             circuit_code: str, 
             loss_metric_function: LossFunctionType,
-            seed: int, 
+            name: str, 
             num_eigenvalues: int,
             total_trunc_num: int,
             num_epochs: int,
@@ -44,7 +44,7 @@ def run_SGD(circuit: Circuit,
     been diagonalised. Diagonalisation is attempted with max total truncation
     number of `total_trunc_nums`, and with `num_eigenvalues`.
 
-    `seed` and `circuit_code` are just used to add metadata to file saved at
+    `name` and `circuit_code` are just used to add metadata to file saved at
     `save_loc` (but should be accurate).
     """
     
@@ -87,7 +87,7 @@ def run_SGD(circuit: Circuit,
                                                       metric_values)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(loss_record, metric_record, circuit, circuit_code, seed, 
+        save_results(loss_record, metric_record, circuit, circuit_code, name, 
                      save_loc, prefix='SGD', save_circuit=save_circuit)
 
         # Clamp gradients, if desired

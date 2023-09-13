@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib.axes import Axes
 import scipy, scipy.signal
 from SQcircuit import get_optim_mode, Circuit
+import SQcircuit.functions as sqf
 
 def get_reshaped_eigvec(
         circuit: Circuit,
@@ -25,18 +26,21 @@ def get_reshaped_eigvec(
         eigenvector = circuit._evecs[eig_vec_idx]
     eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
 
-    # Extract maximum magnitudes of eigenvector entries along each mode axis
-    mode_2_magnitudes = np.max(np.abs(eigenvector_reshaped) ** 2, axis=1)
-    offset_idx = np.argmax(mode_2_magnitudes)
-    mode_1_magnitudes = np.abs(eigenvector_reshaped[offset_idx, :]) ** 2
-    eigvec_mag = np.abs(eigenvector) ** 2
-
-    return eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes)
-
+    if len(circuit.m) == 1:
+        eigvec_mag = np.abs(eigenvector) ** 2
+        return eigvec_mag, (eigvec_mag, )
+    elif len(circuit.m) == 2:
+        # Extract maximum magnitudes of eigenvector entries along each mode axis
+        mode_2_magnitudes = np.max(np.abs(eigenvector_reshaped) ** 2, axis=1)
+        offset_idx = np.argmax(mode_2_magnitudes)
+        mode_1_magnitudes = np.abs(eigenvector_reshaped[offset_idx, :]) ** 2
+        eigvec_mag = np.abs(eigenvector) ** 2
+        return eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes)
+    else:
+        raise NotImplementedError
 
 def fit_mode(
         mode_vector,
-        trunc_nums,
         num_points=15,
         peak_height_threshold=5e-3,
         axis: Optional[Axes]=None,
@@ -152,9 +156,9 @@ def trunc_num_heuristic(
         assert len(axes) == 2, "Should have one axis for each mode"
         axis_0 = axes[0]
         axis_1 = axes[1]
-    k1, _, _ = fit_mode(mode_1_magnitudes, trunc_nums, axis=axis_0, both_parities=False)[0]
+    k1, _, _ = fit_mode(mode_1_magnitudes, axis=axis_0, both_parities=False)[0]
 
-    fit_results = fit_mode(mode_2_magnitudes, trunc_nums, axis=axis_1, both_parities=True)
+    fit_results = fit_mode(mode_2_magnitudes, axis=axis_1, both_parities=True)
     # k_even, k_odd = fit_results[0][0], fit_results[1][0]
     # k2 = np.minimum(k_even, k_odd)
     k2, _, _ = get_slow_fit(fit_results)
@@ -240,7 +244,15 @@ def test_convergence(
     assert len(circuit._efreqs) != 0, "Circuit should be diagonalized first"
 
     if len(circuit.m) == 1:
-        return circuit.test_convergence([circuit.m[0], ], eig_vec_idx=eig_vec_idx)
+        eigvec_mag, (mode_1_magnitudes, ) = get_reshaped_eigvec(
+            circuit,
+            eig_vec_idx
+        )
+
+        epsilon = np.average(mode_1_magnitudes[-t:])
+        
+        return epsilon < threshold, (epsilon, )
+
     elif len(circuit.m) == 2:
         eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes) = get_reshaped_eigvec(
                 circuit,

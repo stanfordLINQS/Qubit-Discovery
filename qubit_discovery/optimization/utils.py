@@ -35,6 +35,9 @@ def get_element_counts(circuit: Circuit) -> Tuple[int, int, int]:
 ## Utilities for gradient updates
 
 def set_params(circuit: Circuit, params: torch.Tensor) -> None:
+    """
+    Set the parameters of a circuit to new values.
+    """
     for i, element in enumerate(circuit._parameters.keys()):
         element._value = params[i].clone().detach().requires_grad_(True)
 
@@ -134,7 +137,7 @@ def save_results(loss_record: RecordType,
                  metric_record: RecordType, 
                  circuit: Circuit,
                  circuit_code: str,
-                 run_id: int, 
+                 name: str, 
                  save_loc: str,
                  prefix="",
                  save_circuit=True,
@@ -143,12 +146,12 @@ def save_results(loss_record: RecordType,
     if prefix != "":
         prefix += '_'
     for record_type, record in save_records.items():
-        save_url = f'{save_loc}/{prefix}{record_type}_record_{circuit_code}_{run_id}.pickle'
+        save_url = f'{save_loc}/{prefix}{record_type}_record_{circuit_code}_{name}.pickle'
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
     
     if save_circuit:
-        circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{run_id}.pickle'
+        circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{name}.pickle'
         with open(circuit_save_url, 'ab+') as f:
             pickle.dump(circuit.picklecopy(), f)
     
