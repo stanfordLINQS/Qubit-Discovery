@@ -112,11 +112,12 @@ def build_save_prefix(args) -> str:
 def main() -> None:
     # Assign keyword arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--codes', type=str, required=True)
     parser.add_argument("num_runs", type=int)
+    parser.add_argument('-c', '--codes', type=str, required=True)
     parser.add_argument('-b', '--best_n', type=int)
     parser.add_argument('-o', '--optimization_type', type=str)
     parser.add_argument('-s', '--save_circuits', action='store_true') #TODO: implement
+    parser.add_argument('-n', '--name')
     args = parser.parse_args() # ['5', '-c', 'JL', '-o', 'SGD'])
 
     num_runs = int(args.num_runs)
@@ -124,6 +125,11 @@ def main() -> None:
         best_n = args.best_n
     else:
         best_n = num_runs
+
+    if args.name is None:
+        name = ''
+    else:
+        name = args.name + '_'
 
     circuit_codes = [code for code in args.codes.split(',')]
     aggregate_loss_record = []
@@ -135,9 +141,9 @@ def main() -> None:
     for codename in circuit_codes:
         for id in range(num_runs):
             loss_record = load_record(
-                f'{RESULTS_DIR}/{prefix}loss_record_{codename}_{id}.pickle')
+                f'{RESULTS_DIR}/{prefix}loss_record_{codename}_{name}{id}.pickle')
             metrics_record = load_record(
-                f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{id}.pickle')
+                f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{name}{id}.pickle')
             if loss_record is not None and metrics_record is not None:
                 aggregate_loss_record.append((id, loss_record))
                 aggregate_metrics_record.append((id, metrics_record))

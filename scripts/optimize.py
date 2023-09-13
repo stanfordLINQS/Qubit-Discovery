@@ -108,8 +108,6 @@ def main() -> None:
         circuit_code = arguments['<code>']
         optim_type = arguments['<optimization-type>']
     save_circuit = not arguments['--no-save-circuit']
-
-    print(losses)
         
     N = len(circuit_code)
     set_seed(seed)
