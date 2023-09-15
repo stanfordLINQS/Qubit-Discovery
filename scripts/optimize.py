@@ -2,7 +2,7 @@
 Optimize.
 
 Usage:
-  optimize <code> <id> <optimization-type> [--no-save-circuit]
+  optimize <code> <id> <optimization-type> [--no-save-circuit] [--name=<name>]
   optimize yaml <yaml_file> [--code=<code> --id=<id> --optimization-type=<optim_type> --no-save-circuit]
   optimize -h | --help
   optimize --version
@@ -14,7 +14,8 @@ Options:
   -c, --code=<code>                         Circuit code
   -i, --id=<id>                             Seed for random generators
   -o, --optimization-type=<optim_type>      Optimization method
-  -n, --no-save-circuit                     Don't save intermediate circuits
+  -s, --no-save-circuit                     Don't save intermediate circuits
+  -n, --name=<name>                         Name to label the run with
 """
 import random
 import sys
@@ -107,6 +108,8 @@ def main() -> None:
         seed = int(arguments['<id>'])
         circuit_code = arguments['<code>']
         optim_type = arguments['<optimization-type>']
+        if arguments['--name'] is not None:
+            name = arguments['--name'] + '_'
     save_circuit = not arguments['--no-save-circuit']
         
     N = len(circuit_code)

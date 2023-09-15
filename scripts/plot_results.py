@@ -1,8 +1,6 @@
-# Optionally plot circuit spectrum if desired
-# spectrum_optimal_circuit(loss_record, codename="Fluxonium")
 import argparse
-from collections import OrderedDict
-from typing import Any, List
+import os
+from typing import Any, Dict, List
 
 from matplotlib import pyplot as plt
 import dill as pickle
@@ -19,38 +17,39 @@ def load_record(url: str) -> Any:
         return record
     except FileNotFoundError:
         return None
-
-def get_optimal_n_runs(loss_record, n: int, code=None):
-    if code is not None:
-        loss_record = [(i, run) for i, run in loss_record if 
-                       run['circuit_code'] == code]
-    sort_key = 'total_loss' if 'total_loss' in loss_record[0][1] else 'all_loss'
-    sorted_runs = sorted(loss_record, key=lambda x: x[1][sort_key][-1])
-    print(f'Top {n} runs in order are {[i for i, run in sorted_runs[:n]]} for code {code}')
-    return [run for i, run in sorted_runs[:n]]
+    
+def compute_best_ids(aggregate_loss_records, n: int, codes=List[str]
+                     ) -> Dict[str, List[int]]:
+    out = {}
+    for code in codes:
+        code_loss_record = [(id_num, run) for id_num, run in aggregate_loss_records 
+                            if run['circuit_code'] == code]
+        sorted_runs = sorted(code_loss_record, key=lambda x: x[1]['total_loss'][-1])
+        out[code] = [id_num for id_num, run in sorted_runs]
+        print(f'Top {n} runs in order are {out[code]} for code {code}.')
+    return out
 
 
 def plot_results(loss_record, 
-                 circuit_codes: List[str], 
-                 best_n: int,
-                 type='metrics', 
-                 title='',
-                 save_prefix='') -> None:
-    plot_scheme = {'Transmon': 'b', 'Fluxonium': 'darkorange',
+                 best_ids: Dict[str, List[int]],
+                 plot_type: str, 
+                 title: str = '',
+                 save_prefix: str = '') -> None:
+    PLOT_SCHEME = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
-
+    METRIC_TITLES = ['All Loss', 'Frequency', 'Flux Sensitivity',
+                     'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
+    METRIC_KEYS = ['all_loss', 'omega', 'flux_sensitivity',
+                   'charge_sensitivity', 'A', 'T1']
+    LOSS_TITLES = ['Frequency Loss', 'Anharmonicity Loss', 'T1 Loss',
+                     'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
+    LOSS_KEYS = ['frequency_loss', 'anharmonicity_loss', 'T1_loss',
+                   'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
+    
     fig, axs = plt.subplots(2, 3, figsize=(22, 11))
     fig.suptitle(title, fontsize = 32)
-    metric_titles = ['All Loss', 'Frequency', 'Flux Sensitivity',
-                     'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
-    metric_keys = ['all_loss', 'omega', 'flux_sensitivity',
-                   'charge_sensitivity', 'A', 'T1']
-    loss_titles = ['Frequency Loss', 'Anharmonicity Loss', 'T1 Loss',
-                     'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
-    loss_keys = ['frequency_loss', 'anharmonicity_loss', 'T1_loss',
-                   'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
-    plot_titles = metric_titles if type == 'metrics' else loss_titles
-    record_keys = metric_keys if type == 'metrics' else loss_keys
+    plot_titles = METRIC_TITLES if plot_type == 'metrics' else LOSS_TITLES
+    record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
 
     def plot_circuit_metrics(run, 
                              code: str, 
@@ -71,7 +70,7 @@ def plot_results(loss_record,
 
         for plot_idx in range(6):
             axs[plot_idx % 2, plot_idx // 2].plot(run[record_keys[plot_idx]],
-                           plot_scheme[codename], label=label, alpha=alpha,
+                           PLOT_SCHEME[codename], label=label, alpha=alpha,
                            linestyle=linestyle)
         axs[0, 0].legend(loc='upper right')
         axs[1, 0].legend(loc='lower right')
@@ -80,21 +79,18 @@ def plot_results(loss_record,
         axs[0, 2].legend(loc='upper right')
         axs[1, 2].legend(loc='lower left')
 
-    if type == 'metrics':
+    if plot_type == 'metrics':
         axs[1, 0].axhline(y=OMEGA_TARGET, color='m', linestyle=':')
         axs[0, 2].axhline(y=22, color='m', linestyle=':')
 
-    optimal_runs = [(get_optimal_n_runs(loss_record, n=best_n, code=code), code)
-                    for code in circuit_codes]
-
-    for runs_list, code in optimal_runs:
+    for code, runs_list in best_ids:
         # Plot best run for that specific cocde
         plot_circuit_metrics(runs_list[0], code, True, True)
         # Plot the remaining ones
         for run in runs_list[1:]:
             plot_circuit_metrics(run, code, False, False)
 
-    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{type}_record.png', dpi=300)
+    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{plot_type}_record.png', dpi=300)
 
 def build_save_prefix(args) -> str:
     save_prefix = ""
@@ -106,6 +102,8 @@ def build_save_prefix(args) -> str:
         save_prefix += f"_b_{args.best_n}"
     if args.optimization_type is not None:
         save_prefix += f"_{args.optimization_type}"
+    if args.name is not None:
+        save_prefix += f"_{args.name}"
 
     return save_prefix
 
@@ -114,11 +112,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("num_runs", type=int)
     parser.add_argument('-c', '--codes', type=str, required=True)
+    parser.add_argument('-o', '--optimization_type', type=str, required=True)
     parser.add_argument('-b', '--best_n', type=int)
-    parser.add_argument('-o', '--optimization_type', type=str)
     parser.add_argument('-s', '--save_circuits', action='store_true') #TODO: implement
     parser.add_argument('-n', '--name')
-    args = parser.parse_args() # ['5', '-c', 'JL', '-o', 'SGD'])
+    args = parser.parse_args()
 
     num_runs = int(args.num_runs)
     if args.best_n is not None:
@@ -126,33 +124,35 @@ def main() -> None:
     else:
         best_n = num_runs
 
-    if args.name is None:
-        name = ''
-    else:
-        name = args.name + '_'
-
-    circuit_codes = [code for code in args.codes.split(',')]
+    name = args.name
+    circuit_codes = args.codes.split(',')
     aggregate_loss_record = []
     aggregate_metrics_record = []
-    prefix = args.optimization_type
-    if prefix != "":
-        prefix += '_'
+    optim_type = args.optimization_type
 
     for codename in circuit_codes:
-        for id in range(num_runs):
-            loss_record = load_record(
-                f'{RESULTS_DIR}/{prefix}loss_record_{codename}_{name}{id}.pickle')
-            metrics_record = load_record(
-                f'{RESULTS_DIR}/{prefix}metrics_record_{codename}_{name}{id}.pickle')
+        for id_num in range(num_runs):
+            identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
+
+            loss_record = load_record(os.path.join(
+                RESULTS_DIR, f'{optim_type}_loss_record_{codename}_{identifier}.pickle'))
+            metrics_record = load_record(os.path.join(
+                RESULTS_DIR, f'{optim_type}_metrics_record_{codename}_{identifier}.pickle'))
+            
             if loss_record is not None and metrics_record is not None:
-                aggregate_loss_record.append((id, loss_record))
-                aggregate_metrics_record.append((id, metrics_record))
+                aggregate_loss_record.append((id_num, loss_record))
+                aggregate_metrics_record.append((id_num, metrics_record))
 
     save_prefix = build_save_prefix(args)
     title = f"Optimization with {args.optimization_type}"
-    plot_results(aggregate_loss_record, circuit_codes, best_n, type='loss', title=title,
+    if name is not None:
+        title += f': {name}.'
+
+
+    best_ids = compute_best_ids(aggregate_loss_record, best_n)
+    plot_results(aggregate_loss_record, best_ids, plot_type='loss', title=title,
                  save_prefix=save_prefix)
-    plot_results(aggregate_metrics_record, circuit_codes, best_n, type='metrics', title=title,
+    plot_results(aggregate_metrics_record, best_ids, plot_type='metrics', title=title,
                  save_prefix=save_prefix)
 
 
