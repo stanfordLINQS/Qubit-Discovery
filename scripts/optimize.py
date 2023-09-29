@@ -47,7 +47,8 @@ losses = {
 
 # Target parameter range
 capacitor_range = (1e-15, 12e-12)  # F
-inductor_range = (2e-8, 5e-6)  # H
+inductor_range = (1e-12, 5e-6) #H
+# inductor_range = (2e-8, 5e-6)  # H
 junction_range = (1e9 * 2 * np.pi, 100e9 * 2 * np.pi)  # Hz
 # capacitor_range = (8e-15, 12e-14) # F
 # inductor_range = (2e-7, 5e-6) # H
