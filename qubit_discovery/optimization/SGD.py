@@ -87,8 +87,12 @@ def run_SGD(circuit: Circuit,
                                                       metric_values)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                     save_loc, prefix='SGD', save_circuit=save_circuit)
+        if iteration == num_epochs - 1:
+            save_results(loss_record, metric_record, circuit, circuit_code, name, 
+                        save_loc, prefix='SGD', save_circuit=True)
+        else:
+            save_results(loss_record, metric_record, circuit, circuit_code, name, 
+                        save_loc, prefix='SGD', save_circuit=save_circuit)
 
         # Clamp gradients, if desired
         with torch.no_grad():

@@ -100,6 +100,35 @@ def flux_sensitivity(
 
     return S
 
+def flux_sensitivity_constantnorm(
+        circuit: Circuit,
+        OMEGA_TARGET,
+        flux_point=0.5,
+        delta=0.01
+) -> SQValType:
+    """Return the flux sensitivity of the circuit around half flux quantum."""
+    f_0 = circuit.efreqs[1] - circuit.efreqs[0]
+
+    # Copy circuit to create new container for perturbed eigenstates
+    perturb_circ = copy(circuit)
+    loop = perturb_circ.loops[0]
+    org_flux = loop.value() / (2 * np.pi) # should be `flux_point`
+
+    # Change the flux and get the eigenfrequencies
+    loop.set_flux(flux_point + delta)
+    perturb_circ.diag(len(circuit.efreqs))
+    f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
+
+    # Return loop back to original flux
+    loop.set_flux(org_flux)
+
+    if get_optim_mode():
+        S = torch.abs((f_delta - f_0) / OMEGA_TARGET)
+    else:
+        S = np.abs((f_delta - f_0) / OMEGA_TARGET)
+
+    return S
+
 def reset_charge_modes(circuit: Circuit) -> None:
     """Sets gate charge of all charge degrees of freedom to zero."""
     default_n_g = 0.0

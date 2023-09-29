@@ -22,7 +22,7 @@ import sys
 
 from qubit_discovery.optimization.utils import create_sampler
 from qubit_discovery.optimization import run_SGD, run_BFGS, run_PSO
-from qubit_discovery.losses import calculate_loss_metrics
+from qubit_discovery.losses import loss_functions
 
 from docopt import docopt
 import numpy as np
@@ -68,6 +68,7 @@ def main() -> None:
     
     seed, circuit_code, optim_type = None, None, None
     name = ''
+    loss_name = 'default'
     if arguments['yaml']:
         with open(arguments['<yaml_file>'], 'r') as f:
             data = yaml.safe_load(f.read())
@@ -79,6 +80,11 @@ def main() -> None:
             name = data['name'] + '_'
         except KeyError:
             sys.exit('Yaml file must include keys {K, K0, num_epoch, losses}')
+
+        try:
+            loss_name = data['loss']
+        except KeyError:
+            pass
 
         if arguments['--id'] is not None:
             seed = int(arguments['--id'])
@@ -96,6 +102,7 @@ def main() -> None:
             except KeyError:
                 sys.exit('An circuit code must be either passed in the command'
                           + ' line or yaml file')
+
         if arguments['--optimization-type'] is not None:
             optim_type = arguments['--optimization-type'] 
         else:
@@ -117,13 +124,15 @@ def main() -> None:
     name += str(seed)
     sq.set_optim_mode(True)
 
+    loss_metric_function = loss_functions[loss_name]
+
     if optim_type == 'PSO':
         run_PSO(
             circuit_code,
             capacitor_range,
             inductor_range,
             junction_range,
-            calculate_loss_metrics,
+            loss_metric_function,
             name,
             num_eigenvalues,
             total_trunc_num,
@@ -143,12 +152,12 @@ def main() -> None:
     if optim_type == "SGD":
         run_SGD(circuit,
                 circuit_code,
-                lambda cr: calculate_loss_metrics(cr,
-                                                  use_frequency_loss=losses['frequency_loss'], 
-                                                  use_anharmonicity_loss=losses['anharmonicity_loss'],
-                                                  use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
-                                                  use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
-                                                  use_T1_loss=losses['T1_loss']),
+                lambda cr: loss_metric_function(cr,
+                                                use_frequency_loss=losses['frequency_loss'], 
+                                                use_anharmonicity_loss=losses['anharmonicity_loss'],
+                                                use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
+                                                use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
+                                                use_T1_loss=losses['T1_loss']),
                 name,
                 num_eigenvalues,
                 total_trunc_num,
@@ -165,13 +174,13 @@ def main() -> None:
 
         run_BFGS(circuit,
                  circuit_code,
-                 lambda cr, master_use_grad=True: calculate_loss_metrics(cr,
-                                                                         use_frequency_loss=losses['frequency_loss'], 
-                                                                         use_anharmonicity_loss=losses['anharmonicity_loss'],
-                                                                         use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
-                                                                         use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
-                                                                         use_T1_loss=losses['T1_loss'],
-                                                                         master_use_grad=master_use_grad),
+                 lambda cr, master_use_grad=True: loss_metric_function(cr,
+                                                                        use_frequency_loss=losses['frequency_loss'], 
+                                                                        use_anharmonicity_loss=losses['anharmonicity_loss'],
+                                                                        use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
+                                                                        use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
+                                                                        use_T1_loss=losses['T1_loss'],
+                                                                        master_use_grad=master_use_grad),
                  name,
                  num_eigenvalues,
                  total_trunc_num,
