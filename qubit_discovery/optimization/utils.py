@@ -140,7 +140,7 @@ def save_results(loss_record: RecordType,
                  name: str, 
                  save_loc: str,
                  prefix="",
-                 save_circuit=True,
+                 save_intermediate_circuits=True,
                  ) -> None:
     save_records = {"loss": loss_record, "metrics": metric_record}
     if prefix != "":
@@ -150,8 +150,11 @@ def save_results(loss_record: RecordType,
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
     
-    if save_circuit:
-        circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{name}.pickle'
-        with open(circuit_save_url, 'ab+') as f:
-            pickle.dump(circuit.picklecopy(), f)
+    if save_intermediate_circuits:
+        write_mode = 'ab+'
+    else:
+        write_mode = 'wb'
+    circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{name}.pickle'
+    with open(circuit_save_url, write_mode) as f:
+        pickle.dump(circuit.picklecopy(), f)
     

@@ -2,8 +2,8 @@
 Optimize.
 
 Usage:
-  optimize <code> <id> <optimization-type> [--no-save-circuit] [--name=<name>]
-  optimize yaml <yaml_file> [--code=<code> --id=<id> --optimization-type=<optim_type> --no-save-circuit]
+  optimize <code> <id> <optimization-type> [--save-only-final] [--name=<name>]
+  optimize yaml <yaml_file> [--code=<code> --id=<id> --optimization-type=<optim_type> --save-only-final]
   optimize -h | --help
   optimize --version
 
@@ -14,8 +14,8 @@ Options:
   -c, --code=<code>                         Circuit code
   -i, --id=<id>                             Seed for random generators
   -o, --optimization-type=<optim_type>      Optimization method
-  -s, --no-save-circuit                     Don't save intermediate circuits
   -n, --name=<name>                         Name to label the run with
+  --save-only-final                         Don't save intermediate circuits
 """
 import random
 import sys
@@ -33,28 +33,15 @@ import yaml
 from settings import RESULTS_DIR
 
 # Default optimization settings
-num_eigenvalues = 10
-num_epochs = 100  # number of training iterations
-total_trunc_num = 140
-baseline_trunc_num = 100 # ≤ total_trunc_nums; initial guess at necessary size
-losses = {
-    'frequency_loss': True,
-    'anharmonicity_loss': False,
-    'flux_sensitivity_loss': False,
-    'charge_sensitivity_loss': False,
-    'T1_loss': False
-}
-
-# Target parameter range
-capacitor_range = (1e-15, 12e-12)  # F
-inductor_range = (1e-12, 5e-6) #H
-# inductor_range = (2e-8, 5e-6)  # H
-junction_range = (1e9 * 2 * np.pi, 100e9 * 2 * np.pi)  # Hz
-# capacitor_range = (8e-15, 12e-14) # F
-# inductor_range = (2e-7, 5e-6) # H
-# junction_range = (1e9 * 2 * np.pi, 12e9 * 2 * np.pi) # Hz
-
 element_verbose = False
+
+def eval_list(ls: list) -> list:
+    """
+    Evaluates elements of a list and returns as a list.
+    Warning: this can execute arbitary code! Don't accept uninspected YAML
+    files from strangers.
+    """
+    return [eval(i) for i in ls]
 
 
 def set_seed(seed: int) -> None:
@@ -65,129 +52,145 @@ def set_seed(seed: int) -> None:
 def main() -> None:
     global num_eigenvalues, num_epochs, total_trunc_num, baseline_trunc_num, losses
 
-    arguments = docopt(__doc__, version='Optimize 0.7')
+    arguments = docopt(__doc__, version='Optimize 0.8')
+
+    # Load default parameters
+    with open('defaults.yaml', 'r') as f:
+        parameters = yaml.safe_load(f.read())
     
-    seed, circuit_code, optim_type = None, None, None
-    name = ''
-    loss_name = 'default'
+    # Parse based on whether we use the `yaml` subcommand (and pass in a `yaml`
+    # file) or the old option-only based interface.
     if arguments['yaml']:
         with open(arguments['<yaml_file>'], 'r') as f:
             data = yaml.safe_load(f.read())
+
+        # Set parameters required to be put in YAML file
         try:
-            total_trunc_num = data['K']
-            baseline_trunc_num = data['K0']
-            num_epochs = data['epochs']
-            losses = {k: v for d in data['losses'] for k, v in d.items()}
-            name = data['name'] + '_'
+            parameters['K'] = data['K']
+            parameters['K0']  = data['K0']
+            parameters['epochs']  = data['epochs']
+            parameters['losses']  = data['losses']
+            parameters['name']  = data['name'] + '_'
         except KeyError:
             sys.exit('Yaml file must include keys {K, K0, num_epoch, losses}')
 
-        try:
-            loss_name = data['loss']
-        except KeyError:
-            pass
-
+        # Set parameters which may be either passed in the YAML file
+        # or on the command line; the command line overrides the YAML file
         if arguments['--id'] is not None:
-            seed = int(arguments['--id'])
+            parameters['seed'] = int(arguments['--id'])
         else:
             try:
-                seed = data['id']
+                parameters['seed'] = data['id']
             except KeyError:
                 sys.exit('An id must be either passed in the command line or'
                          + ' yaml file')
         if arguments['--code'] is not None:
-            circuit_code = arguments['--code']
+            parameters['circuit_code'] = arguments['--code']
         else:
             try:
-                circuit_code = data['code']
+                parameters['circuit_code'] = data['circuit_code']
             except KeyError:
                 sys.exit('An circuit code must be either passed in the command'
                           + ' line or yaml file')
-
         if arguments['--optimization-type'] is not None:
-            optim_type = arguments['--optimization-type'] 
+            parameters['optim_type'] = arguments['--optimization-type'] 
         else:
             try:
-                optim_type = data['optimization_type']
+                parameters['optim_type'] = data['optim_type']
             except KeyError:
                 sys.exit('An optimization type must be either passed in the'
                          + ' command line or yaml file')
+                
+        # Load optional parameters which are otherwise set by default
+        for key in ['loss_function', 'capacitor_range', 'inductor_range',
+                    'junction_range']:
+            try:
+                parameters[key] = data[key]
+            except KeyError:
+                pass
     else:
-        seed = int(arguments['<id>'])
-        circuit_code = arguments['<code>']
-        optim_type = arguments['<optimization-type>']
+        parameters['seed'] = int(arguments['<id>'])
+        parameters['circuit_code'] = arguments['<code>']
+        parameters['optim_type'] = arguments['<optimization-type>']
         if arguments['--name'] is not None:
-            name = arguments['--name'] + '_'
-    save_circuit = not arguments['--no-save-circuit']
-        
-    N = len(circuit_code)
-    set_seed(seed)
-    name += str(seed)
+            parameters['name'] = arguments['--name'] + '_'
+
+    # Compute any derived parameters and set up environment
+    save_intermediate_circuits = not arguments['--save-only-final']
+    loss_metric_function = loss_functions[parameters['loss_function']]
+
+    capacitor_range = eval_list(parameters['capacitor_range'])
+    junction_range = eval_list(parameters['junction_range'])
+    inductor_range = eval_list(parameters['inductor_range'])
+
+    parameters['N'] = len(parameters['circuit_code'])
+    set_seed(parameters['seed'])
+    parameters['name'] = parameters['name'] + str(parameters['seed'])
+
     sq.set_optim_mode(True)
 
-    loss_metric_function = loss_functions[loss_name]
-
-    if optim_type == 'PSO':
+    # Run the correct optimization 
+    if parameters['optim_type'] == 'PSO':
         run_PSO(
-            circuit_code,
+            parameters['circuit_code'],
             capacitor_range,
             inductor_range,
             junction_range,
             loss_metric_function,
-            name,
-            num_eigenvalues,
-            total_trunc_num,
-            num_epochs,
+            parameters['name'],
+            parameters['num_eigenvalues'],
+            parameters['total_trunc_num'],
+            parameters['num_epochs'],
             RESULTS_DIR,
-            f'SGD_{circuit_code}_{seed}'
+            f'SGD_{parameters["circuit_code"]}_{parameters["seed"]}'
         )
         return
 
-    sampler = create_sampler(N, capacitor_range, inductor_range, junction_range)
-    circuit = sampler.sample_circuit_code(circuit_code)
+    sampler = create_sampler(parameters['N'], capacitor_range, inductor_range, junction_range)
+    circuit = sampler.sample_circuit_code(parameters['circuit_code'])
     print("Circuit sampled!")
 
     # Begin by allocating truncation numbers equally amongst all modes
-    circuit.truncate_circuit(baseline_trunc_num)
+    circuit.truncate_circuit(parameters['K0'])
 
-    if optim_type == "SGD":
+    if parameters['optim_type'] == "SGD":
         run_SGD(circuit,
-                circuit_code,
+                parameters['circuit_code'],
                 lambda cr: loss_metric_function(cr,
-                                                use_frequency_loss=losses['frequency_loss'], 
-                                                use_anharmonicity_loss=losses['anharmonicity_loss'],
-                                                use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
-                                                use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
-                                                use_T1_loss=losses['T1_loss']),
-                name,
-                num_eigenvalues,
-                total_trunc_num,
-                num_epochs,
+                                                use_frequency_loss=parameters['losses']['frequency_loss'], 
+                                                use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
+                                                use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
+                                                use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
+                                                use_T1_loss=parameters['losses']['T1_loss']),
+                parameters['name'],
+                parameters['num_eigenvalues'],
+                parameters['K'],
+                parameters['epochs'],
                 RESULTS_DIR,
-                save_circuit=save_circuit
+                save_intermediate_circuits=save_intermediate_circuits
                 )
-    elif optim_type == "BFGS":
+    elif parameters['optim_type'] == "BFGS":
         bounds = {
-            sq.Junction: torch.tensor([junction_range[0], junction_range[1]]),
-            sq.Inductor: torch.tensor([inductor_range[0], inductor_range[1]]),
-            sq.Capacitor: torch.tensor([capacitor_range[0], capacitor_range[1]])
+            sq.Junction: torch.tensor(junction_range),
+            sq.Inductor: torch.tensor(inductor_range),
+            sq.Capacitor: torch.tensor(capacitor_range)
         }
 
-        run_BFGS(circuit,
-                 circuit_code,
+        run_BFGS(parameters['circuit'],
+                 parameters['circuit_code'],
                  lambda cr, master_use_grad=True: loss_metric_function(cr,
-                                                                        use_frequency_loss=losses['frequency_loss'], 
-                                                                        use_anharmonicity_loss=losses['anharmonicity_loss'],
-                                                                        use_flux_sensitivity_loss=losses['flux_sensitivity_loss'], 
-                                                                        use_charge_sensitivity_loss=losses['charge_sensitivity_loss'],
-                                                                        use_T1_loss=losses['T1_loss'],
+                                                                        use_frequency_loss=parameters['losses']['frequency_loss'], 
+                                                                        use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
+                                                                        use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
+                                                                        use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
+                                                                        use_T1_loss=parameters['losses']['T1_loss'],
                                                                         master_use_grad=master_use_grad),
-                 name,
-                 num_eigenvalues,
-                 total_trunc_num,
+                 parameters['name'],
+                 parameters['num_eigenvalues'],
+                 parameters['K'],
                  RESULTS_DIR,
                  bounds=bounds,
-                 max_iter=num_epochs,
+                 max_iter=parameters['epochs'],
                  tolerance=0,
                  verbose=True)
 

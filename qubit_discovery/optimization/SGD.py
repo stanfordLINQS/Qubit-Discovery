@@ -35,7 +35,7 @@ def run_SGD(circuit: Circuit,
             total_trunc_num: int,
             num_epochs: int,
             save_loc: str,
-            save_circuit=True) -> None:
+            save_intermediate_circuits=True) -> None:
     """"
     Runs SGD for `num_epochs` beginning with `circuit` using
     `loss_metric_function`.
@@ -87,12 +87,8 @@ def run_SGD(circuit: Circuit,
                                                       metric_values)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        if iteration == num_epochs - 1:
-            save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                        save_loc, prefix='SGD', save_circuit=True)
-        else:
-            save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                        save_loc, prefix='SGD', save_circuit=save_circuit)
+        save_results(loss_record, metric_record, circuit, circuit_code, name, 
+                    save_loc, prefix='SGD', save_intermediate_circuits=save_intermediate_circuits)
 
         # Clamp gradients, if desired
         with torch.no_grad():
