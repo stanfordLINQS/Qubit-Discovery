@@ -17,6 +17,7 @@ Options:
   -n, --name=<name>                         Name to label the run with
   --save-only-final                         Don't save intermediate circuits
 """
+import os
 import random
 import sys
 
@@ -33,6 +34,7 @@ import yaml
 from settings import RESULTS_DIR
 
 # Default optimization settings
+DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), 'defaults.yaml')
 element_verbose = False
 
 def eval_list(ls: list) -> list:
@@ -50,12 +52,11 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 def main() -> None:
-    global num_eigenvalues, num_epochs, total_trunc_num, baseline_trunc_num, losses
 
     arguments = docopt(__doc__, version='Optimize 0.8')
 
     # Load default parameters
-    with open('defaults.yaml', 'r') as f:
+    with open(DEFAULTS_FILE, 'r') as f:
         parameters = yaml.safe_load(f.read())
     
     # Parse based on whether we use the `yaml` subcommand (and pass in a `yaml`
