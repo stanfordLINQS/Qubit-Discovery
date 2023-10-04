@@ -66,12 +66,13 @@ def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Gamma_2 = circuit.dec_rate('inductive', (0, 1))
     Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
     Gamma = Gamma_1 + Gamma_2 + Gamma_3
+    T1 = 1 / Gamma
 
     loss = Gamma ** 2
     if not get_optim_mode():
         loss = loss.item()
 
-    return loss, 1 / loss
+    return loss, T1
 
 
 def flux_sensitivity_loss(
