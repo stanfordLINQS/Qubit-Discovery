@@ -138,12 +138,12 @@ def main() -> None:
             inductor_range,
             junction_range,
             loss_metric_function,
-            parameters['name'],
+            parameters['seed'],
             parameters['num_eigenvalues'],
-            parameters['total_trunc_num'],
-            parameters['num_epochs'],
+            parameters['K'],
+            parameters['epochs'],
             RESULTS_DIR,
-            f'SGD_{parameters["circuit_code"]}_{parameters["seed"]}'
+            f'PSO_{parameters["circuit_code"]}_{parameters["seed"]}'
         )
         return
 

@@ -1,8 +1,17 @@
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
+import dill as pickle
 from SQcircuit import Capacitor, Circuit, Inductor, Junction
 
 from qubit_discovery.optimization.utils import flatten
+
+def load_record(url: str) -> Any:
+    try:
+        with open(url, 'rb') as f:
+            record = pickle.load(f)
+        return record
+    except FileNotFoundError:
+        return None
 
 # TODO: Generalize codename to account for element ordering
 # (ex. for N=4, JJJL and JJLJ should be distinct)

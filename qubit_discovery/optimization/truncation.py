@@ -23,7 +23,7 @@ def get_reshaped_eigvec(
     if get_optim_mode():
         eigenvector = np.array(circuit._evecs[eig_vec_idx].detach().numpy())
     else:
-        eigenvector = circuit._evecs[eig_vec_idx]
+        eigenvector = circuit._evecs[eig_vec_idx].full()
     eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
 
     if len(circuit.m) == 1:

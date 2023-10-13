@@ -191,7 +191,7 @@ class CircuitSwarm(Swarm):
     @staticmethod
     def voroni_sampling(k: int, n: int) -> np.ndarray:
         """
-        Sample `k` points in the `n`-dimenisional unit hypercube with an 
+        Sample `k` points in the `n`-dimensional unit hypercube with an 
         approximation of a central Voroni tessellation. 
         """
         alpha_1 = 0.5 #np.random.uniform(0, 1) #0
@@ -497,6 +497,7 @@ class PSO(Optimiser):
         if seed is None:
             self.rng = np.random.default_rng()
         else:
+            print(seed, type(seed))
             self.rng = np.random.default_rng(seed)   
 
         self.X = self.swarm.position                      

@@ -1,23 +1,15 @@
 import argparse
 from collections import defaultdict
 import os
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from matplotlib import pyplot as plt
 import dill as pickle
 from SQcircuit import Circuit
 
-from plot_utils import code_to_codename
+from plot_utils import code_to_codename, load_record
 from qubit_discovery.losses.loss import OMEGA_TARGET
 from settings import RESULTS_DIR
-
-def load_record(url: str) -> Any:
-    try:
-        with open(url, 'rb') as f:
-            record = pickle.load(f)
-        return record
-    except FileNotFoundError:
-        return None
     
 def compute_best_ids(aggregate_loss_records, n: int, codes: List[str]
                      ) -> Dict[str, List[int]]:
@@ -28,7 +20,6 @@ def compute_best_ids(aggregate_loss_records, n: int, codes: List[str]
         out[codename] = [id_num for id_num, run in sorted_runs]
         print(f'Top {n} runs in order are {out[codename]} for code {codename}.')
     return out
-
 
 def plot_results(record, 
                  best_ids: Dict[str, List[int]],
