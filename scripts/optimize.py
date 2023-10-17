@@ -155,6 +155,11 @@ def main() -> None:
     circuit.truncate_circuit(parameters['K0'])
 
     if parameters['optim_type'] == "SGD":
+        bounds = {
+            sq.Capacitor: capacitor_range[1] - capacitor_range[0],
+            sq.Inductor: inductor_range[1] - inductor_range[0],
+            sq.Junction: junction_range[1] - junction_range[0]
+        }
         run_SGD(circuit,
                 parameters['circuit_code'],
                 lambda cr: loss_metric_function(cr,
@@ -167,6 +172,7 @@ def main() -> None:
                 parameters['num_eigenvalues'],
                 parameters['K'],
                 parameters['epochs'],
+                bounds,
                 RESULTS_DIR,
                 save_intermediate_circuits=save_intermediate_circuits
                 )

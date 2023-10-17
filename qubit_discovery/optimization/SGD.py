@@ -1,9 +1,9 @@
 from copy import copy
-from typing import Optional
+from typing import List, Optional
 
 import torch
 
-from SQcircuit import Circuit
+from SQcircuit import Capacitor, Circuit, Element, Inductor, Junction
 
 from .utils import (
     clamp_gradient,
@@ -34,6 +34,7 @@ def run_SGD(circuit: Circuit,
             num_eigenvalues: int,
             total_trunc_num: int,
             num_epochs: int,
+            bounds: List[Element],
             save_loc: str,
             save_intermediate_circuits=True) -> None:
     """"
@@ -94,13 +95,20 @@ def run_SGD(circuit: Circuit,
         with torch.no_grad():
             # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
-                element._value.grad *= element._value
+                norm_factor = 1
+                # norm_factor = element._value
+                for T in bounds.keys():
+                    if type(element) is T:
+                        norm_factor = bounds[T]
+                        break
+
+                element._value.grad *= norm_factor
                 if gradient_clipping:
                     # torch.nn.utils.clip_grad_norm_(element._value,
                     #                                max_norm=gradient_clipping_threshold,
                     #                                norm_type=gc_norm_type)
                     clamp_gradient(element, gradient_clipping_threshold)
-                element._value.grad *= element._value
+                element._value.grad *= norm_factor
                 if learning_rate_scheduler:
                     element._value.grad *= (scheduler_decay_rate ** iteration)
 
