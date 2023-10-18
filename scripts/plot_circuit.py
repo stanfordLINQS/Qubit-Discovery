@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument('-n', '--name')
     parser.add_argument('-i', '--ids')
     parser.add_argument('-l', '--low_res', action='store_true')
-    parser.add_argument('-r', '--restrict_k')
+    parser.add_argument('-r', '--restrict_k', action='store_true')
     args = parser.parse_args()
 
     name = args.name
