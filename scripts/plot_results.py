@@ -17,7 +17,7 @@ def compute_best_ids(aggregate_loss_records, n: int, codes: List[str]
     for codename in codes:
         code_loss_record = aggregate_loss_records[codename].items()
         sorted_runs = sorted(code_loss_record, key=lambda x: x[1]['total_loss'][-1])
-        out[codename] = [id_num for id_num, run in sorted_runs]
+        out[codename] = [id_num for id_num, run in sorted_runs][:n]
         print(f'Top {n} runs in order are {out[codename]} for code {codename}.')
     return out
 
