@@ -67,7 +67,7 @@ def main() -> None:
             metric_record = pickle.load(f)
 
         cr = sq.Circuit(old_cr.elements)
-        cr.set_trunc_nums(old_cr.m)
+        cr.set_trunc_nums(old_cr.trunc_nums)
 
         out_txt += identifier + '\n'
         elem_values = {}
@@ -92,7 +92,7 @@ def main() -> None:
 
         n_eig = 10
 
-        fig, ax = plt.subplots(1, 1, figsize=(9, 6))
+        fig, axs = plt.subplots(3, 1, figsize=(9, 12), height_ratios=[2, 1, 1])
 
         loss_text = ''
         for (key, title) in zip(LOSS_KEYS, LOSS_TITLES):
@@ -103,16 +103,40 @@ def main() -> None:
             metric_text += f'{title}: {metric_record[key][-1]:.3e}\n'
 
         for i in range(n_eig):
-            ax.plot(phi_ext, (spec[i, :] - spec[0, :]), marker='o', markersize=3.5)
+            axs[0].plot(phi_ext, (spec[i, :] - spec[0, :]), marker='o', markersize=1.5)
 
-        ax.set_xlabel(r"$\Phi_{ext}/\Phi_0$")
-        ax.set_ylabel(r" $\omega_n / 2\pi$  (GHz)")
+        axs[0].set_xlabel(r"$\Phi_{ext}/\Phi_0$")
+        axs[0].set_ylabel(r" $\omega_n / 2\pi$  (GHz)")
 
         props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)  # bbox features
-        ax.text(1.03, 0.98, loss_text.strip(), transform=ax.transAxes, fontsize=12, verticalalignment='top', bbox=props)
+        axs[0].text(1.03, 0.98, loss_text.strip(), transform=axs[0].transAxes, fontsize=12, verticalalignment='top', bbox=props)
 
         props2 = dict(boxstyle='round', facecolor='blue', alpha=0.1)  # bbox features
-        ax.text(1.03, 0.45, metric_text.strip(), transform=ax.transAxes, fontsize=12, verticalalignment='top', bbox=props2)
+        axs[0].text(1.03, 0.70, metric_text.strip(), transform=axs[0].transAxes, fontsize=12, verticalalignment='top', bbox=props2)
+
+        loop1.set_flux(0.5)
+        if cr.n == 1:
+            phi = np.pi*np.linspace(-1.5,1.5,101)
+            state0 = cr.eig_phase_coord(0, grid=[phi])
+            state1 = cr.eig_phase_coord(1, grid=[phi])
+            axs[1].plot(phi, np.abs(state0)**2, c='k')
+            axs[1].set_xlabel(r'$\varphi$')
+            axs[1].set_ylabel(r'$\psi_0(\varphi)$')
+            axs[2].plot(phi, np.abs(state1)**2, c='r')
+            axs[2].set_xlabel(r'$\varphi$')
+            axs[2].set_ylabel(r'$\psi_1(\varphi)$')
+        elif cr.n == 2:
+            # create a range for each mode
+            phi = np.pi*np.linspace(-1,1,31)
+            theta = np.pi*np.linspace(-0.5,1.5,29)
+            state0 = cr.eig_phase_coord(0, grid=[phi, theta])
+            state1 = cr.eig_phase_coord(1, grid=[phi, theta])
+            axs[1].pcolor(phi, theta, np.abs(state0)**2,cmap="binary",shading='auto')
+            axs[1].set_xlabel(r'$\phi$')
+            axs[1].set_ylabel(r'$\theta$')
+            axs[2].pcolor(phi, theta, np.abs(state1)**2,cmap="binary",shading='auto')
+            axs[2].set_xlabel(r'$\phi$')
+            axs[2].set_ylabel(r'$\theta$')
 
         plt.tight_layout()
         plt.savefig(os.path.join(RESULTS_DIR, f'circuit_graph_{circuit_code}_{identifier}.png'), dpi=300)
