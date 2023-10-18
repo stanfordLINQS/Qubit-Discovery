@@ -41,6 +41,7 @@ def main() -> None:
     parser.add_argument('-n', '--name')
     parser.add_argument('-i', '--ids')
     parser.add_argument('-l', '--low_res', action='store_true')
+    parser.add_argument('-r', '--restrict_k')
     args = parser.parse_args()
 
     name = args.name
@@ -113,6 +114,10 @@ def main() -> None:
 
         props2 = dict(boxstyle='round', facecolor='blue', alpha=0.1)  # bbox features
         axs[0].text(1.03, 0.70, metric_text.strip(), transform=axs[0].transAxes, fontsize=12, verticalalignment='top', bbox=props2)
+
+        if args.restrict_k:
+            trunc_nums = [min(i, 280) for i in cr.trunc_nums]
+            cr.set_trunc_nums(trunc_nums)
 
         loop1.set_flux(0.5)
         if cr.n == 1:
