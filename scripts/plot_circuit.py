@@ -116,14 +116,15 @@ def main() -> None:
         axs[0].text(1.03, 0.70, metric_text.strip(), transform=axs[0].transAxes, fontsize=12, verticalalignment='top', bbox=props2)
 
         if args.restrict_k:
-            trunc_nums = [min(i, 280) for i in cr.trunc_nums]
+            trunc_nums = [min(i, 225) for i in cr.trunc_nums]
             cr.set_trunc_nums(trunc_nums)
 
         loop1.set_flux(0.5)
+        _, _ = cr.diag(N_EIG)
         if cr.n == 1:
             phi = np.pi*np.linspace(-1.5,1.5,101)
-            state0 = cr.eig_phase_coord(0, grid=[phi])
-            state1 = cr.eig_phase_coord(1, grid=[phi])
+            state0 = cr.eig_phase_coord(k=0, grid=[phi])
+            state1 = cr.eig_phase_coord(k=1, grid=[phi])
             axs[1].plot(phi, np.abs(state0)**2, c='k')
             axs[1].set_xlabel(r'$\varphi$')
             axs[1].set_ylabel(r'$\psi_0(\varphi)$')
