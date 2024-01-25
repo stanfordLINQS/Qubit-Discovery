@@ -5,6 +5,7 @@ import os
 import numpy as np
 import dill as pickle
 from matplotlib import pyplot as plt
+import matplotlib.gridspec as gridspec
 import SQcircuit as sq
 
 from settings import RESULTS_DIR
@@ -36,12 +37,18 @@ def load_final_circuit(circuit_record: str) -> sq.Circuit:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--code', type=str, required=True)
-    parser.add_argument('-o', '--optimization_type', type=str, required=True)
-    parser.add_argument('-n', '--name')
-    parser.add_argument('-i', '--ids')
-    parser.add_argument('-l', '--low_res', action='store_true')
-    parser.add_argument('-r', '--restrict_k', action='store_true')
+    parser.add_argument('-c', '--code', type=str, required=True,
+                        help='Circuit code')
+    parser.add_argument('-o', '--optimization_type', type=str, required=True,
+                        help='Optimization used for circuit')
+    parser.add_argument('-n', '--name',
+                        help='Name in YAML file, if used for optimization')
+    parser.add_argument('-i', '--ids',
+                        help='Id number of circuit to plot, in comma-delimited list')
+    parser.add_argument('-l', '--low_res', action='store_true',
+                        help='Plot fewer points for spectrum.')
+    parser.add_argument('-r', '--restrict_k', action='store_true',
+                        help='Reduce truncation number used during plotting')
     args = parser.parse_args()
 
     name = args.name
@@ -93,7 +100,8 @@ def main() -> None:
 
         n_eig = 10
 
-        fig, axs = plt.subplots(3, 1, figsize=(9, 12), height_ratios=[2, 1, 1])
+        fig, axs = plt.subplots(3, 1, figsize=(9, 12))
+        fig.add_gridspec(nrows=3, height_ratios=[2, 1, 1])
 
         loss_text = ''
         for (key, title) in zip(LOSS_KEYS, LOSS_TITLES):

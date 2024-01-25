@@ -106,12 +106,18 @@ def build_save_prefix(args) -> str:
 def main() -> None:
     # Assign keyword arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("num_runs", type=int)
-    parser.add_argument('-c', '--codes', type=str, required=True)
-    parser.add_argument('-o', '--optimization_type', type=str, required=True)
-    parser.add_argument('-b', '--best_n', type=int)
-    parser.add_argument('-s', '--save_circuits', action='store_true') #TODO: implement
-    parser.add_argument('-n', '--name')
+    parser.add_argument("num_runs", type=int,
+                        help="Number of runs to plot, starting at id = 0")
+    parser.add_argument('-c', '--codes', type=str, required=True,
+                        help="Circuit codes to plot, each with <num_runs>")
+    parser.add_argument('-o', '--optimization_type', type=str, required=True,
+                        help="Optimization type to plot")
+    parser.add_argument('-b', '--best_n', type=int,
+                        help="If used, plot only the <best_n> of all circuits.")
+    parser.add_argument('-s', '--save_circuits', action='store_true',
+                        help="Unimplemented") #TODO: implement
+    parser.add_argument('-n', '--name',
+                        help="Name of YAML file, if used during optimization.")
     args = parser.parse_args()
 
     num_runs = int(args.num_runs)
