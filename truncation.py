@@ -57,12 +57,15 @@ def fit_mode(
         fit_range = np.arange(0, 2 * num_points, 2)
         fit_param_guess = (fit_points[0], -np.log(fit_points[-1]) / num_points)
 
-        params, _ = scipy.optimize.curve_fit(
-            monoExp,
-            fit_range,
-            fit_points,
-            fit_param_guess
-        )
+        try:
+            params, _ = scipy.optimize.curve_fit(
+                monoExp,
+                fit_range,
+                fit_points,
+                fit_param_guess
+            )
+        except:
+            params = fit_param_guess
 
         m, k = params
         fit_results.append((k, m, fit_peak_idx))
@@ -191,15 +194,19 @@ def test_convergence(
     else:
       epsilon_2 = np.sum(y2)
     if epsilon_1 > threshold or epsilon_2 > threshold:
-      return False, epsilon_1, epsilon_2
+      return False, (epsilon_1, epsilon_2)
 
     return True, (epsilon_1, epsilon_2)
 
-def assign_trunc_nums(circuit, total_trunc_num):
+def assign_trunc_nums(circuit, baseline_trunc_num, total_trunc_num, num_eigenvalues):
     if len(circuit.m) == 1:
         print("test_convergence (one mode)")
         circuit.set_trunc_nums([total_trunc_num, ])
     elif len(circuit.m) == 2:
+        # Assign test truncation numbers
+        baseline_trunc_nums = circuit.truncate_circuit(baseline_trunc_num)
+        circuit.set_trunc_nums(baseline_trunc_nums)
+        circuit.diag(num_eigenvalues)
         print("test_convergence (two modes)")
         trunc_nums = trunc_num_heuristic(circuit,
                                          K=total_trunc_num,

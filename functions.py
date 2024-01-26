@@ -10,12 +10,18 @@ from SQcircuit import Circuit, CircuitSampler
 from SQcircuit.elements import Capacitor, Inductor, Junction, Loop
 from typing import Tuple
 
+from SQcircuit.settings import get_optim_mode
 from settings import RESULTS_DIR
+
+from collections import defaultdict
 
 # TEMP
 import psutil
 
 # Helper functions
+
+OMEGA_TARGET = 0.64
+
 
 def first_resonant_frequency(circuit):
     """Calculates resonant frequency of first excited eigenstate in circuit."""
@@ -27,64 +33,78 @@ def calculate_anharmonicity(circuit):
     """Calculates anharmonicity (ratio between first and second energy
     eigenvalue spacings)."""
     return (circuit.efreqs[2] - circuit.efreqs[1]) / \
-           (circuit.efreqs[1] - circuit.efreqs[0])
+        (circuit.efreqs[1] - circuit.efreqs[0])
 
 
-def charge_sensitivity(circuit, test_circuit, epsilon=1e-14):
+def charge_sensitivity(circuit: Circuit,
+                       epsilon=1e-14):
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
     flux operation point)."""
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
-    if sum(circuit.omega == 0) == 0:
-        return torch.as_tensor(epsilon)
+    if np.all(circuit.omega != 0):
+        if get_optim_mode():
+            return torch.as_tensor(epsilon)
+        else:
+            return epsilon
 
     c_0 = circuit.efreqs[1] - circuit.efreqs[0]
-    # new_circuit = copy(circuit)
+
+    # Copy circuit to create new container for perturbed eigenstates
+    perturb_circ = copy(circuit)
     # For each mode, if charge mode exists then set gate charge to obtain
     # minimum frequency
-    for charge_island_idx in test_circuit.charge_islands.keys():
+    for charge_island_idx in perturb_circ.charge_islands.keys():
         charge_mode = charge_island_idx + 1
         # Set gate charge to 0.5 in each mode
         # (to extremize relative to n_g=0)
-        test_circuit.set_charge_offset(charge_mode, 0.5)
+        perturb_circ.set_charge_offset(charge_mode, 0.5)
 
-    test_circuit.diag(len(circuit.efreqs))
-    c_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
+    perturb_circ.diag(len(circuit.efreqs))
+    c_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
 
-    for charge_island_idx in test_circuit.charge_islands.keys():
+    # Reset charge modes; this is necessary because peturb_circ and
+    # circ are basically the same
+    for charge_island_idx in circuit.charge_islands.keys():
         charge_mode = charge_island_idx + 1
         # Reset charge modes in test circuit
-        test_circuit.set_charge_offset(charge_mode, 0.)
+        perturb_circ.set_charge_offset(charge_mode, 0.)
 
-    return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+    if get_optim_mode():
+        return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+    else:
+        return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
 
 def flux_sensitivity(
-        circuit,
-        test_circuit,
+        circuit: Circuit,
         flux_point=0.5,
         delta=0.01
 ):
     """Return the flux sensitivity of the circuit around half flux quantum."""
-    # NOTE: Instead of passing in `test_circuit`, originally tried to call
-    # `new_circuit = copy(circuit)`. However, had an issue with PyTorch
-    # retaining the intermediate gradient and leading to RAM accumulation.
-
-    # Issue seems to disappear when using a single circuit copy for all
-    # subsequent perturbations (ex. testing different charge/flux values).
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
 
-    # new_circuit = copy(circuit)
-    new_loop = Loop()
-    new_loop.set_flux(flux_point + delta)
-    test_circuit.loops[0] = new_loop
-    test_circuit.diag(len(circuit.efreqs))
-    f_delta = test_circuit.efreqs[1] - test_circuit.efreqs[0]
-    test_circuit.loops[0].set_flux(flux_point)
+    # Copy circuit to create new container for perturbed eigenstates
+    perturb_circ = copy(circuit)
+    loop = perturb_circ.loops[0]
+    org_flux = loop.value() / (2 * np.pi)  # should be `flux_point`
 
-    return torch.abs((f_delta - f_0) / f_0)
+    # Change the flux and get the eigenfrequencies
+    loop.set_flux(flux_point + delta)
+    perturb_circ.diag(len(circuit.efreqs))
+    f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
+
+    # Return loop back to original flux
+    loop.set_flux(org_flux)
+
+    if get_optim_mode():
+        S = torch.abs((f_delta - f_0) / OMEGA_TARGET)
+    else:
+        S = np.abs((f_delta - f_0) / OMEGA_TARGET)
+
+    return S
 
 
 def get_reshaped_eigvec(
@@ -181,10 +201,10 @@ def code_to_codename(circuit_code):
 
 
 def clamp_gradient(element, epsilon):
-  max = torch.squeeze(torch.Tensor([epsilon, ]))
-  max = max.double()
-  element._value.grad = torch.minimum(max, element._value.grad)
-  element._value.grad = torch.maximum(-max, element._value.grad)
+    max = torch.squeeze(torch.Tensor([epsilon, ]))
+    max = max.double()
+    element._value.grad = torch.minimum(max, element._value.grad)
+    element._value.grad = torch.maximum(-max, element._value.grad)
 
 
 def save_results(loss_record, metric_record, circuit_code, run_id, prefix=""):
@@ -197,14 +217,15 @@ def save_results(loss_record, metric_record, circuit_code, run_id, prefix=""):
         pickle.dump(record, save_file)
         save_file.close()
 
+
 def set_params(circuit: Circuit, params: torch.Tensor) -> None:
     for i, element in enumerate(circuit._parameters.keys()):
         element._value = params[i].clone().detach().requires_grad_(True)
 
     circuit.update()
 
-def get_grad(circuit: Circuit) -> torch.Tensor:
 
+def get_grad(circuit: Circuit) -> torch.Tensor:
     grad_list = []
 
     for val in circuit._parameters.values():
@@ -215,22 +236,73 @@ def get_grad(circuit: Circuit) -> torch.Tensor:
 
     return torch.stack(grad_list)
 
-def set_grad_zero(circuit: Circuit) -> None:
 
+def set_grad_zero(circuit: Circuit) -> None:
     for key in circuit._parameters.keys():
         circuit._parameters[key].grad = None
 
+
 def get_optimal_key(loss_record, code=None):
-  optimal_loss = 1e100
-  optimal_key = None
+    optimal_loss = 1e100
+    optimal_key = None
 
-  for circuit, circuit_code, l in loss_record.keys():
-    key = (circuit, circuit_code, 'total_loss')
-    if len(loss_record[key]) == 0:
-        continue
-    loss = loss_record[key][-1]
-    if loss < optimal_loss and (code in key or code is None):
-        optimal_loss = loss
-        optimal_key = key
+    for circuit, circuit_code, l in loss_record.keys():
+        key = (circuit, circuit_code, 'total_loss')
+        if len(loss_record[key]) == 0:
+            continue
+        loss = loss_record[key][-1]
+        if loss < optimal_loss and (code in key or code is None):
+            optimal_loss = loss
+            optimal_key = key
 
-  return optimal_key
+    return optimal_key
+
+
+def get_worst_key(loss_record, code=None):
+    worst_loss = 0
+    worst_key = None
+
+    for key in loss_record.keys():
+        print(f"key: {key}")
+    for circuit, circuit_code, l in loss_record.keys():
+        key = (circuit, circuit_code, 'frequency_loss')
+        if len(loss_record[key]) == 0:
+            continue
+        loss = loss_record[key][-1]
+        if loss > worst_loss and (code in key or code is None):
+            worst_loss = loss
+            worst_key = key
+
+    print(f"worst_key: {worst_key}")
+    return worst_key
+
+
+def element_code_to_class(code):
+  if code == 'J':
+    return Junction
+  if code == 'L':
+    return Inductor
+  if code == 'C':
+    return Capacitor
+  return None
+
+
+def build_circuit(element_dictionary, default_flux=0.5):
+    # Element dictionary should be of the form {(0,1): ['J', 3.0, 'GHz], ...}
+    loop = Loop()
+    loop.set_flux(default_flux)
+    elements: Dict[Tuple[int, int], List[Element]] = defaultdict(list)
+
+    for edge, edge_element_details in element_dictionary.items():
+        for (circuit_type, value, unit) in edge_element_details:
+            if circuit_type in ['J', 'L']:
+                element = element_code_to_class(circuit_type)(value, unit, loops=[loop, ],
+                                                              requires_grad=get_optim_mode(),
+                                                              min_value=0, max_value=1e20)
+            else:  # 'C'
+                element = element_code_to_class(circuit_type)(value, unit,
+                                                              requires_grad=get_optim_mode(),
+                                                              min_value=0, max_value=1e20)
+            elements[edge].append(element)
+    circuit = Circuit(elements, flux_dist='junctions')
+    return circuit

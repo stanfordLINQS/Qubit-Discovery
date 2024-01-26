@@ -18,12 +18,19 @@ from truncation import assign_trunc_nums, test_convergence
 
 import torch
 
+use_frequency_loss = True
+use_anharmonicity_loss = True
+use_flux_sensitivity_loss = True
+use_charge_sensitivity_loss = True
+use_T1_loss = True
+
 
 def run_BFGS(
     circuit,
     circuit_code,
     seed,
     num_eigenvalues,
+    baseline_trunc_num,
     total_trunc_num,
     bounds=None,
     lr=1.0,
@@ -42,7 +49,7 @@ def run_BFGS(
         save_results(loss_record, metric_record, circuit_code, seed, prefix='BFGS')
         print(f"Iteration {iteration}")
 
-        assign_trunc_nums(circuit, total_trunc_num)
+        assign_trunc_nums(circuit, baseline_trunc_num, total_trunc_num, num_eigenvalues)
         circuit.diag(num_eigenvalues)
         converged, _ = test_convergence(circuit, eig_vec_idx=1)
 
@@ -54,10 +61,11 @@ def run_BFGS(
         # Compute loss and metrics, update records
         total_loss, loss_values, metrics = calculate_loss_metrics(circuit,
                                                                   test_circuit,
-                                                                  use_frequency_loss=True,
-                                                                  use_anharmonicity_loss=True,
-                                                                  use_flux_sensitivity_loss=False,
-                                                                  use_charge_sensitivity_loss=False)
+                                                                  use_frequency_loss=use_frequency_loss,
+                                                                  use_anharmonicity_loss=use_anharmonicity_loss,
+                                                                  use_flux_sensitivity_loss=use_flux_sensitivity_loss,
+                                                                  use_charge_sensitivity_loss=use_charge_sensitivity_loss,
+                                                                  use_T1_loss=use_T1_loss)
         # metrics = calculate_metrics(circuit, test_circuit) + (total_loss,)
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
@@ -106,6 +114,7 @@ def run_BFGS(
             H = torch.matmul(A, torch.matmul(H, B)) + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
 
         params = params_next
+        circuit.update()
 
     return params, loss_record
 
@@ -142,9 +151,10 @@ def line_search(
         ):
             alpha *= rho
 
+    baseline_loss = objective_func(circuit, test_circuit, params, num_eigenvalues)
     while (
         objective_func(circuit, test_circuit, params + alpha * p, num_eigenvalues)
-        > objective_func(circuit, test_circuit, params, num_eigenvalues) + c * alpha * torch.dot(p, gradient)
+        > baseline_loss + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
     return alpha
@@ -155,9 +165,10 @@ def objective_func(circuit, test_circuit, x, num_eigenvalues):
     circuit.diag(num_eigenvalues)
     total_loss, _, _ = calculate_loss_metrics(circuit,
                                               test_circuit,
-                                              use_frequency_loss=True,
-                                              use_anharmonicity_loss=True,
-                                              use_flux_sensitivity_loss=False,
-                                              use_charge_sensitivity_loss=False)
+                                              use_frequency_loss=use_frequency_loss,
+                                              use_anharmonicity_loss=use_anharmonicity_loss,
+                                              use_flux_sensitivity_loss=use_flux_sensitivity_loss,
+                                              use_charge_sensitivity_loss=use_charge_sensitivity_loss,
+                                              use_T1_loss=use_T1_loss)
 
     return total_loss

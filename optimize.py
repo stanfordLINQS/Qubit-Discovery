@@ -24,15 +24,19 @@ args = parser.parse_args()
 
 # Optimization settings
 
-num_epochs = 20  # number of training iterations
+num_epochs = 100  # number of training iterations
 num_eigenvalues = 10
-total_trunc_num = 4000
-baseline_trunc_num = 1000
+total_trunc_num = 8000
+baseline_trunc_num = 2000
+# total_trunc_num = 140
+# baseline_trunc_num = 100
 
 # Target parameter range
+# 1e-15 F
+# 2e-8 H
 capacitor_range = [1e-15, 12e-12]  # F
-inductor_range = [2e-8, 5e-6]  # H
-junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]  # Hz
+inductor_range = [1e-15, 5e-6]  # H
+junction_range = [1e9 * 2 * np.pi, 100e9 * 2 * np.pi] # Hz
 # capacitor_range = [8e-15, 12e-14] # F
 # inductor_range = [2e-7, 5e-6] # H
 # junction_range = [1e9 * 2 * np.pi, 12e9 * 2 * np.pi] # Hz
@@ -70,6 +74,7 @@ def main():
                 circuit_code,
                 run_id,
                 num_eigenvalues,
+                baseline_trunc_num,
                 total_trunc_num,
                 num_epochs
                 )
@@ -84,6 +89,7 @@ def main():
                  circuit_code,
                  run_id,
                  num_eigenvalues,
+                 baseline_trunc_num,
                  total_trunc_num,
                  bounds=bounds,
                  max_iter=num_epochs,

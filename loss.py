@@ -9,6 +9,7 @@ from functions import (
     reset_charge_modes,
 )
 
+from SQcircuit.settings import get_optim_mode
 import torch
 
 # Loss function settings
@@ -31,12 +32,10 @@ def anharmonicity_loss(circuit, alpha=1, epsilon=1e-14):
     assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
-    x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
-    x2 = alpha * (omega_i0 - omega_10) / omega_10
-    x3 = alpha * omega_i0 / omega_10
+    x1 = alpha * (omega_i0 - 2 * omega_10) / OMEGA_TARGET
+    x2 = alpha * (omega_i0 - omega_10) / OMEGA_TARGET
     anharmonicity = calculate_anharmonicity(circuit)
-    return 2 * torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2)) + torch.exp(-torch.abs(x3))) + epsilon, anharmonicity
-
+    return torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon, anharmonicity
 
 def T1_loss(circuit):
     Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
@@ -57,7 +56,7 @@ def flux_sensitivity_loss(
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
 
-    S = flux_sensitivity(circuit, test_circuit)
+    S = flux_sensitivity(circuit)
 
     # Apply hinge loss
     if S < a:
@@ -71,7 +70,7 @@ def flux_sensitivity_loss(
 def charge_sensitivity_loss(circuit, test_circuit, a=0.1, b=1):
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
-    S = charge_sensitivity(circuit, test_circuit)
+    S = charge_sensitivity(circuit)
 
     # Hinge loss transform
     if S < a:
@@ -83,7 +82,7 @@ def charge_sensitivity_loss(circuit, test_circuit, a=0.1, b=1):
     return loss, S
 
 
-def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=True, use_anharmonicity_loss=True,
+def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=False, use_anharmonicity_loss=True,
                          use_flux_sensitivity_loss=True, use_charge_sensitivity_loss=True,
                          use_T1_loss=False, log_loss=False,
                          loss_normalization = False):
@@ -114,7 +113,6 @@ def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=True, use_a
 
     # Calculate T1
     with torch.set_grad_enabled(use_T1_loss):
-    # with torch.no_grad():
         loss_T1, T1_time = T1_loss(circuit)
         # loss_T1 = 0
         if loss_normalization:
@@ -148,15 +146,16 @@ def calculate_loss_metrics(circuit, test_circuit, use_frequency_loss=True, use_a
                        loss_T1.detach(),
                        loss_flux_sensitivity.detach(),
                        loss_charge_sensitivity.detach(),
-                       all_loss.detach())
+                       loss.detach())
 
         metrics = (frequency.detach(),
                    anharmonicity.detach(),
                    T1_time.detach(),
                    flux_sensitivity_value.detach(),
                    charge_sensitivity_value.detach(),
-                   loss.detach())
+                   all_loss.detach())
 
+    print(f"Total loss: {loss.detach().numpy()}")
     return loss, loss_values, metrics
 
 '''@torch.no_grad()

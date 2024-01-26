@@ -23,12 +23,13 @@ gradient_clipping = True
 loss_normalization = False
 learning_rate_scheduler = True
 scheduler_decay_rate = 0.99
-gradient_clipping_threshold = 2
+gradient_clipping_threshold = 2 # 0.5
 gc_norm_type = 'inf'
-learning_rate = 1e-1
+learning_rate = 1e-4
 
 
-def run_SGD(circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_epochs):
+def run_SGD(circuit, circuit_code, seed, num_eigenvalues,
+            baseline_trunc_num, total_trunc_num, num_epochs):
 
     junction_count, inductor_count, _ = get_element_counts(circuit)
 
@@ -40,6 +41,7 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_e
         save_results(loss_record, metric_record, circuit_code, seed, prefix='SGD')
         print(f"Iteration {iteration}")
 
+        print(f"params: {circuit.parameters}")
         optimizer = torch.optim.SGD(
             circuit.parameters,
             nesterov=nesterov_momentum,
@@ -47,7 +49,12 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_e
             lr=learning_rate,
         )
 
-        assign_trunc_nums(circuit, total_trunc_num)
+        # optimizer = torch.optim.Adam(
+        #     circuit.parameters,
+        #     lr=learning_rate
+        # )
+
+        assign_trunc_nums(circuit, baseline_trunc_num, total_trunc_num, num_eigenvalues)
         circuit.diag(num_eigenvalues)
         converged, _ = test_convergence(circuit, eig_vec_idx=1)
 
@@ -57,25 +64,28 @@ def run_SGD(circuit, circuit_code, seed, num_eigenvalues, total_trunc_num, num_e
             break
 
         # Calculate loss, backprop
-        optimizer.zero_grad()
         total_loss, loss_values, metrics = calculate_loss_metrics(circuit, test_circuit,
                                                                   use_frequency_loss=True,
                                                                   use_anharmonicity_loss=True,
-                                                                  use_flux_sensitivity_loss=False,
-                                                                  use_charge_sensitivity_loss=False)
+                                                                  use_flux_sensitivity_loss=True,
+                                                                  use_charge_sensitivity_loss=True,
+                                                                  use_T1_loss=True)
         total_loss.backward()
         update_metric_record(circuit, circuit_code, metric_record, metrics)
         update_loss_record(circuit, circuit_code, loss_record, loss_values)
 
         for element in list(circuit._parameters.keys()):
             element._value.grad *= element._value
+            # element._value.grad *= (element.max_value - element.min_value)
             if gradient_clipping:
                 # torch.nn.utils.clip_grad_norm_(element._value,
                 #                                max_norm=gradient_clipping_threshold,
                 #                                norm_type=gc_norm_type)
                 clamp_gradient(element, gradient_clipping_threshold)
             element._value.grad *= element._value
+            # element._value.grad *= (element.max_value - element.min_value)
             if learning_rate_scheduler:
                 element._value.grad *= (scheduler_decay_rate ** iteration)
         optimizer.step()
         circuit.update()
+        optimizer.zero_grad()
