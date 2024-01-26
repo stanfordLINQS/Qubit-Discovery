@@ -93,7 +93,7 @@ def run_BFGS(
     update_record(circuit, metric_record, metric_values)
     update_record(circuit, loss_record, loss_values)
     save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                    save_loc, prefix='BFGS', save_circuit=save_circuit)
+                    save_loc, prefix='BFGS', save_intermediate_circuits=save_circuit)
     gradient = get_grad(circuit)
     set_grad_zero(circuit)
     
@@ -204,7 +204,7 @@ def compute_and_save_gradient(circuit: Circuit,
     update_record(circuit, metric_record, metric_values)
     update_record(circuit, loss_record, loss_values)
     save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                 save_loc, prefix='BFGS', save_circuit=save_circuit)
+                 save_loc, prefix='BFGS', save_intermediate_circuits=save_circuit)
     gradient = get_grad(circuit)
     set_grad_zero(circuit)
     return gradient, loss

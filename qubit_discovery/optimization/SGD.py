@@ -1,6 +1,7 @@
 from copy import copy
 from typing import List, Optional
 
+import numpy as np
 import torch
 
 from SQcircuit import Capacitor, Circuit, Element, Inductor, Junction
@@ -95,13 +96,18 @@ def run_SGD(circuit: Circuit,
         with torch.no_grad():
             # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
-                norm_factor = 1
+                # norm_factor = 1
                 # norm_factor = element._value
                 for T in bounds.keys():
                     if type(element) is T:
-                        norm_factor = bounds[T]
+                        norm_factor = bounds[T][1] - bounds[T][0]
+                        print(element._value.item(), norm_factor)
                         break
+                # for T in bounds.keys():
+                #     if type(element) is T:
+                #         norm_factor = np.log(bounds[T][1]) - np.log(bounds[T][0])
 
+                # element._value.grad = torch.as_tensor((1/learning_rate) * ((np.exp(- (norm_factor)**2 * learning_rate * element._value.grad.item() * element._value.item())) - 1) * element._value.item())
                 element._value.grad *= norm_factor
                 if gradient_clipping:
                     # torch.nn.utils.clip_grad_norm_(element._value,
@@ -111,6 +117,7 @@ def run_SGD(circuit: Circuit,
                 element._value.grad *= norm_factor
                 if learning_rate_scheduler:
                     element._value.grad *= (scheduler_decay_rate ** iteration)
+            print('\n')
 
         # Step (to truly step, need to update the circuit as well)
         optimizer.step()
