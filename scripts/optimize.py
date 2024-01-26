@@ -15,6 +15,7 @@ Options:
   -i, --id=<id>                             Seed for random generators
   -o, --optimization-type=<optim_type>      Optimization method
   -n, --name=<name>                         Name to label the run with
+  -d, --output_directory                    Set output directory
   --save-only-final                         Don't save intermediate circuits
 """
 import os
@@ -115,6 +116,8 @@ def main() -> None:
         parameters['optim_type'] = arguments['<optimization-type>']
         if arguments['--name'] is not None:
             parameters['name'] = arguments['--name'] + '_'
+        if arguments['--output_directory'] is not None:
+            RESULTS_DIR = arguments['--output_directory']
 
     # Compute any derived parameters and set up environment
     save_intermediate_circuits = not arguments['--save-only-final']
@@ -156,9 +159,9 @@ def main() -> None:
 
     if parameters['optim_type'] == "SGD":
         bounds = {
-            sq.Capacitor: capacitor_range[1] - capacitor_range[0],
-            sq.Inductor: inductor_range[1] - inductor_range[0],
-            sq.Junction: junction_range[1] - junction_range[0]
+            sq.Capacitor: (capacitor_range[0], capacitor_range[1]),
+            sq.Inductor: (inductor_range[0], inductor_range[1]),
+            sq.Junction: (junction_range[0], junction_range[1])
         }
         run_SGD(circuit,
                 parameters['circuit_code'],
@@ -183,7 +186,7 @@ def main() -> None:
             sq.Capacitor: torch.tensor(capacitor_range)
         }
 
-        run_BFGS(parameters['circuit'],
+        run_BFGS(circuit,
                  parameters['circuit_code'],
                  lambda cr, master_use_grad=True: loss_metric_function(cr,
                                                                         use_frequency_loss=parameters['losses']['frequency_loss'], 

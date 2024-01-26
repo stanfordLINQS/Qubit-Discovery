@@ -113,7 +113,7 @@ def main() -> None:
     parser.add_argument('-o', '--optimization_type', type=str, required=True,
                         help="Optimization type to plot")
     parser.add_argument('-b', '--best_n', type=int,
-                        help="If used, plot only the <best_n> of all circuits.")
+                        help="If used, plot only the <best_n> of each circuit type.")
     parser.add_argument('-s', '--save_circuits', action='store_true',
                         help="Unimplemented") #TODO: implement
     parser.add_argument('-n', '--name',
