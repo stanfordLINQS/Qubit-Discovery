@@ -33,11 +33,12 @@ def run_SGD(circuit: Circuit,
             loss_metric_function: LossFunctionType,
             name: str, 
             num_eigenvalues: int,
+            baseline_trunc_nums: List[int],
             total_trunc_num: int,
             num_epochs: int,
             bounds: List[Element],
             save_loc: str,
-            save_intermediate_circuits=True) -> None:
+            save_intermediate_circuits=False) -> None:
     """"
     Runs SGD for `num_epochs` beginning with `circuit` using
     `loss_metric_function`.
@@ -58,25 +59,23 @@ def run_SGD(circuit: Circuit,
         momentum=momentum_value if nesterov_momentum else 0.0,
         lr=learning_rate
     )
+
     # Circuit optimisation loop
     for iteration in range(num_epochs):       
         # Calculate circuit
         print(f"Iteration {iteration}")
         optimizer.zero_grad()
 
+        # Check if converged
+        circuit.set_trunc_nums(baseline_trunc_nums)
         circuit.diag(num_eigenvalues)
-        # Check if converged with old truncation numbers
+        assign_trunc_nums(circuit, total_trunc_num)
+        circuit.diag(num_eigenvalues)
         converged, _  = test_convergence(circuit, eig_vec_idx=1)
         if not converged:
-            # Attempt to re-allocate using our heuristic
-            assign_trunc_nums(circuit, total_trunc_num)
-            circuit.diag(num_eigenvalues)
-            converged, _ = test_convergence(circuit, eig_vec_idx=1)
-            # If it still hasn't converged after re-allocating, give up
-            if not converged:
-                print("Warning: Circuit did not converge")
-                # TODO: ArXiv circuits that do not converge
-                break
+            print("Warning: Circuit did not converge")
+            # TODO: ArXiv circuits that do not converge
+            break
 
         # Calculate loss, backprop
         total_loss, loss_values, metric_values = loss_metric_function(circuit)
@@ -97,12 +96,12 @@ def run_SGD(circuit: Circuit,
             # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
                 # norm_factor = 1
-                # norm_factor = element._value
-                for T in bounds.keys():
-                    if type(element) is T:
-                        norm_factor = bounds[T][1] - bounds[T][0]
-                        print(element._value.item(), norm_factor)
-                        break
+                norm_factor = element._value
+                # for element_type in bounds.keys():
+                #     if type(element) is element_type:
+                #         norm_factor = bounds[T][1] - bounds[element_type][0]
+                #         print(element._value.item(), norm_factor)
+                #         break
                 # for T in bounds.keys():
                 #     if type(element) is T:
                 #         norm_factor = np.log(bounds[T][1]) - np.log(bounds[T][0])
@@ -110,9 +109,6 @@ def run_SGD(circuit: Circuit,
                 # element._value.grad = torch.as_tensor((1/learning_rate) * ((np.exp(- (norm_factor)**2 * learning_rate * element._value.grad.item() * element._value.item())) - 1) * element._value.item())
                 element._value.grad *= norm_factor
                 if gradient_clipping:
-                    # torch.nn.utils.clip_grad_norm_(element._value,
-                    #                                max_norm=gradient_clipping_threshold,
-                    #                                norm_type=gc_norm_type)
                     clamp_gradient(element, gradient_clipping_threshold)
                 element._value.grad *= norm_factor
                 if learning_rate_scheduler:

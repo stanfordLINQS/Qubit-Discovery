@@ -85,12 +85,15 @@ def fit_mode(
         fit_range = np.arange(0, 2 * num_points, 2)
         fit_param_guess = (fit_points[0], -np.log(fit_points[-1]) / num_points)
 
-        params, _ = scipy.optimize.curve_fit(
-            monoExp,
-            fit_range,
-            fit_points,
-            fit_param_guess
-        )
+        try:
+            params, _ = scipy.optimize.curve_fit(
+                monoExp,
+                fit_range,
+                fit_points,
+                fit_param_guess
+            )
+        except:
+            params = fit_param_guess
 
         m, k = params
         fit_results.append((k, m, fit_peak_idx))
@@ -276,4 +279,3 @@ def test_convergence(
         return True, (epsilon_1, epsilon_2)
     else:
         raise NotImplementedError
-    

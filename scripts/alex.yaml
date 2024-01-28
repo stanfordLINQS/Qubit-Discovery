@@ -1,20 +1,16 @@
 name: ""
-K0: 100
-K: 200
+K0: 2000
+K: 8000
 epochs: 100
 # F
 capacitor_range: [1e-15, 12e-12]
 # H
-# inductor_range: [2e-8, 5e-6]
 inductor_range: [1e-15, 5e-6]
 junction_range: [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]
-# capacitor_range = (8e-15, 12e-14) # F
-# inductor_range = (2e-7, 5e-6) # H
-# junction_range = (1e9 * 2 * np.pi, 12e9 * 2 * np.pi) # Hz
 loss_function: constant_norm
 num_eigenvalues: 10
 losses:
-  frequency_loss: True
+  frequency_loss: False
   anharmonicity_loss: True
   flux_sensitivity_loss: True
   charge_sensitivity_loss: True

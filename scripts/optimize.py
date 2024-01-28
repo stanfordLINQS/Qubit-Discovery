@@ -2,8 +2,8 @@
 Optimize.
 
 Usage:
-  optimize <code> <id> <optimization-type> [--save-only-final] [--name=<name>]
-  optimize yaml <yaml_file> [--code=<code> --id=<id> --optimization-type=<optim_type> --save-only-final]
+  optimize <code> <seed> <optimization-type> [--save-intermediate] [--name=<name>] [--output_dir=<output_dir>]
+  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --save-intermediate]
   optimize -h | --help
   optimize --version
 
@@ -12,11 +12,11 @@ Options:
   --version     Show version.
   
   -c, --code=<code>                         Circuit code
-  -i, --id=<id>                             Seed for random generators
+  -s, --seed=<seed>                         Seed for random generators
   -o, --optimization-type=<optim_type>      Optimization method
   -n, --name=<name>                         Name to label the run with
-  -d, --output_directory                    Set output directory
-  --save-only-final                         Don't save intermediate circuits
+  -d, --output_dir=<output_dir>             Set output directory
+  --save-intermediate                       Save intermediate circuits
 """
 import os
 import random
@@ -36,6 +36,7 @@ from settings import RESULTS_DIR
 
 # Default optimization settings
 DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), 'defaults.yaml')
+RESULTS_DIR = './'
 element_verbose = False
 
 def eval_list(ls: list) -> list:
@@ -53,7 +54,7 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 def main() -> None:
-
+    global RESULTS_DIR
     arguments = docopt(__doc__, version='Optimize 0.8')
 
     # Load default parameters
@@ -78,13 +79,13 @@ def main() -> None:
 
         # Set parameters which may be either passed in the YAML file
         # or on the command line; the command line overrides the YAML file
-        if arguments['--id'] is not None:
-            parameters['seed'] = int(arguments['--id'])
+        if arguments['--seed'] is not None:
+            parameters['seed'] = int(arguments['--seed'])
         else:
             try:
-                parameters['seed'] = data['id']
+                parameters['seed'] = data['seed']
             except KeyError:
-                sys.exit('An id must be either passed in the command line or'
+                sys.exit('A seed must be either passed in the command line or'
                          + ' yaml file')
         if arguments['--code'] is not None:
             parameters['circuit_code'] = arguments['--code']
@@ -111,16 +112,16 @@ def main() -> None:
             except KeyError:
                 pass
     else:
-        parameters['seed'] = int(arguments['<id>'])
+        parameters['seed'] = int(arguments['<seed>'])
         parameters['circuit_code'] = arguments['<code>']
         parameters['optim_type'] = arguments['<optimization-type>']
         if arguments['--name'] is not None:
             parameters['name'] = arguments['--name'] + '_'
-        if arguments['--output_directory'] is not None:
-            RESULTS_DIR = arguments['--output_directory']
+        if arguments['--output_dir'] is not None:
+            RESULTS_DIR = arguments['--output_dir']
 
     # Compute any derived parameters and set up environment
-    save_intermediate_circuits = not arguments['--save-only-final']
+    save_intermediate_circuits = arguments['--save-intermediate']
     loss_metric_function = loss_functions[parameters['loss_function']]
 
     capacitor_range = eval_list(parameters['capacitor_range'])
@@ -155,7 +156,7 @@ def main() -> None:
     print("Circuit sampled!")
 
     # Begin by allocating truncation numbers equally amongst all modes
-    circuit.truncate_circuit(parameters['K0'])
+    baseline_trunc_nums = circuit.truncate_circuit(parameters['K0'])
 
     if parameters['optim_type'] == "SGD":
         bounds = {
@@ -173,6 +174,7 @@ def main() -> None:
                                                 use_T1_loss=parameters['losses']['T1_loss']),
                 parameters['name'],
                 parameters['num_eigenvalues'],
+                baseline_trunc_nums,
                 parameters['K'],
                 parameters['epochs'],
                 bounds,

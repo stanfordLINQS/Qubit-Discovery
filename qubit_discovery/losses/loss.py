@@ -37,9 +37,9 @@ def anharmonicity_loss(circuit: Circuit,
     
     anharmonicity = calculate_anharmonicity(circuit)
     if get_optim_mode():
-        loss = 2 * torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
+        loss = torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
     else:
-        loss = 2 * np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
+        loss = np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
     return loss, anharmonicity
 
 def anharmonicity_loss_constantnorm(circuit: Circuit, 
@@ -55,9 +55,9 @@ def anharmonicity_loss_constantnorm(circuit: Circuit,
     
     anharmonicity = calculate_anharmonicity(circuit)
     if get_optim_mode():
-        loss = 2 * torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
+        loss = torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
     else:
-        loss = 2 * np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
+        loss = np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
     return loss, anharmonicity
 
 

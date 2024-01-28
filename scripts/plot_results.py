@@ -132,16 +132,18 @@ def main() -> None:
     aggregate_metrics_record = defaultdict(dict)
     optim_type = args.optimization_type
 
+    success_count = 0
     for codename in circuit_codes:
         for id_num in range(num_runs):
             identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
 
             loss_record = load_record(os.path.join(
-                RESULTS_DIR, f'{optim_type}_loss_record_{codename}_{identifier}.pickle'))
+                RESULTS_DIR, f'{optim_type}_{loss_record}_{codename}_{identifier}.pickle'))
             metrics_record = load_record(os.path.join(
                 RESULTS_DIR, f'{optim_type}_metrics_record_{codename}_{identifier}.pickle'))
             
             if loss_record is not None and metrics_record is not None:
+                success_count += 1
                 aggregate_loss_record[codename][id_num] = loss_record
                 aggregate_metrics_record[codename][id_num] = metrics_record
 
@@ -156,6 +158,7 @@ def main() -> None:
                  save_prefix=save_prefix)
     plot_results(aggregate_metrics_record, best_ids, plot_type='metrics', title=title,
                  save_prefix=save_prefix)
+    print(f"Loaded {success_count} of {len(circuit_codes) * num_runs} successful runs.")
 
 
 if __name__ == "__main__":
