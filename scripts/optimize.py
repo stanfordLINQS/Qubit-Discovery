@@ -2,8 +2,8 @@
 Optimize.
 
 Usage:
-  optimize <code> <seed> <optimization-type> [--save-intermediate] [--name=<name>] [--output_dir=<output_dir>]
-  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --save-intermediate]
+  optimize <code> <seed> <optimization-type> [--save-intermediate] [--name=<name>] [--output_dir=<output_dir>] [--prefix=<prefix>]
+  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --save-intermediate --prefix=<prefix>]
   optimize -h | --help
   optimize --version
 
@@ -17,6 +17,7 @@ Options:
   -n, --name=<name>                         Name to label the run with
   -d, --output_dir=<output_dir>             Set output directory
   --save-intermediate                       Save intermediate circuits
+  -p, --prefix=<prefix>                     Optional prefix for identifying runs
 """
 import os
 import random
@@ -118,6 +119,10 @@ def main() -> None:
             parameters['name'] = arguments['--name'] + '_'
         if arguments['--output_dir'] is not None:
             RESULTS_DIR = arguments['--output_dir']
+    if arguments['--prefix']:
+        prefix = arguments['prefix'] + '_'
+    else:
+        prefix = ''
 
     # Compute any derived parameters and set up environment
     save_intermediate_circuits = arguments['--save-intermediate']

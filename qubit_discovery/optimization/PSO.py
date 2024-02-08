@@ -125,7 +125,6 @@ class BasicSwarm(Swarm):
 
 class CircuitSwarm(Swarm):
     """
-
     If `conserve_memory` is False, we maintain a population of `num_circuits`
     distinct `Circuit` objects. Otherwise only the parameters are maintained 
     internally, and we initialise a new circuit for each one when necessary.
