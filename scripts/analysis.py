@@ -25,7 +25,7 @@ def load_record(url):
 
 
 #############################
-# Build circuit            #
+# Build circuit             #
 #############################
         
 def element_code_to_class(code):
