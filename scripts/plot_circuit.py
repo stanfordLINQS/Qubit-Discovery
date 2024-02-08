@@ -17,9 +17,9 @@ HIGH_RES_PHI = np.concatenate([np.linspace(0, 0.4, 15),
 LOW_RES_PHI = np.concatenate([np.linspace(0, 0.4, 5),
                               np.linspace(0.4, 0.6, 11)[1:],
                               np.linspace(0.6, 1, 5)[1:]])
-METRIC_TITLES = ['All Loss', 'Frequency', 'Flux Sensitivity',
+METRIC_TITLES = ['T2', 'Frequency', 'Flux Sensitivity',
                      'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
-METRIC_KEYS = ['all_loss', 'omega', 'flux_sensitivity',
+METRIC_KEYS = ['T2', 'omega', 'flux_sensitivity',
                'charge_sensitivity', 'A', 'T1']
 LOSS_TITLES = ['Frequency Loss', 'Anharmonicity Loss', '$T_1$ Loss',
                  'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
@@ -59,14 +59,20 @@ def main() -> None:
 
     sq.set_optim_mode(True)
     out_txt = ''
+
+    experiment_folder = os.path.join(RESULTS_DIR, f"{optim_type}_{name}")
+    records_folder = os.path.join(experiment_folder, "records")
+    plots_folder = os.path.join(experiment_folder, "plots")
+    os.makedirs(plots_folder, exist_ok=True)
+
     for id_num in ids:
         identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
 
-        circuit_path= os.path.join(RESULTS_DIR, 
+        circuit_path= os.path.join(records_folder,
                                    f'{optim_type}_circuit_record_{circuit_code}_{identifier}.pickle')
-        loss_path= os.path.join(RESULTS_DIR, 
+        loss_path= os.path.join(records_folder,
                                    f'{optim_type}_loss_record_{circuit_code}_{identifier}.pickle')
-        metrics_path= os.path.join(RESULTS_DIR, 
+        metrics_path= os.path.join(records_folder,
                                    f'{optim_type}_metrics_record_{circuit_code}_{identifier}.pickle')
         old_cr = load_final_circuit(circuit_path)
         with open(loss_path, 'rb') as f:
@@ -153,11 +159,11 @@ def main() -> None:
             axs[2].set_ylabel(r'$\theta$')
 
         plt.tight_layout()
-        plt.savefig(os.path.join(RESULTS_DIR, f'circuit_graph_{circuit_code}_{identifier}.png'), dpi=300)
+        plt.savefig(os.path.join(plots_folder, f'circuit_graph_{circuit_code}_{identifier}.png'), dpi=300)
 
         out_txt += '\n' + '-' * 20 + '\n'
     text_out_identifier = f'{circuit_code}_{name}' if name is not None else circuit_code
-    with open(os.path.join(RESULTS_DIR, 'circuit_data_' + text_out_identifier + '.txt'), 'w') as f:
+    with open(os.path.join(plots_folder, 'circuit_data_' + text_out_identifier + '.txt'), 'w') as f:
         f.write(out_txt)
 
 

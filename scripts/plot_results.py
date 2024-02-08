@@ -21,16 +21,17 @@ def compute_best_ids(aggregate_loss_records, n: int, codes: List[str]
         print(f'Top {n} runs in order are {out[codename]} for code {codename}.')
     return out
 
-def plot_results(record, 
+def plot_results(record,
+                 plot_folder,
                  best_ids: Dict[str, List[int]],
                  plot_type: str, 
                  title: str = '',
                  save_prefix: str = '') -> None:
     PLOT_SCHEME = {'Transmon': 'b', 'Fluxonium': 'darkorange',
                    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'}
-    METRIC_TITLES = ['All Loss', 'Frequency', 'Flux Sensitivity',
-                     'Charge Sensitivity', 'Anharmonicity', r'$T_1$']
-    METRIC_KEYS = ['all_loss', 'omega', 'flux_sensitivity',
+    METRIC_TITLES = [r'$T_2$ Time (s)', 'Frequency (GHz)', 'Flux Sensitivity',
+                     'Charge Sensitivity', 'Anharmonicity', r'$T_1$ Time (s)']
+    METRIC_KEYS = ['T2', 'omega', 'flux_sensitivity',
                    'charge_sensitivity', 'A', 'T1']
     LOSS_TITLES = ['Frequency Loss', 'Anharmonicity Loss', 'T1 Loss',
                      'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
@@ -86,7 +87,7 @@ def plot_results(record,
         for run in runs_list[1:]:
             plot_circuit_metrics(run, codename, False, False)
 
-    plt.savefig(f'{RESULTS_DIR}/{save_prefix}_{plot_type}_record.png', dpi=300)
+    plt.savefig(f'{plot_folder}/{save_prefix}_{plot_type}_record.png', dpi=300)
 
 def build_save_prefix(args) -> str:
     save_prefix = ""
@@ -126,22 +127,22 @@ def main() -> None:
     else:
         best_n = num_runs
 
-    name = args.name
     circuit_codes = args.codes.split(',')
     aggregate_loss_record = defaultdict(dict)
     aggregate_metrics_record = defaultdict(dict)
-    optim_type = args.optimization_type
+    experiment_folder = f"{args.optimization_type}_{args.name}"
+    records_folder = os.path.join(experiment_folder, "records")
 
     success_count = 0
     for codename in circuit_codes:
         for id_num in range(num_runs):
-            identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
+            identifier = f'{args.name}_{id_num}' if args.name is not None else f'{id_num}'
 
             loss_record = load_record(os.path.join(
-                RESULTS_DIR, f'{optim_type}_loss_record_{codename}_{identifier}.pickle'))
-            print(f'{optim_type}_loss_record_{codename}_{identifier}.pickle')
+                RESULTS_DIR, records_folder, f'{args.optimization_type}_loss_record_{codename}_{identifier}.pickle'))
+            print(f'{args.optimization_type}_loss_record_{codename}_{identifier}.pickle')
             metrics_record = load_record(os.path.join(
-                RESULTS_DIR, f'{optim_type}_metrics_record_{codename}_{identifier}.pickle'))
+                RESULTS_DIR, records_folder, f'{args.optimization_type}_metrics_record_{codename}_{identifier}.pickle'))
             
             if loss_record is not None and metrics_record is not None:
                 success_count += 1
@@ -150,14 +151,17 @@ def main() -> None:
 
     save_prefix = build_save_prefix(args)
     title = f"Optimization with {args.optimization_type}"
-    if name is not None:
-        title += f': {name}.'
-
+    if args.name is not None:
+        title += f': {args.name}.'
 
     best_ids = compute_best_ids(aggregate_loss_record, best_n, circuit_codes)
-    plot_results(aggregate_loss_record, best_ids, plot_type='loss', title=title,
+    experiment_folder = f"{args.optimization_type}_{args.name}"
+    plot_output_folder = os.path.join(RESULTS_DIR, experiment_folder, "plots")
+    os.makedirs(plot_output_folder, exist_ok=True)
+    print(f"experiment_folder: {experiment_folder}")
+    plot_results(aggregate_loss_record, plot_output_folder, best_ids, plot_type='loss', title=title,
                  save_prefix=save_prefix)
-    plot_results(aggregate_metrics_record, best_ids, plot_type='metrics', title=title,
+    plot_results(aggregate_metrics_record, plot_output_folder, best_ids, plot_type='metrics', title=title,
                  save_prefix=save_prefix)
     print(f"Loaded {success_count} of {len(circuit_codes) * num_runs} successful runs.")
 

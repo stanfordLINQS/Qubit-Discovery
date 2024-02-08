@@ -1,4 +1,5 @@
-from typing import (Callable, Dict, Iterable, List, 
+import os
+from typing import (Callable, Dict, Iterable, List,
                     Tuple, TypeVar, Union)
 
 import dill as pickle
@@ -145,8 +146,18 @@ def save_results(loss_record: RecordType,
     save_records = {"loss": loss_record, "metrics": metric_record}
     if prefix != "":
         prefix += '_'
+
+    # Extract folder name (remove seed)
+    experiment_name = '_'.join(name.split('_')[:-1])
+
+    # Create folder if it doesn't exist
+    base_folder = f'{save_loc}/{prefix}{experiment_name}'
+    record_folder = os.path.join(base_folder, "records")
+    os.makedirs(base_folder, exist_ok=True)
+    os.makedirs(record_folder, exist_ok=True)
+
     for record_type, record in save_records.items():
-        save_url = f'{save_loc}/{prefix}{record_type}_record_{circuit_code}_{name}.pickle'
+        save_url = f'{record_folder}/{prefix}{record_type}_record_{circuit_code}_{name}.pickle'
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
     
@@ -154,7 +165,7 @@ def save_results(loss_record: RecordType,
         write_mode = 'ab+'
     else:
         write_mode = 'wb'
-    circuit_save_url = f'{save_loc}/{prefix}circuit_record_{circuit_code}_{name}.pickle'
+    circuit_save_url = f'{record_folder}/{prefix}circuit_record_{circuit_code}_{name}.pickle'
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
     

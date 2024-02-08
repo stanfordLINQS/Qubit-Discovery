@@ -36,7 +36,6 @@ from settings import RESULTS_DIR
 
 # Default optimization settings
 DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), 'defaults.yaml')
-RESULTS_DIR = './'
 element_verbose = False
 
 def eval_list(ls: list) -> list:
