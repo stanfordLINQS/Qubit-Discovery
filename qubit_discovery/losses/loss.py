@@ -21,7 +21,9 @@ OMEGA_TARGET = 0.64 # GHz
 
 def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     omega = first_resonant_frequency(circuit)
-    return (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2, omega
+    loss = (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2
+    print(f"loss: {loss}, omega: {omega}")
+    return loss, omega
 
 
 def anharmonicity_loss(circuit: Circuit, 

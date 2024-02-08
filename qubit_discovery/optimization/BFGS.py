@@ -22,7 +22,7 @@ from .utils import (
 def run_BFGS(
     circuit: Circuit,
     circuit_code: str,
-    loss_function: LossFunctionType,
+    loss_metric_function: LossFunctionType,
     name: str,
     num_eigenvalues: int,
     total_trunc_num: int,
@@ -36,7 +36,7 @@ def run_BFGS(
     ) -> Tuple[Tensor, RecordType]: 
     """
     Runs BFGS for a maximum of `max_iter` beginning with `circuit` using 
-    `loss_function`.
+    `loss_metric_function`.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def run_BFGS(
             not necessarily diagonalized.
         circuit_code:
             A string giving the type of the circuit.
-        loss_function:
+        loss_metric_function:
             Loss function to optimize.
         name:
             Name identifying this run (e.g. seed, etc.)
@@ -75,7 +75,7 @@ def run_BFGS(
     
     circuit.diag(num_eigenvalues)
     # Get gradient and loss values to start with
-    loss, loss_values, metric_values = loss_function(circuit)
+    loss, loss_values, metric_values = loss_metric_function(circuit)
     loss_record, metric_record = init_records(circuit_code, 
                                               loss_values, 
                                               metric_values)
@@ -83,7 +83,7 @@ def run_BFGS(
     def objective_func(circuit, x, num_eigenvalues):
         set_params(circuit, x)
         circuit.diag(num_eigenvalues)
-        total_loss, _, _ = loss_function(circuit)
+        total_loss, _, _ = loss_metric_function(circuit)
 
         return total_loss
 
@@ -99,7 +99,7 @@ def run_BFGS(
             # TODO: ArXiv circuits that do not converge
             break
 
-        total_loss, loss_values, metrics = loss_function(circuit)
+        total_loss, loss_values, metric_values = loss_metric_function(circuit)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
         save_results(loss_record, metric_record, circuit, circuit_code, name, 

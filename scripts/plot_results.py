@@ -138,7 +138,8 @@ def main() -> None:
             identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
 
             loss_record = load_record(os.path.join(
-                RESULTS_DIR, f'{optim_type}_{loss_record}_{codename}_{identifier}.pickle'))
+                RESULTS_DIR, f'{optim_type}_loss_record_{codename}_{identifier}.pickle'))
+            print(f'{optim_type}_loss_record_{codename}_{identifier}.pickle')
             metrics_record = load_record(os.path.join(
                 RESULTS_DIR, f'{optim_type}_metrics_record_{codename}_{identifier}.pickle'))
             
