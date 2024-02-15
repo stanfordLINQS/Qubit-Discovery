@@ -2,8 +2,8 @@
 Optimize.
 
 Usage:
-  optimize <code> <seed> <optimization-type> [--save-intermediate] [--name=<name>] [--output_dir=<output_dir>] [--prefix=<prefix>]
-  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --save-intermediate --prefix=<prefix>]
+  optimize <code> <seed> <optimization-type> --name=<name> [--save-intermediate] [--output_dir=<output_dir>]
+  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --name=<name> --save-intermediate]
   optimize -h | --help
   optimize --version
 
@@ -17,7 +17,6 @@ Options:
   -n, --name=<name>                         Name to label the run with
   -d, --output_dir=<output_dir>             Set output directory
   --save-intermediate                       Save intermediate circuits
-  -p, --prefix=<prefix>                     Optional prefix for identifying runs
 """
 import os
 import random
@@ -73,9 +72,13 @@ def main() -> None:
             parameters['K0']  = data['K0']
             parameters['epochs']  = data['epochs']
             parameters['losses']  = data['losses']
-            parameters['name']  = data['name'] + '_'
+            parameters['name']  = data['name']
         except KeyError:
             sys.exit('Yaml file must include keys {K, K0, num_epoch, losses}')
+
+        # Set parameters which may be overwritten on the commmand line
+        if arguments['--name'] is not None:
+            parameters['name'] = arguments['--name']
 
         # Set parameters which may be either passed in the YAML file
         # or on the command line; the command line overrides the YAML file
@@ -115,14 +118,9 @@ def main() -> None:
         parameters['seed'] = int(arguments['<seed>'])
         parameters['circuit_code'] = arguments['<code>']
         parameters['optim_type'] = arguments['<optimization-type>']
-        if arguments['--name'] is not None:
-            parameters['name'] = arguments['--name'] + '_'
+        parameters['name'] = arguments['--name']
         if arguments['--output_dir'] is not None:
             RESULTS_DIR = arguments['--output_dir']
-    if arguments['--prefix']:
-        prefix = arguments['prefix'] + '_'
-    else:
-        prefix = ''
 
     # Compute any derived parameters and set up environment
     save_intermediate_circuits = arguments['--save-intermediate']
@@ -134,7 +132,7 @@ def main() -> None:
 
     parameters['N'] = len(parameters['circuit_code'])
     set_seed(parameters['seed'])
-    parameters['name'] = parameters['name'] + str(parameters['seed'])
+    parameters['name'] = parameters['name'] + '_' + str(parameters['seed'])
 
     sq.set_optim_mode(True)
 

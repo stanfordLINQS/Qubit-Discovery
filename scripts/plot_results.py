@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import dill as pickle
 from SQcircuit import Circuit
 
-from plot_utils import code_to_codename, load_record
+from plot_utils import add_file_args, code_to_codename, load_record
 from qubit_discovery.losses.loss import OMEGA_TARGET
 from settings import RESULTS_DIR
     
@@ -105,20 +105,17 @@ def build_save_prefix(args) -> str:
     return save_prefix
 
 def main() -> None:
+    global RESULTS_DIR
+
     # Assign keyword arguments
     parser = argparse.ArgumentParser()
+    add_file_args(parser)
     parser.add_argument("num_runs", type=int,
-                        help="Number of runs to plot, starting at id = 0")
-    parser.add_argument('-c', '--codes', type=str, required=True,
-                        help="Circuit codes to plot, each with <num_runs>")
-    parser.add_argument('-o', '--optimization_type', type=str, required=True,
-                        help="Optimization type to plot")
+                    help="Number of runs to plot, starting at id = 0")
     parser.add_argument('-b', '--best_n', type=int,
                         help="If used, plot only the <best_n> of each circuit type.")
-    parser.add_argument('-s', '--save_circuits', action='store_true',
-                        help="Unimplemented") #TODO: implement
-    parser.add_argument('-n', '--name',
-                        help="Name of YAML file, if used during optimization.")
+    parser.add_argument('-d', '--directory', type=int,
+                        help="Directory from results, if different than default.")
     args = parser.parse_args()
 
     num_runs = int(args.num_runs)
@@ -126,6 +123,9 @@ def main() -> None:
         best_n = args.best_n
     else:
         best_n = num_runs
+    
+    if args.directory is not None:
+        RESULTS_DIR = args.directory
 
     circuit_codes = args.codes.split(',')
     aggregate_loss_record = defaultdict(dict)
@@ -136,13 +136,10 @@ def main() -> None:
     success_count = 0
     for codename in circuit_codes:
         for id_num in range(num_runs):
-            identifier = f'{args.name}_{id_num}' if args.name is not None else f'{id_num}'
-
             loss_record = load_record(os.path.join(
-                RESULTS_DIR, records_folder, f'{args.optimization_type}_loss_record_{codename}_{identifier}.pickle'))
-            print(f'{args.optimization_type}_loss_record_{codename}_{identifier}.pickle')
+                RESULTS_DIR, records_folder, f'{args.optimization_type}_loss_record_{codename}_{args.name}_{id_num}.pickle'))
             metrics_record = load_record(os.path.join(
-                RESULTS_DIR, records_folder, f'{args.optimization_type}_metrics_record_{codename}_{identifier}.pickle'))
+                RESULTS_DIR, records_folder, f'{args.optimization_type}_metrics_record_{codename}_{args.name}_{id_num}.pickle'))
             
             if loss_record is not None and metrics_record is not None:
                 success_count += 1
@@ -155,7 +152,6 @@ def main() -> None:
         title += f': {args.name}.'
 
     best_ids = compute_best_ids(aggregate_loss_record, best_n, circuit_codes)
-    experiment_folder = f"{args.optimization_type}_{args.name}"
     plot_output_folder = os.path.join(RESULTS_DIR, experiment_folder, "plots")
     os.makedirs(plot_output_folder, exist_ok=True)
     print(f"experiment_folder: {experiment_folder}")
