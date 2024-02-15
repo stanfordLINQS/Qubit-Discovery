@@ -6,6 +6,7 @@ import dill as pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import SQcircuit as sq
+import SQcircuit.functions as sqf
 import torch
 
 #############################
@@ -94,7 +95,7 @@ def initialize_circuit(circuit: sq.Circuit,
                        num_eigenvalues=10,
                        max_trunc_product=800,
                        default_flux=0.5,
-                       default_charge=0)
+                       default_charge=0):
     print(f"Circuit truncation number: {circuit.ms}")
     ratio = np.power(np.minimum(max_trunc_product / np.prod(circuit.ms), 1), 1 / len(circuit.ms))
     reduced_trunc_nums = np.floor(np.array(circuit.ms) * ratio).astype(np.int64).tolist()
@@ -184,21 +185,19 @@ def calculate_charge_spectrum(circuit,
                 else:
                     circuit.set_charge_offset(charge_mode, default_charge)
 
-        circuit.update() # necessary?
-        x, _ = circuit.diag(n_eig)
-        spectrum[:, charge_sweep_idx] = x
+            circuit.update() # necessary?
+            x, _ = circuit.diag(n_eig)
+            spectrum[:, charge_sweep_idx] = sqf.numpy(x)
 
     spectrum -= spectrum[0, :] # Set zeroth eigenenergy to zero
     return n_g_vals, spectrum
 
-def plot_charge_spectrum(n_g_vals, spectrum, n_eig=4):
-    plt.figure(figsize=(8,5))
+def plot_charge_spectrum(n_g_vals, spectrum, ax, n_eig=4):
     for eigen_idx in range(n_eig):
-        plt.plot(n_g_vals, spectrum[eigen_idx, :], 'o')
+        ax.plot(n_g_vals, spectrum[eigen_idx, :], 'o')
 
-    plt.xlabel(r"Gate Charge $n_g$", fontsize=13)
-    plt.ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
-    plt.show()
+    ax.set_xlabel(r"Gate Charge $n_g$", fontsize=13)
+    ax.set_ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
 
 #############################
 # Plot flux spectrum        #
@@ -214,22 +213,20 @@ def calculate_flux_spectrum(circuit,
     for flux_idx, flux in enumerate(flux_values):
         for loop in circuit.loops:
             loop.set_flux(flux)
-    circuit.update()
-    eigenvalues, _ = circuit.diag(4)
-    flux_spectrum[:, flux_idx] = eigenvalues
-    flux_spectrum -= flux_spectrum[0, :]
+        circuit.update()
+        eigenvalues, _ = circuit.diag(4)
+        flux_spectrum[:, flux_idx] = sqf.numpy(eigenvalues)
+        flux_spectrum -= flux_spectrum[0, :]
     return flux_values, flux_spectrum
 
-def plot_flux_spectrum(flux_vals, spectrum, n_eig=-1):
+def plot_flux_spectrum(flux_vals, spectrum, ax, n_eig=-1):
     if n_eig == -1:
         n_eig = np.shape(spectrum)[0]
-    plt.figure(figsize=(8,5))
     for eigen_idx in range(n_eig):
-        plt.plot(flux_vals, spectrum[eigen_idx, :], 'o')
+        ax.plot(flux_vals, spectrum[eigen_idx, :], 'o')
 
-    plt.xlabel(r"Flux Values $\varphi$", fontsize=13)
-    plt.ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
-    plt.show()
+    ax.set_xlabel(r"Flux Values $\varphi$", fontsize=13)
+    ax.set_ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
 
 #############################
 # Plot eigenfunctions       #
@@ -243,25 +240,24 @@ def calc_state(circuit,
     for i in range(num_modes):
         phi_range.append(np.linspace(-1, 1, num_points))
 
-    return circuit.eig_phase_coord(n, grid=phi_range)
+    return phi_range, circuit.eig_phase_coord(n, grid=phi_range)
 
 def plot_state_phase(phi_range, 
                      state, 
+                     ax,
                      plot_type='abs'):
-    plt.figure(figsize=(5, 2))
-    plt.xlabel(r'$\phi_1$')
-    plt.ylabel(r'$\phi_2$')
+    ax.set_xlabel(r'$\phi_1$')
+    ax.set_ylabel(r'$\phi_2$')
 
     if plot_type == 'abs':
-        plt.pcolor(phi_range[0], phi_range[1], np.abs(state)**2,
+        ax.pcolor(phi_range[0], phi_range[1], np.abs(state)**2,
                    cmap="binary", shading='auto')
-        plt.title(r'State Magnitude $|\psi(\phi_1,\phi_2)|^2$')
+        ax.set_title(r'State Magnitude $|\psi(\phi_1,\phi_2)|^2$')
     if plot_type == 'real':
-        plt.pcolor(phi_range[0], phi_range[1], np.real(state),
+        ax.pcolor(phi_range[0], phi_range[1], np.real(state),
                    cmap="binary", shading='auto')
-        plt.title(r'Re$[\psi(\phi_1,\phi_2)]$')
+        ax.set_title(r'Re$[\psi(\phi_1,\phi_2)]$')
     if plot_type == 'imag':
-        plt.pcolor(phi_range[0], phi_range[1], np.imag(state),
+        ax.pcolor(phi_range[0], phi_range[1], np.imag(state),
                    cmap="binary", shading='auto')
-        plt.title(r'Im$[\psi(\phi_1,\phi_2)]$')
-    plt.show()
+        ax.set_title(r'Im$[\psi(\phi_1,\phi_2)]$')
