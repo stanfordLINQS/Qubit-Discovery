@@ -145,17 +145,8 @@ def save_results(loss_record: RecordType,
                  ) -> None:
     save_records = {"loss": loss_record, "metrics": metric_record}
 
-    # Extract run name (remove seed)
-    experiment_name = name[:name.rfind('_')]
-    
-    # Create folder if it doesn't exist
-    base_folder = os.path.join(save_loc, f'{optim_type}_{experiment_name}')
-    record_folder = os.path.join(base_folder, "records")
-    os.makedirs(base_folder, exist_ok=True)
-    os.makedirs(record_folder, exist_ok=True)
-
     for record_type, record in save_records.items():
-        save_url = os.path.join(record_folder, f'{optim_type}_{record_type}_record_{circuit_code}_{name}.pickle')
+        save_url = os.path.join(save_loc, f'{optim_type}_{record_type}_record_{circuit_code}_{name}.pickle')
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
     
@@ -164,7 +155,7 @@ def save_results(loss_record: RecordType,
     else:
         write_mode = 'wb'
 
-    circuit_save_url = os.path.join(record_folder, f'{optim_type}_circuit_record_{circuit_code}_{name}.pickle')
+    circuit_save_url = os.path.join(save_loc, f'{optim_type}_circuit_record_{circuit_code}_{name}.pickle')
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
     

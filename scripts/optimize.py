@@ -132,9 +132,13 @@ def main() -> None:
 
     parameters['N'] = len(parameters['circuit_code'])
     set_seed(parameters['seed'])
-    parameters['name'] = parameters['name'] + '_' + str(parameters['seed'])
+    run_name = parameters['name'] + '_' + str(parameters['seed'])
 
     sq.set_optim_mode(True)
+
+    # Setup output folders for data
+    record_folder = os.path.join(RESULTS_DIR, f'{parameters["optim_type"]}_{parameters["name"]}', 'records')
+    os.makedirs(record_folder, exist_ok=True)
 
     # Run the correct optimization 
     if parameters['optim_type'] == 'PSO':
@@ -148,7 +152,7 @@ def main() -> None:
             parameters['num_eigenvalues'],
             parameters['K'],
             parameters['epochs'],
-            RESULTS_DIR,
+            record_folder,
             f'PSO_{parameters["circuit_code"]}_{parameters["seed"]}'
         )
         return
@@ -174,13 +178,13 @@ def main() -> None:
                                                 use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
                                                 use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
                                                 use_T1_loss=parameters['losses']['T1_loss']),
-                parameters['name'],
+                run_name,
                 parameters['num_eigenvalues'],
                 baseline_trunc_nums,
                 parameters['K'],
                 parameters['epochs'],
                 bounds,
-                RESULTS_DIR,
+                record_folder,
                 save_intermediate_circuits=save_intermediate_circuits
                 )
     elif parameters['optim_type'] == "BFGS":
@@ -199,10 +203,10 @@ def main() -> None:
                                                                         use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
                                                                         use_T1_loss=parameters['losses']['T1_loss'],
                                                                         master_use_grad=master_use_grad),
-                 parameters['name'],
+                 run_name,
                  parameters['num_eigenvalues'],
                  parameters['K'],
-                 RESULTS_DIR,
+                 record_folder,
                  bounds=bounds,
                  max_iter=parameters['epochs'],
                  tolerance=0,
