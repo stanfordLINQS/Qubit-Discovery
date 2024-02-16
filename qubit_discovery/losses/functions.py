@@ -31,11 +31,14 @@ def calculate_anharmonicity(circuit: Circuit) -> SQValType:
 
 
 def charge_sensitivity(circuit: Circuit, 
-                       epsilon=1e-14) -> SQValType:
+                       epsilon=1e-14, loss_type='diag') -> SQValType:
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
     flux operation point)."""
+
+    charge_offsets = [0, 0.25, 0.5]
+    omega_values = []
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if np.all(circuit.omega != 0):
@@ -44,20 +47,24 @@ def charge_sensitivity(circuit: Circuit,
         else:
             return epsilon
 
+    # Assume all charge modes set to 0 initially
     c_0 = circuit.efreqs[1] - circuit.efreqs[0]
+    omega_values.append(c_0)
 
     # Copy circuit to create new container for perturbed eigenstates
     perturb_circ = copy(circuit)
     # For each mode, if charge mode exists then set gate charge to obtain
     # minimum frequency
-    for charge_island_idx in perturb_circ.charge_islands.keys():
-        charge_mode = charge_island_idx + 1
-        # Set gate charge to 0.5 in each mode
-        # (to extremize relative to n_g=0)
-        perturb_circ.set_charge_offset(charge_mode, 0.5)
+    for charge_val in charge_offsets:
+        for charge_island_idx in perturb_circ.charge_islands.keys():
+            charge_mode = charge_island_idx + 1
+            # Set gate charge to 0.5 in each mode
+            # (to extremize relative to n_g=0)
+            perturb_circ.set_charge_offset(charge_mode, charge_val)
 
-    perturb_circ.diag(len(circuit.efreqs))
-    c_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
+        perturb_circ.diag(len(circuit.efreqs))
+        c_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
+        omega_values.append(c_delta)
 
     # Reset charge modes; this is necessary because peturb_circ and
     # circ are basically the same
@@ -67,9 +74,24 @@ def charge_sensitivity(circuit: Circuit,
         perturb_circ.set_charge_offset(charge_mode, 0.)
 
     if get_optim_mode():
-        return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+        c_max = torch.max(torch.stack(omega_values))
+        c_min = torch.min(torch.stack(omega_values))
+        c_avg = torch.mean(torch.stack(omega_values))
+        c_var = torch.sum(torch.abs(torch.stack(omega_values) - c_avg) / len(omega_values))
+        # return c_max - c_min
+        return c_var
     else:
-        return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+        c_max = np.max(np.stack(omega_values))
+        c_min = np.min(np.stack(omega_values))
+        c_avg = np.mean(np.stack(omega_values))
+        c_var = np.sum(np.abs(np.stack(omega_values) - c_avg)) / len(omega_values)
+        # return c_max - c_min
+        return c_var
+    
+   # if get_optim_mode():
+   #      return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
+   #  else:
+   #      return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
 
 def flux_sensitivity(

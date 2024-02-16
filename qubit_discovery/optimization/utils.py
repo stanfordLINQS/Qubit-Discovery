@@ -158,6 +158,7 @@ def save_results(loss_record: RecordType,
 
     for record_type, record in save_records.items():
         save_url = f'{record_folder}/{prefix}{record_type}_record_{circuit_code}_{name}.pickle'
+        print(f"Saving in {save_url}")
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
     

@@ -129,7 +129,7 @@ def flux_sensitivity_loss_constantnorm(
 
 
 def charge_sensitivity_loss(circuit: Circuit, 
-                            a=0.1, 
+                            a=0.02,
                             b=1) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 

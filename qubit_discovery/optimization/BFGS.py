@@ -151,6 +151,8 @@ def run_BFGS(
 
         params = params_next
         circuit.update()
+        # TODO: Following diag call may not be necessary
+        circuit.diag(num_eigenvalues)
         
     return params, loss_record
 

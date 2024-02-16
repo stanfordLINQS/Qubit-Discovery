@@ -25,7 +25,7 @@ learning_rate_scheduler = True
 scheduler_decay_rate = 0.99
 gradient_clipping_threshold = 2
 gc_norm_type = 'inf'
-learning_rate = 1e-1
+learning_rate = 1e-2
 
 
 def run_SGD(circuit: Circuit, 
@@ -60,7 +60,7 @@ def run_SGD(circuit: Circuit,
         lr=learning_rate
     )
 
-    # Circuit optimisation loop
+    # Circuit optimization loop
     for iteration in range(num_epochs):       
         # Calculate circuit
         print(f"Iteration {iteration}")
@@ -82,7 +82,7 @@ def run_SGD(circuit: Circuit,
         total_loss.backward()
 
         # Store history
-        if loss_record is None: 
+        if loss_record is None:
             loss_record, metric_record = init_records(circuit_code, 
                                                       loss_values, 
                                                       metric_values)
