@@ -41,12 +41,22 @@ def main():
             an.plot_flux_spectrum(flux_vals, flux_spectra, ax)
             plt.savefig(os.path.join(plot_output_folder, f'{save_prefix}.flux.png'), dpi=300)
 
+        # Plot charge
         if (np.count_nonzero(cr.omega == 0) > 0):
             # Plot diagonal
             fig, ax = plt.subplots()
             ng_vals, charge_specta = an.sweep_charge_spectrum(cr, [True] * len(cr.m))
             an.plot_1D_charge_spectrum(ng_vals, charge_specta, ax)
             plt.savefig(os.path.join(plot_output_folder, f'{save_prefix}.charge_diag.png'), dpi=300)
+
+            # And along each of axes
+            for charge_mode_idx in cr.charge_islands.keys():
+                modes_to_sweep = [False] * len(cr.m)
+                modes_to_sweep[charge_mode_idx] = True
+                fig, ax = plt.subplots()
+                ng_vals, charge_specta = an.sweep_charge_spectrum(cr, modes_to_sweep)
+                an.plot_1D_charge_spectrum(ng_vals, charge_specta, ax)
+                plt.savefig(os.path.join(plot_output_folder, f'{save_prefix}.charge_{charge_mode_idx}.png'), dpi=300)
         if (np.count_nonzero(cr.omega == 0) == 2):
             # 2d plot
             modes_to_sweep = [True if w == 0 else False for w in cr.omega]
