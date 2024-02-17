@@ -161,13 +161,13 @@ def print_circuit_elements(circuit):
 #############################
 # Plot charge spectrum      #
 #############################
-def calculate_charge_spectrum(circuit,
-                              sweep_charge_node_bools,
-                              n_eig=4,
-                              charge_min=0,
-                              charge_max=1,
-                              default_charge=0,
-                              n_charge_points=20):
+def sweep_charge_spectrum(circuit,
+                          sweep_charge_node_bools,
+                          n_eig=4,
+                          charge_min=0,
+                          charge_max=1,
+                          default_charge=0,
+                          n_charge_points=20):
     reset_loop_flux(circuit)
 
     n_g_vals = np.linspace(charge_min, charge_max, n_charge_points)
@@ -179,25 +179,61 @@ def calculate_charge_spectrum(circuit,
     else:
         for charge_sweep_idx, n_g in enumerate(n_g_vals):
             for charge_island_idx in circuit.charge_islands.keys():
-                charge_mode = charge_island_idx + 1 # SQcircuit uses 1-indexing for charge modes
+                charge_mode = charge_island_idx + 1 # externally (and for func calls)
+                                                    # SQcircuit uses 1-based indexing for modes
                 if sweep_charge_node_bools[charge_island_idx]:
                     circuit.set_charge_offset(charge_mode, n_g)
                 else:
                     circuit.set_charge_offset(charge_mode, default_charge)
 
-            circuit.update() # necessary?
+            # circuit.update() # necessary?
             x, _ = circuit.diag(n_eig)
             spectrum[:, charge_sweep_idx] = sqf.numpy(x)
 
     spectrum -= spectrum[0, :] # Set zeroth eigenenergy to zero
     return n_g_vals, spectrum
 
-def plot_charge_spectrum(n_g_vals, spectrum, ax, n_eig=4):
+
+def grid_charge_spectrum(circuit,
+                          sweep_charge_node_bools,
+                          n_eig=4,
+                          charge_min=0,
+                          charge_max=1,
+                          default_charge=0,
+                          n_charge_points=20):
+    if not np.count_nonzero(sweep_charge_node_bools):
+        return None
+
+    phis = [np.linspace(charge_min, charge_max, n_charge_points)] * np.count_nonzero(sweep_charge_node_bools)
+    phi_meshes = np.meshgrid(*phis) # this gets quite large if many modes
+
+    out = np.zeros_like(phi_meshes[0])
+
+    it = np.nditer(phi_meshes[0], flags=['multi_index'])
+    reset_loop_flux(circuit)
+
+    sweep_modes = [i for i, val in enumerate(sweep_charge_node_bools) if val]
+
+    for _ in it:
+        reset_charge_modes(circuit, default_charge)
+        for idx, mode_num in enumerate(sweep_modes):
+            circuit.set_charge_offset(mode_num + 1, phi_meshes[idx][it.multi_index])
+        efreqs , _ = circuit.diag(n_eig)
+        efreqs = sqf.numpy(efreqs)
+        out[it.multi_index] = efreqs[1] - efreqs[0]
+    
+    return phi_meshes, out
+
+def plot_1D_charge_spectrum(n_g_vals, spectrum, ax, n_eig=4):
     for eigen_idx in range(n_eig):
         ax.plot(n_g_vals, spectrum[eigen_idx, :], 'o')
 
     ax.set_xlabel(r"Gate Charge $n_g$", fontsize=13)
     ax.set_ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
+
+def plot_2D_charge_spectrum(ng1, ng2, frequency, ax):
+    c = ax.pcolormesh(ng1, ng2, frequency)
+    plt.colorbar(c)
 
 #############################
 # Plot flux spectrum        #
