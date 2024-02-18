@@ -170,23 +170,26 @@ def main() -> None:
             sq.Inductor: (inductor_range[0], inductor_range[1]),
             sq.Junction: (junction_range[0], junction_range[1])
         }
-        run_SGD(circuit,
-                parameters['circuit_code'],
-                lambda cr: loss_metric_function(cr,
-                                                use_frequency_loss=parameters['losses']['frequency_loss'], 
-                                                use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
-                                                use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
-                                                use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
-                                                use_T1_loss=parameters['losses']['T1_loss']),
-                run_name,
-                parameters['num_eigenvalues'],
-                baseline_trunc_nums,
-                parameters['K'],
-                parameters['epochs'],
-                bounds,
-                record_folder,
-                save_intermediate_circuits=save_intermediate_circuits
-                )
+        run_SGD(
+            circuit,
+            parameters['circuit_code'],
+            lambda cr: loss_metric_function(
+                cr,
+                use_frequency_loss=parameters['losses']['frequency_loss'], 
+                use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
+                use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
+                use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
+                use_T1_loss=parameters['losses']['T1_loss']
+            ),
+            run_name,
+            parameters['num_eigenvalues'],
+            baseline_trunc_nums,
+            parameters['K'],
+            parameters['epochs'],
+            bounds,
+            record_folder,
+            save_intermediate_circuits=save_intermediate_circuits
+        )
     elif parameters['optim_type'] == "BFGS":
         bounds = {
             sq.Junction: torch.tensor(junction_range),
@@ -194,23 +197,27 @@ def main() -> None:
             sq.Capacitor: torch.tensor(capacitor_range)
         }
 
-        run_BFGS(circuit,
-                 parameters['circuit_code'],
-                 lambda cr, master_use_grad=True: loss_metric_function(cr,
-                                                                        use_frequency_loss=parameters['losses']['frequency_loss'], 
-                                                                        use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
-                                                                        use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
-                                                                        use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
-                                                                        use_T1_loss=parameters['losses']['T1_loss'],
-                                                                        master_use_grad=master_use_grad),
-                 run_name,
-                 parameters['num_eigenvalues'],
-                 parameters['K'],
-                 record_folder,
-                 bounds=bounds,
-                 max_iter=parameters['epochs'],
-                 tolerance=0,
-                 verbose=True)
+        run_BFGS(
+            circuit,
+            parameters['circuit_code'],
+            lambda cr, master_use_grad=True: loss_metric_function(
+                cr,
+                use_frequency_loss=parameters['losses']['frequency_loss'], 
+                use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
+                use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
+                use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
+                use_T1_loss=parameters['losses']['T1_loss'],
+                master_use_grad=master_use_grad
+            ),
+            run_name,
+            parameters['num_eigenvalues'],
+            parameters['K'],
+            record_folder,
+            bounds=bounds,
+            max_iter=parameters['epochs'],
+            tolerance=0,
+            verbose=True
+        )
 
 
 if __name__ == "__main__":
