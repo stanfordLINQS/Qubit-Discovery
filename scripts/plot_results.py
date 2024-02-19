@@ -136,6 +136,9 @@ def main() -> None:
     success_count = 0
     for codename in circuit_codes:
         for id_num in range(num_runs):
+            path = os.path.join(
+                RESULTS_DIR, records_folder, f'{args.optimization_type}_loss_record_{codename}_{args.name}_{id_num}.pickle')
+            print(f"path: {path}")
             loss_record = load_record(os.path.join(
                 RESULTS_DIR, records_folder, f'{args.optimization_type}_loss_record_{codename}_{args.name}_{id_num}.pickle'))
             metrics_record = load_record(os.path.join(

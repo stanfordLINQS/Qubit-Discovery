@@ -128,12 +128,13 @@ def flux_sensitivity_loss_constantnorm(
     return loss, S
 
 
-def charge_sensitivity_loss(circuit: Circuit, 
-                            a=0.1, 
+def charge_sensitivity_loss(circuit: Circuit,
+                            code=1,
+                            a=0.02,
                             b=1) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
-    S = charge_sensitivity(circuit)
+    S = charge_sensitivity(circuit, code)
 
     # Hinge loss transform
     if S < a:
@@ -171,7 +172,7 @@ def calculate_loss_metrics(circuit: Circuit,
                            use_frequency_loss=True, 
                            use_anharmonicity_loss=True,
                            use_flux_sensitivity_loss=True, 
-                           use_charge_sensitivity_loss=True,
+                           use_charge_sensitivity_loss=1,
                            use_T1_loss=False,
                            use_T2_loss=False,
                            log_loss=False,
@@ -249,11 +250,12 @@ def calculate_loss_metrics(circuit: Circuit,
             loss = loss + loss_flux_sensitivity
 
     # Calculate charge sensitivity loss
-    with torch.set_grad_enabled(use_charge_sensitivity_loss and master_use_grad):
-        loss_charge_sensitivity, charge_sensitivity_value = charge_sensitivity_loss(circuit)
+    charge_sensitivity_loss_bool = (True if use_charge_sensitivity_loss != 0 else False)
+    with torch.set_grad_enabled(charge_sensitivity_loss_bool and master_use_grad):
+        loss_charge_sensitivity, charge_sensitivity_value = charge_sensitivity_loss(circuit, code=use_charge_sensitivity_loss)
         if loss_normalization:
             loss_charge_sensitivity /= loss_charge_sensitivity_init
-        if use_charge_sensitivity_loss:
+        if charge_sensitivity_loss_bool:
             loss = loss + loss_charge_sensitivity
 
     if log_loss:
