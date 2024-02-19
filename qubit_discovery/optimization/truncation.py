@@ -3,14 +3,16 @@
 from typing import Tuple, List, Optional
 
 import numpy as np
-from matplotlib.axes import Axes
 import scipy, scipy.signal
-from SQcircuit import get_optim_mode, Circuit
+from matplotlib.axes import Axes
+
 import SQcircuit.functions as sqf
+from SQcircuit import get_optim_mode, Circuit
+
 
 def get_reshaped_eigvec(
-        circuit: Circuit,
-        eig_vec_idx: int,
+    circuit: Circuit,
+    eig_vec_idx: int,
 ) -> Tuple[np.ndarray, Tuple[np.ndarray, ...]]:
     """
     Return the eigenvec, index1_eigenvec and index2_eigenvec part of
@@ -40,11 +42,11 @@ def get_reshaped_eigvec(
         raise NotImplementedError
 
 def fit_mode(
-        mode_vector,
-        num_points=15,
-        peak_height_threshold=5e-3,
-        axis: Optional[Axes]=None,
-        both_parities=False
+    mode_vector,
+    num_points=15,
+    peak_height_threshold=5e-3,
+    axis: Optional[Axes]=None,
+    both_parities=False
 ) -> List[Tuple[float, float, int]]:
     """
     For an input vector corresponding to the absolute eigenvector magnitudes
@@ -111,8 +113,11 @@ def fit_mode(
 
     return fit_results
 
+def get_slow_fit(
+    fit_results, 
+    ignore_threshold=1e-5
+) -> Tuple[float, float, float]:
 
-def get_slow_fit(fit_results, ignore_threshold=1e-5) -> Tuple[float, float, float]:
     if len(fit_results) == 1:
         return fit_results[0]
 
@@ -130,11 +135,11 @@ def get_slow_fit(fit_results, ignore_threshold=1e-5) -> Tuple[float, float, floa
             return k2, m2, peak2
 
 def trunc_num_heuristic(
-        circuit: Circuit,
-        eig_vec_idx: int = 0,
-        K: int=1000,
-        min_trunc: int=4,
-        axes: Optional[Axes]=None
+    circuit: Circuit,
+    eig_vec_idx: int = 0,
+    K: int=1000,
+    min_trunc: int=4,
+    axes: Optional[Axes]=None
 ) -> List[int]:
     """
     For a diagonalized circuit with internal trunc numbers, suggests a set of
@@ -186,7 +191,8 @@ def trunc_num_heuristic(
     if mode_2_result > K:
         mode_2_result = K
 
-    # Edge case: If one mode equals 0 (ex. after preceding code), rescale it to 1
+    # Edge case: If one mode equals 
+    # 0 (ex. after preceding code), rescale it to 1
     if mode_1_result == 0:
         mode_1_result = 1
     if mode_2_result == 0:
@@ -216,12 +222,23 @@ def assign_trunc_nums(circuit: Circuit,
         print("re-allocate truncation numbers (one mode)")
         circuit.set_trunc_nums([total_trunc_num, ])
         return [total_trunc_num, ]
+
+    # circuit that has only charge modes 
+    elif len(circuit.m) == len(circuit.omega==0):
+        print(
+            "keep equal truncaction numbers for "
+            "all modes (circuit with only charge modes)"
+        )
+        return circuit.trunc_nums
+
     elif len(circuit.m) == 2:
         print("re-allocate truncation numbers (two modes)")
-        trunc_nums = trunc_num_heuristic(circuit,
-                                         K=total_trunc_num,
-                                         eig_vec_idx=1,
-                                         axes=None)
+        trunc_nums = trunc_num_heuristic(
+            circuit,
+            K=total_trunc_num,
+            eig_vec_idx=1,
+            axes=None
+        )
         circuit.set_trunc_nums(trunc_nums)
         return trunc_nums
     else:
@@ -258,12 +275,14 @@ def test_convergence(
 
     elif len(circuit.m) == 2:
         eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes) = get_reshaped_eigvec(
-                circuit,
-                eig_vec_idx,
+            circuit,
+            eig_vec_idx,
         )
 
         y1, y2 = mode_1_magnitudes[-t:], mode_2_magnitudes[-t:]
-        assert len(y1) >= 4 and len(y2) >= 4, "Need at least 4 modes to check both parities"
+
+        assert_message = "Need at least 4 modes to check both parities"
+        assert len(y1) >= 4 and len(y2) >= 4, assert_message
         if len(y1) <= t:
             epsilon_1 = (y1[-1] + y1[-2]) / 2
         else:
