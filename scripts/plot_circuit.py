@@ -9,6 +9,7 @@ import matplotlib.gridspec as gridspec
 import SQcircuit as sq
 
 from settings import RESULTS_DIR
+from plot_utils import load_final_circuit
 
 N_EIG = 10
 HIGH_RES_PHI = np.concatenate([np.linspace(0, 0.4, 15),
@@ -25,15 +26,6 @@ LOSS_TITLES = ['Frequency Loss', 'Anharmonicity Loss', '$T_1$ Loss',
                  'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
 LOSS_KEYS = ['frequency_loss', 'anharmonicity_loss', 'T1_loss',
              'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
-
-def load_final_circuit(circuit_record: str) -> sq.Circuit:
-    with open(circuit_record, 'rb') as f:
-        try:
-            while True:
-                last_circ = pickle.load(f)
-        except EOFError:
-            pass
-    return last_circ
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -66,14 +58,12 @@ def main() -> None:
     os.makedirs(plots_folder, exist_ok=True)
 
     for id_num in ids:
-        identifier = f'{name}_{id_num}' if name is not None else f'{id_num}'
-
         circuit_path= os.path.join(records_folder,
-                                   f'{optim_type}_circuit_record_{circuit_code}_{identifier}.pickle')
+                                   f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.pickle')
         loss_path= os.path.join(records_folder,
-                                   f'{optim_type}_loss_record_{circuit_code}_{identifier}.pickle')
+                                   f'{optim_type}_loss_record_{circuit_code}_{name}_{id_num}.pickle')
         metrics_path= os.path.join(records_folder,
-                                   f'{optim_type}_metrics_record_{circuit_code}_{identifier}.pickle')
+                                   f'{optim_type}_metrics_record_{circuit_code}_{name}_{id_num}.pickle')
         old_cr = load_final_circuit(circuit_path)
         with open(loss_path, 'rb') as f:
             loss_record = pickle.load(f)
@@ -83,7 +73,7 @@ def main() -> None:
         cr = sq.Circuit(old_cr.elements)
         cr.set_trunc_nums(old_cr.trunc_nums)
 
-        out_txt += identifier + '\n'
+        out_txt += f'{name}_{id_num}' + '\n'
         elem_values = {}
         for node in cr.elements.keys():
             elem_values[node] = []
@@ -159,10 +149,10 @@ def main() -> None:
             axs[2].set_ylabel(r'$\theta$')
 
         plt.tight_layout()
-        plt.savefig(os.path.join(plots_folder, f'circuit_graph_{circuit_code}_{identifier}.png'), dpi=300)
+        plt.savefig(os.path.join(plots_folder, f'circuit_graph_{circuit_code}_{name}_{id_num}.png'), dpi=300)
 
         out_txt += '\n' + '-' * 20 + '\n'
-    text_out_identifier = f'{circuit_code}_{name}' if name is not None else circuit_code
+    text_out_identifier = f'{circuit_code}_{name}'
     with open(os.path.join(plots_folder, 'circuit_data_' + text_out_identifier + '.txt'), 'w') as f:
         f.write(out_txt)
 

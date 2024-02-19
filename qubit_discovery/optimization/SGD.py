@@ -89,7 +89,7 @@ def run_SGD(circuit: Circuit,
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
         save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                    save_loc, prefix='SGD', save_intermediate_circuits=save_intermediate_circuits)
+                     save_loc, 'SGD', save_intermediate_circuits=save_intermediate_circuits)
 
         # Clamp gradients, if desired
         with torch.no_grad():
