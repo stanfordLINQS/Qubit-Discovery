@@ -38,10 +38,11 @@ from settings import RESULTS_DIR
 DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), 'defaults.yaml')
 element_verbose = False
 
+
 def eval_list(ls: list) -> list:
     """
     Evaluates elements of a list and returns as a list.
-    Warning: this can execute arbitary code! Don't accept uninspected YAML
+    Warning: this can execute arbitrary code! Don't accept uninspected YAML
     files from strangers.
     """
     return [eval(i) for i in ls]
@@ -51,6 +52,7 @@ def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
 
 def main() -> None:
     global RESULTS_DIR
@@ -69,14 +71,14 @@ def main() -> None:
         # Set parameters required to be put in YAML file
         try:
             parameters['K'] = data['K']
-            parameters['K0']  = data['K0']
-            parameters['epochs']  = data['epochs']
-            parameters['losses']  = data['losses']
-            parameters['name']  = data['name']
+            parameters['K0'] = data['K0']
+            parameters['epochs'] = data['epochs']
+            parameters['losses'] = data['losses']
+            parameters['name'] = data['name']
         except KeyError:
             sys.exit('Yaml file must include keys {K, K0, num_epoch, losses}')
 
-        # Set parameters which may be overwritten on the commmand line
+        # Set parameters which may be overwritten on the command line
         if arguments['--name'] is not None:
             parameters['name'] = arguments['--name']
 

@@ -28,17 +28,19 @@ gc_norm_type = 'inf'
 learning_rate = 1e-2
 
 
-def run_SGD(circuit: Circuit, 
-            circuit_code: str, 
-            loss_metric_function: LossFunctionType,
-            name: str, 
-            num_eigenvalues: int,
-            baseline_trunc_nums: List[int],
-            total_trunc_num: int,
-            num_epochs: int,
-            bounds: List[Element],
-            save_loc: str,
-            save_intermediate_circuits=False) -> None:
+def run_SGD(
+    circuit: Circuit,
+    circuit_code: str,
+    loss_metric_function: LossFunctionType,
+    name: str,
+    num_eigenvalues: int,
+    baseline_trunc_nums: List[int],
+    total_trunc_num: int,
+    num_epochs: int,
+    bounds: List[Element],
+    save_loc: str,
+    save_intermediate_circuits=False
+) -> None:
     """"
     Runs SGD for `num_epochs` beginning with `circuit` using
     `loss_metric_function`.
@@ -77,19 +79,29 @@ def run_SGD(circuit: Circuit,
             # TODO: ArXiv circuits that do not converge
             break
 
-        # Calculate loss, backprop
+        # Calculate loss, backpropagation
         total_loss, loss_values, metric_values = loss_metric_function(circuit)
         total_loss.backward()
 
         # Store history
         if loss_record is None:
-            loss_record, metric_record = init_records(circuit_code, 
-                                                      loss_values, 
-                                                      metric_values)
+            loss_record, metric_record = init_records(
+                circuit_code,
+                loss_values,
+                metric_values
+            )
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                     save_loc, 'SGD', save_intermediate_circuits=save_intermediate_circuits)
+        save_results(
+            loss_record,
+            metric_record,
+            circuit,
+            circuit_code,
+            name,
+            save_loc,
+            'SGD',
+            save_intermediate_circuits=save_intermediate_circuits
+        )
 
         # Clamp gradients, if desired
         with torch.no_grad():
