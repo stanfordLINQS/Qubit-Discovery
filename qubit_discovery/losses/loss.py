@@ -27,13 +27,14 @@ def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 
 def anharmonicity_loss(
-        circuit: Circuit,
-        alpha=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    alpha=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Designed to penalize energy level occupancy in the vicinity of
     ground state or twice resonant frequency"""
-    assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
+    message = "Anharmonicity is only defined for at least three energy levels."
+    assert len(circuit.efreqs) > 2, message
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
@@ -47,12 +48,15 @@ def anharmonicity_loss(
     return loss, anharmonicity
 
 
-def anharmonicity_loss_constantnorm(circuit: Circuit, 
-                       alpha=1, 
-                       epsilon=1e-14) -> Tuple[SQValType, SQValType]:
-    """Designed to penalize energy level occupancy in the vicinity of ground state
-    or twice resonant frequency"""
-    assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
+def anharmonicity_loss_constantnorm(
+        circuit: Circuit,
+        alpha=1,
+        epsilon=1e-14
+) -> Tuple[SQValType, SQValType]:
+    """Designed to penalize energy level occupancy in the vicinity of
+    ground state or twice resonant frequency"""
+    message = "Anharmonicity is only defined for at least three energy levels."
+    assert len(circuit.efreqs) > 2, message
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / OMEGA_TARGET
@@ -79,6 +83,7 @@ def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
     return loss, T1
 
+
 def T2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Gamma_1 = circuit.dec_rate('charge', (0, 1))
     Gamma_2 = circuit.dec_rate('cc', (0, 1))
@@ -94,10 +99,10 @@ def T2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 
 def flux_sensitivity_loss(
-        circuit: Circuit,
-        a=0.1,
-        b=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    a=0.1,
+    b=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
@@ -114,10 +119,10 @@ def flux_sensitivity_loss(
 
 
 def flux_sensitivity_loss_constantnorm(
-        circuit: Circuit,
-        a=0.1,
-        b=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    a=0.1,
+    b=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
