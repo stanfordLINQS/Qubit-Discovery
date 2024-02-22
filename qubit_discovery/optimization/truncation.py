@@ -41,6 +41,7 @@ def get_reshaped_eigvec(
     else:
         raise NotImplementedError
 
+
 def fit_mode(
     mode_vector,
     num_points=15,
@@ -201,8 +202,11 @@ def trunc_num_heuristic(
     # When returning, go back from proportion of `sqrt(min_trunc)`
     return [mode_1_result * min_trunc, mode_2_result * min_trunc]
 
-def assign_trunc_nums(circuit: Circuit, 
-                      total_trunc_num: int) -> List[int]:
+
+def assign_trunc_nums(
+    circuit: Circuit,
+    total_trunc_num: int
+) -> List[int]:
     """
     Heuristically re-assign truncation numbers for a circuit with one
     or two modes (not yet implemented for more).
@@ -224,9 +228,9 @@ def assign_trunc_nums(circuit: Circuit,
         return [total_trunc_num, ]
 
     # circuit that has only charge modes 
-    elif len(circuit.m) == len(circuit.omega==0):
+    elif len(circuit.m) == sum(circuit.omega == 0):
         print(
-            "keep equal truncaction numbers for "
+            "keep equal truncation numbers for "
             "all modes (circuit with only charge modes)"
         )
         return circuit.trunc_nums
