@@ -7,7 +7,6 @@ import numpy as np
 import torch
 
 from SQcircuit import Circuit, CircuitSampler
-from SQcircuit.elements import Loop
 from SQcircuit.settings import get_optim_mode
 
 SQArrType = Union[np.ndarray, torch.Tensor]
@@ -16,6 +15,7 @@ SQValType = Union[float, torch.Tensor]
 # Helper functions
 # NOTE: Ensure all functions treat the input `circuit` as const, at least
 # in effect.
+
 
 def first_resonant_frequency(circuit: Circuit) -> SQValType:
     """Calculates resonant frequency of first excited eigenstate in circuit."""
@@ -43,7 +43,10 @@ def charge_sensitivity(circuit: Circuit,
     if code == 1 or code == 2:
         charge_offsets = [(0, 0), (0.25, 0.25), (0.5, 0.5)]
     elif code == 3 or code == 4:
-        charge_offsets = [(0, 0), (0, 0.25), (0, 0.5), (0.25, 0.5), (0.5, 0.5), (0.5, 0.25), (0.5, 0), (0.25, 0)]
+        charge_offsets = [
+            (0, 0), (0, 0.25), (0, 0.5), (0.25, 0.5),
+            (0.5, 0.5), (0.5, 0.25), (0.5, 0), (0.25, 0)
+        ]
     omega_values = []
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
@@ -101,7 +104,7 @@ def charge_sensitivity(circuit: Circuit,
             # c_var = np.sum(np.abs(np.stack(omega_values) - c_avg)) / len(omega_values)
             c_var = np.var(np.stack(omega_values) - c_avg)
             return c_var
-    
+
    # if get_optim_mode():
    #      return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
    #  else:
@@ -136,11 +139,12 @@ def flux_sensitivity(
 
     return S
 
+
 def flux_sensitivity_constantnorm(
-        circuit: Circuit,
-        OMEGA_TARGET,
-        flux_point=0.5,
-        delta=0.01
+    circuit: Circuit,
+    OMEGA_TARGET,
+    flux_point=0.5,
+    delta=0.01
 ) -> SQValType:
     """Return the flux sensitivity of the circuit around half flux quantum."""
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
@@ -164,6 +168,7 @@ def flux_sensitivity_constantnorm(
         S = np.abs((f_delta - f_0) / OMEGA_TARGET)
 
     return S
+
 
 def reset_charge_modes(circuit: Circuit) -> None:
     """Sets gate charge of all charge degrees of freedom to zero."""

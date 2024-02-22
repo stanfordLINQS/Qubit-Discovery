@@ -17,7 +17,8 @@ import numpy as np
 import torch
 
 # Loss function settings
-OMEGA_TARGET = 0.64 # GHz
+OMEGA_TARGET = 0.64  # GHz
+
 
 def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     omega = first_resonant_frequency(circuit)
@@ -25,12 +26,15 @@ def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     return loss, omega
 
 
-def anharmonicity_loss(circuit: Circuit, 
-                       alpha=1, 
-                       epsilon=1e-14) -> Tuple[SQValType, SQValType]:
-    """Designed to penalize energy level occupancy in the vicinity of ground state
-    or twice resonant frequency"""
-    assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
+def anharmonicity_loss(
+    circuit: Circuit,
+    alpha=1,
+    epsilon=1e-14
+) -> Tuple[SQValType, SQValType]:
+    """Designed to penalize energy level occupancy in the vicinity of
+    ground state or twice resonant frequency"""
+    message = "Anharmonicity is only defined for at least three energy levels."
+    assert len(circuit.efreqs) > 2, message
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
@@ -43,12 +47,16 @@ def anharmonicity_loss(circuit: Circuit,
         loss = np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
     return loss, anharmonicity
 
-def anharmonicity_loss_constantnorm(circuit: Circuit, 
-                       alpha=1, 
-                       epsilon=1e-14) -> Tuple[SQValType, SQValType]:
-    """Designed to penalize energy level occupancy in the vicinity of ground state
-    or twice resonant frequency"""
-    assert len(circuit.efreqs) > 2, "Anharmonicity is only defined for at least three energy levels."
+
+def anharmonicity_loss_constantnorm(
+        circuit: Circuit,
+        alpha=1,
+        epsilon=1e-14
+) -> Tuple[SQValType, SQValType]:
+    """Designed to penalize energy level occupancy in the vicinity of
+    ground state or twice resonant frequency"""
+    message = "Anharmonicity is only defined for at least three energy levels."
+    assert len(circuit.efreqs) > 2, message
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / OMEGA_TARGET
@@ -75,6 +83,7 @@ def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
     return loss, T1
 
+
 def T2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Gamma_1 = circuit.dec_rate('charge', (0, 1))
     Gamma_2 = circuit.dec_rate('cc', (0, 1))
@@ -90,10 +99,10 @@ def T2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 
 def flux_sensitivity_loss(
-        circuit: Circuit,
-        a=0.1,
-        b=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    a=0.1,
+    b=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
@@ -108,11 +117,12 @@ def flux_sensitivity_loss(
 
     return loss, S
 
+
 def flux_sensitivity_loss_constantnorm(
-        circuit: Circuit,
-        a=0.1,
-        b=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    a=0.1,
+    b=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
@@ -145,6 +155,7 @@ def charge_sensitivity_loss(circuit: Circuit,
     reset_charge_modes(circuit)
     return loss, S
 
+
 class LossOut(TypedDict):
     frequency_loss: SQValType
     anharmonicity_loss: SQValType
@@ -152,6 +163,8 @@ class LossOut(TypedDict):
     flux_sensitivity_loss: SQValType
     charge_sensitivity_loss: SQValType
     total_loss: SQValType
+
+
 class MetricOut(TypedDict):
     omega: SQValType
     A: SQValType
@@ -159,6 +172,8 @@ class MetricOut(TypedDict):
     flux_sensitivity: SQValType
     charge_sensitivity: SQValType
     T2: SQValType
+
+
 default_functions = {
     'omega':frequency_loss,
     'aharm': anharmonicity_loss,
@@ -167,18 +182,22 @@ default_functions = {
     'charge': charge_sensitivity_loss,
     'T2': T2_loss,
 }
-def calculate_loss_metrics(circuit: Circuit, 
-                           function_dict=default_functions,
-                           use_frequency_loss=True, 
-                           use_anharmonicity_loss=True,
-                           use_flux_sensitivity_loss=True, 
-                           use_charge_sensitivity_loss=1,
-                           use_T1_loss=False,
-                           use_T2_loss=False,
-                           log_loss=False,
-                           loss_normalization=False,
-                           master_use_grad=True
-                           ) -> Tuple[SQValType, LossOut, MetricOut]: 
+
+
+def calculate_loss_metrics(
+    circuit: Circuit,
+    function_dict=default_functions,
+    use_frequency_loss=True,
+    use_anharmonicity_loss=True,
+    use_flux_sensitivity_loss=True,
+    use_charge_sensitivity_loss=1,
+    use_T1_loss=False,
+    use_T2_loss=False,
+    log_loss=False,
+    loss_normalization=False,
+    master_use_grad=True
+) -> Tuple[SQValType, LossOut, MetricOut]:
+
     if get_optim_mode():    
         loss = torch.zeros((), requires_grad=master_use_grad)
     else:
