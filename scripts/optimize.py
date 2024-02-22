@@ -139,7 +139,11 @@ def main() -> None:
     sq.set_optim_mode(True)
 
     # Setup output folders for data
-    record_folder = os.path.join(RESULTS_DIR, f'{parameters["optim_type"]}_{parameters["name"]}', 'records')
+    record_folder = os.path.join(
+        RESULTS_DIR,
+        f'{parameters["optim_type"]}_{parameters["name"]}',
+        'records'
+    )
     os.makedirs(record_folder, exist_ok=True)
 
     # Run the correct optimization 
@@ -159,7 +163,12 @@ def main() -> None:
         )
         return
 
-    sampler = create_sampler(parameters['N'], capacitor_range, inductor_range, junction_range)
+    sampler = create_sampler(
+        parameters['N'],
+        capacitor_range,
+        inductor_range,
+        junction_range
+    )
     circuit = sampler.sample_circuit_code(parameters['circuit_code'])
     print("Circuit sampled!")
 
