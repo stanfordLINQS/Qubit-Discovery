@@ -8,6 +8,7 @@ from .loss import (
     flux_sensitivity_loss,
     flux_sensitivity_loss_constantnorm,
     charge_sensitivity_loss,
+    experimental_sensitivity_loss,
     T1_loss
 )
 
@@ -18,6 +19,7 @@ class LossFunctions(TypedDict):
     T1: str
     flux: str
     charge: str
+    experiment: str
 
 
 loss1: TypedDict = {
@@ -25,7 +27,8 @@ loss1: TypedDict = {
     'aharm': anharmonicity_loss,
     'T1': T1_loss,
     'flux': flux_sensitivity_loss,
-    'charge': charge_sensitivity_loss
+    'charge': charge_sensitivity_loss,
+    'experiment': experimental_sensitivity_loss
 }
 
 loss2: TypedDict = {
@@ -33,7 +36,8 @@ loss2: TypedDict = {
     'aharm': anharmonicity_loss_constantnorm,
     'T1': T1_loss,
     'flux': flux_sensitivity_loss_constantnorm,
-    'charge': charge_sensitivity_loss
+    'charge': charge_sensitivity_loss,
+    'experiment': experimental_sensitivity_loss
 }
 
 loss_functions = {

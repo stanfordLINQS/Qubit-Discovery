@@ -1,4 +1,6 @@
 """Contains code for defining loss functions used in circuit optimization."""
+from collections import defaultdict
+from copy import deepcopy
 from typing import TypedDict, Tuple
 
 from .functions import (
@@ -156,6 +158,40 @@ def charge_sensitivity_loss(circuit: Circuit,
     return loss, S
 
 
+def experimental_sensitivity_loss(circuit: Circuit,
+                             N_SAMPLES=10,
+                             P_ERROR=1,
+                             n_eig=10) -> Tuple[SQValType, SQValType]:
+    """"Returns an estimate of parameter sensitivity, as determined by variation of
+    T1 value in Gaussian probability distribution about element values"""
+    def set_elem_value(elem, val):
+        elem._value = val
+
+    elements_to_update = defaultdict(list)
+    for edge in circuit.elements:
+        for i, el in enumerate(circuit.elements[edge]):
+            if el in list(circuit._parameters):
+                elements_to_update[edge].append((i, list(circuit._parameters).index(el)))
+
+    dist = torch.distributions.MultivariateNormal(torch.stack(circuit.parameters),
+                                                  torch.diag(((P_ERROR * torch.stack(circuit.parameters)) / 100) ** 2))
+    new_params = dist.rsample((N_SAMPLES, ))  # reparameterization trick
+    vals = torch.zeros((N_SAMPLES,))
+    for i in range(N_SAMPLES):
+        elements_sampled = deepcopy(circuit.elements)  # assumes cr has only leaf tensors; otherwise choose .safecopy()
+        for edge in elements_to_update:
+            for el_idx, param_idx in elements_to_update[edge]:
+                set_elem_value(elements_sampled[edge][el_idx], new_params[i, param_idx])
+
+        cr_sampled = Circuit(elements_sampled)
+        cr_sampled.set_trunc_nums(circuit.trunc_nums)
+        cr_sampled.diag(n_eig)  # make sure n_eig or the like is defined
+        _, vals[i] = T1_loss(circuit)
+    E = torch.std(vals) / torch.mean(vals)
+    loss = E
+    return loss, E
+
+
 class LossOut(TypedDict):
     frequency_loss: SQValType
     anharmonicity_loss: SQValType
@@ -191,6 +227,7 @@ def calculate_loss_metrics(
     use_anharmonicity_loss=True,
     use_flux_sensitivity_loss=True,
     use_charge_sensitivity_loss=1,
+    use_experimental_sensitivity_loss=False,
     use_T1_loss=False,
     use_T2_loss=False,
     log_loss=False,
@@ -208,6 +245,7 @@ def calculate_loss_metrics(
     T1_loss = function_dict['T1']
     flux_sensitivity_loss = function_dict['flux']
     charge_sensitivity_loss = function_dict['charge']
+    experimental_sensitivity_loss = function_dict['experiment']
 
     if loss_normalization:
         if get_optim_mode():
@@ -217,6 +255,7 @@ def calculate_loss_metrics(
             loss_T2_init = T2_loss(circuit)[0].detach()
             loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
             loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[0].detach()
+            loss_experimental_sensitivity_init = experimental_sensitivity_loss(circuit)[0].detach()
         else:
             loss_frequency_init, _ = frequency_loss(circuit)
             loss_anharmonicity_init, _ = anharmonicity_loss(circuit)
@@ -224,6 +263,7 @@ def calculate_loss_metrics(
             loss_T2_init, _ = T2_loss(circuit)
             loss_flux_sensitivity_init, _ = flux_sensitivity_loss(circuit)
             loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
+            loss_experimental_sensitivity_init, _ = experimental_sensitivity_loss(circuit)
 
     # Calculate frequency
     with torch.set_grad_enabled(use_frequency_loss and master_use_grad):
@@ -277,6 +317,13 @@ def calculate_loss_metrics(
         if charge_sensitivity_loss_bool:
             loss = loss + loss_charge_sensitivity
 
+    with torch.set_grad_enabled(use_experimental_sensitivity_loss and master_use_grad):
+        loss_experimental_sensitivity, charge_sensitivity_value = experimental_sensitivity_loss(circuit)
+        if loss_normalization:
+            loss_experimental_sensitivity /= loss_experimental_sensitivity_init
+        if use_experimental_sensitivity_loss:
+            loss = loss + loss_experimental_sensitivity
+
     if log_loss:
         if get_optim_mode():
             loss = torch.log(1 + loss)
@@ -290,6 +337,7 @@ def calculate_loss_metrics(
             'T1_loss': loss_T1.detach() if get_optim_mode() else loss_T1,
             'flux_sensitivity_loss': loss_flux_sensitivity.detach() if get_optim_mode() else loss_flux_sensitivity,
             'charge_sensitivity_loss': loss_charge_sensitivity.detach() if get_optim_mode() else loss_charge_sensitivity,
+            'experimental_sensitivity_loss': loss_experimental_sensitivity.detach() if get_optim_mode() else loss_experimental_sensitivity,
             'total_loss': loss.detach() if get_optim_mode() else loss
         }
         metrics: MetricOut = {
