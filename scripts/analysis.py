@@ -62,7 +62,7 @@ def build_circuit(element_dictionary,
 def copy_circuit(circuit):
     cap_unit, ind_unit, junction_unit = 'F', 'H', 'Hz'
     loop = sq.Loop()
-    loop.set_flux(0.5)
+    loop.set_flux(circuit.loops[0].value())
 
     topology = {}
     all_elements = []
@@ -105,16 +105,16 @@ def initialize_circuit(circuit: sq.Circuit,
     circuit.set_trunc_nums([10, 10])
     circuit.diag(num_eigenvalues)
 
+    flux_initial_value = circuit.loops[0].value() / (2 * np.pi)
     print(f"Previous loop flux value (in units of 2pi): {circuit.loops[0].lpValue / (2 * np.pi)}")
 
-    print(f'Now resetting charge and flux to n_g={default_charge} and phi={default_flux}')
+    print(f'Assigning charge and flux to n_g={default_charge} and phi={default_flux}')
     reset_charge_modes(circuit, default_charge)
-    reset_loop_flux(circuit, default_flux)
+    reset_loop_flux(circuit, flux_initial_value)
 
-def reset_loop_flux(circuit,
-                    default_flux=0.5):
+def reset_loop_flux(circuit, flux):
     for loop in circuit.loops:
-        loop.set_flux(default_flux)
+        loop.set_flux(flux)
 
 def reset_charge_modes(circuit, default_charge = 0):
     for charge_island_idx in circuit.charge_islands.keys():
@@ -141,21 +141,23 @@ def get_default_unit(element):
         return 'H'
     return ''
 
-def print_circuit_elements(circuit):
+def build_circuit_topology_string(circuit):
+    output = "\n"
     for circuit_edge, elements in circuit.elements.items():
-        print(f"Edge {circuit_edge}")
+        output += f"Edge {circuit_edge}\n"
 
-    for element_idx, element in enumerate(elements):
-        print(f"Element {element_idx}: {type(element)}")
-        element_unit = get_default_unit(element)
-        element_value = element.get_value(element_unit)
-        if type(element) is sq.Junction:
-            element_value /= (2 * np.pi)
-        if sq.get_optim_mode():
-            element_value = element_value.detach().numpy()
-        element_value = round_n_sigfigs(element_value)
-        print(f"Value: {element_value} {element_unit}")
-    print()
+        for element_idx, element in enumerate(elements):
+            output += f"Element {element_idx}: {type(element)}\n"
+            element_unit = get_default_unit(element)
+            element_value = element.get_value(element_unit)
+            if type(element) is sq.Junction:
+                element_value /= (2 * np.pi)
+            if sq.get_optim_mode():
+                element_value = element_value.detach().numpy()
+            element_value = round_n_sigfigs(element_value)
+            output += f"Value: {element_value} {element_unit}\n"
+        output += "\n"
+    return output
 
 
 #############################
@@ -168,7 +170,8 @@ def sweep_charge_spectrum(circuit,
                           charge_max=1,
                           default_charge=0,
                           n_charge_points=20):
-    reset_loop_flux(circuit)
+    circuit_initial_flux = circuit.loops[0].value() / (2 * np.pi)
+    reset_loop_flux(circuit, circuit_initial_flux)
 
     n_g_vals = np.linspace(charge_min, charge_max, n_charge_points)
     spectrum = np.zeros((n_eig, n_charge_points))
@@ -204,13 +207,15 @@ def grid_charge_spectrum(circuit,
     if not np.count_nonzero(sweep_charge_node_bools):
         return None
 
+    circuit_initial_flux = circuit.loops[0].value() / (2 * np.pi)
+
     phis = [np.linspace(charge_min, charge_max, n_charge_points)] * np.count_nonzero(sweep_charge_node_bools)
     phi_meshes = np.meshgrid(*phis) # this gets quite large if many modes
 
     out = np.zeros_like(phi_meshes[0])
 
     it = np.nditer(phi_meshes[0], flags=['multi_index'])
-    reset_loop_flux(circuit)
+    reset_loop_flux(circuit, circuit_initial_flux)
 
     sweep_modes = [i for i, val in enumerate(sweep_charge_node_bools) if val]
 
@@ -241,16 +246,21 @@ def plot_2D_charge_spectrum(ng1, ng2, frequency, ax):
 def calculate_flux_spectrum(circuit, 
                             flux_min=0,
                             flux_max=1,
-                            n_eig=4, count=20):
+                            n_eig=4,
+                            count=20,
+                            center_count=10,
+                            delta=0.03):
     reset_charge_modes(circuit)
 
     flux_values = np.linspace(flux_min, flux_max, count)
-    flux_spectrum = np.zeros((n_eig, count))
+    center_values = np.linspace(0.5 - delta, 0.5 + delta, center_count)
+    flux_values = np.concatenate((flux_values, center_values))
+    flux_spectrum = np.zeros((n_eig, count + center_count))
     for flux_idx, flux in enumerate(flux_values):
         for loop in circuit.loops:
             loop.set_flux(flux)
         circuit.update()
-        eigenvalues, _ = circuit.diag(4)
+        eigenvalues, _ = circuit.diag(n_eig)
         flux_spectrum[:, flux_idx] = sqf.numpy(eigenvalues)
         flux_spectrum -= flux_spectrum[0, :]
     return flux_values, flux_spectrum

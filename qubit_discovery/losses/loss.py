@@ -318,7 +318,7 @@ def calculate_loss_metrics(
             loss = loss + loss_charge_sensitivity
 
     with torch.set_grad_enabled(use_experimental_sensitivity_loss and master_use_grad):
-        loss_experimental_sensitivity, charge_sensitivity_value = experimental_sensitivity_loss(circuit)
+        loss_experimental_sensitivity, experimental_sensitivity_value = experimental_sensitivity_loss(circuit)
         if loss_normalization:
             loss_experimental_sensitivity /= loss_experimental_sensitivity_init
         if use_experimental_sensitivity_loss:

@@ -62,7 +62,9 @@ def main():
         loss_metric_function = loss_functions['constant_norm']
         total_loss, loss_values, metric_values = loss_metric_function(cr)
 
-        out_txt += "\nMetrics:\n"
+        out_txt += an.build_circuit_topology_string(cr)
+
+        out_txt += "Metrics:\n"
         for metric_key, metric_title in METRICS.items():
             out_txt += f"{metric_title}: {metric_values[metric_key]}\n"
         out_txt += "\nLosses:\n"

@@ -35,11 +35,10 @@ def main():
 
         save_prefix = f'{optim_type}_plot_{circuit_code}_{name}_{id_num}'
         # Plot flux
-        if (sum(cr.omega) > 0):
-            fig, ax = plt.subplots()
-            flux_vals, flux_spectra = an.calculate_flux_spectrum(cr)
-            an.plot_flux_spectrum(flux_vals, flux_spectra, ax)
-            plt.savefig(os.path.join(plot_output_folder, f'{save_prefix}.flux.png'), dpi=300)
+        fig, ax = plt.subplots()
+        flux_vals, flux_spectra = an.calculate_flux_spectrum(cr)
+        an.plot_flux_spectrum(flux_vals, flux_spectra, ax)
+        plt.savefig(os.path.join(plot_output_folder, f'{save_prefix}.flux.png'), dpi=300)
 
         # Plot charge
         if (np.count_nonzero(cr.omega == 0) > 0):

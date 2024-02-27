@@ -18,6 +18,6 @@ losses:
   frequency_loss: True
   anharmonicity_loss: True
   flux_sensitivity_loss: True
-  charge_sensitivity_loss: True
+  charge_sensitivity_loss: 1
   experimental_sensitivity_loss: False
   T1_loss: False

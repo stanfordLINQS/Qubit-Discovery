@@ -67,8 +67,6 @@ def charge_sensitivity(circuit: Circuit,
     for charge_offset in charge_offsets:
         for charge_island_idx in perturb_circ.charge_islands.keys():
             charge_mode = charge_island_idx + 1
-            # Set gate charge to 0.5 in each mode
-            # (to extremize relative to n_g=0)
             perturb_circ.set_charge_offset(charge_mode, charge_offset[charge_island_idx])
 
         perturb_circ.diag(len(circuit.efreqs))
