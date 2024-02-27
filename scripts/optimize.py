@@ -2,8 +2,8 @@
 Optimize.
 
 Usage:
-  optimize <code> <seed> <optimization-type> --name=<name> [--save-intermediate] [--output_dir=<output_dir>]
-  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --name=<name> --save-intermediate]
+  optimize <code> <seed> <optimization-type> --name=<name> [--save-intermediate] [--output_dir=<output_dir>] [--init_circuit=<init_circuit>]
+  optimize yaml <yaml_file> [--code=<code> --seed=<seed> --optimization-type=<optim_type> --name=<name> --init_circuit=<init_circuit> --save-intermediate]
   optimize -h | --help
   optimize --version
 
@@ -16,8 +16,11 @@ Options:
   -o, --optimization-type=<optim_type>      Optimization method
   -n, --name=<name>                         Name to label the run with
   -d, --output_dir=<output_dir>             Set output directory
+  -i, --init_circuit=<init_circuit>         Set initial circuit params
   --save-intermediate                       Save intermediate circuits
 """
+from plot_utils import load_final_circuit
+
 import os
 import random
 import sys
@@ -75,12 +78,15 @@ def main() -> None:
             parameters['epochs'] = data['epochs']
             parameters['losses'] = data['losses']
             parameters['name'] = data['name']
+            parameters['init_circuit'] = data['init_circuit']
         except KeyError:
             sys.exit('Yaml file must include keys {K, K0, num_epoch, losses}')
 
         # Set parameters which may be overwritten on the command line
         if arguments['--name'] is not None:
             parameters['name'] = arguments['--name']
+        if arguments['--init_circuit'] is not None:
+            parameters['init_circuit'] = arguments['--init_circuit']
 
         # Set parameters which may be either passed in the YAML file
         # or on the command line; the command line overrides the YAML file
@@ -101,7 +107,7 @@ def main() -> None:
                 sys.exit('An circuit code must be either passed in the command'
                           + ' line or yaml file')
         if arguments['--optimization-type'] is not None:
-            parameters['optim_type'] = arguments['--optimization-type'] 
+            parameters['optim_type'] = arguments['--optimization-type']
         else:
             try:
                 parameters['optim_type'] = data['optim_type']
@@ -169,8 +175,16 @@ def main() -> None:
         inductor_range,
         junction_range
     )
-    circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-    print("Circuit sampled!")
+
+    if parameters['init_circuit'] == "":
+        circuit = sampler.sample_circuit_code(parameters['circuit_code'])
+        print("Circuit sampled!")
+    else:
+        circuit_path = parameters['init_circuit']
+        circuit = load_final_circuit(circuit_path)
+        circuit.update()
+        circuit._toggle_fullcopy = True
+        print("Circuit loaded!")
 
     # Begin by allocating truncation numbers equally amongst all modes
     baseline_trunc_nums = circuit.truncate_circuit(parameters['K0'])

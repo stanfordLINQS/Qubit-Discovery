@@ -1,4 +1,5 @@
 name: ""
+init_circuit: ""
 K0: 100
 K: 200
 epochs: 100
@@ -18,4 +19,5 @@ losses:
   anharmonicity_loss: True
   flux_sensitivity_loss: True
   charge_sensitivity_loss: True
+  experimental_sensitivity_loss: False
   T1_loss: False
