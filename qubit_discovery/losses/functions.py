@@ -52,7 +52,7 @@ def charge_sensitivity(circuit: Circuit,
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if np.all(circuit.omega != 0):
         if get_optim_mode():
-            return torch.as_tensor(epsilon)
+            return torch.as_tensor(epsilon) + 0 * circuit.efreqs[0]
         else:
             return epsilon
 
