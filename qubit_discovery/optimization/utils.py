@@ -1,10 +1,11 @@
+from collections import defaultdict
 import os
 from typing import (Callable, Dict, Iterable, List,
                     Tuple, TypeVar, Union)
 
 import dill as pickle
 import numpy as np
-from SQcircuit import (Circuit, CircuitSampler, 
+from SQcircuit import (Circuit, CircuitSampler, Loop,
                        Element, Inductor, Junction, Capacitor)
 import torch
 
@@ -160,3 +161,51 @@ def save_results(loss_record: RecordType,
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
     
+def element_code_to_class(code):
+    if code == 'J':
+        return Junction
+    if code == 'L':
+        return Inductor
+    if code == 'C':
+        return Capacitor
+    return None
+
+def set_charge_offsets(circuit, charge_values):
+    for charge_island_idx in circuit.charge_islands.keys():
+        charge_mode = charge_island_idx + 1
+        circuit.set_charge_offset(charge_mode, charge_values[charge_island_idx])
+
+def set_loop_fluxes(circuit, flux_value):
+    for loop in circuit.loops:
+        loop.set_flux(flux_value)
+
+def build_circuit(element_dictionary):
+    # Element dictionary should be of the form {(0,1): ['J', 3.0, 'GHz], ...}
+    default_flux = 0
+    default_gate_charge = 0.5
+    default_units = ['F', 'F', 'F', 'Hz', 'Hz', 'Hz']
+    loop = Loop()
+    loop.set_flux(default_flux)
+    elements = defaultdict(list)
+    for edge, edge_element_details in element_dictionary.items():
+        for (circuit_type, value, unit) in edge_element_details:
+            if circuit_type in ['J', 'L']:
+                element = element_code_to_class(circuit_type)(
+                    value,
+                    unit,
+                    loops=[loop, ],
+                    min_value=0,
+                    max_value=1e20,
+                    requires_grad=True
+                )
+            else: # 'C'
+                element = element_code_to_class(circuit_type)(
+                    value,
+                    unit,
+                    min_value=0,
+                    max_value=1e20,
+                    requires_grad=True
+                )
+            elements[edge].append(element)
+    circuit = Circuit(elements)
+    return circuit
