@@ -186,7 +186,7 @@ def experimental_sensitivity_loss(circuit: Circuit,
         cr_sampled = Circuit(elements_sampled)
         cr_sampled.set_trunc_nums(circuit.trunc_nums)
         cr_sampled.diag(n_eig)  # make sure n_eig or the like is defined
-        _, vals[i] = T1_loss(circuit)
+        _, vals[i] = T1_loss(cr_sampled)
     E = torch.std(vals) / torch.mean(vals)
     loss = E
     return loss, E
