@@ -178,14 +178,14 @@ def experimental_sensitivity_loss(circuit: Circuit,
     new_params = dist.rsample((N_SAMPLES, ))  # reparameterization trick
     vals = torch.zeros((N_SAMPLES,))
     for i in range(N_SAMPLES):
-        elements_sampled = deepcopy(circuit.elements)  # assumes cr has only leaf tensors; otherwise choose .safecopy()
+        elements_sampled = deepcopy(circuit.elements) # assumes all leaf tensors in .elements
         for edge in elements_to_update:
             for el_idx, param_idx in elements_to_update[edge]:
                 set_elem_value(elements_sampled[edge][el_idx], new_params[i, param_idx])
 
         cr_sampled = Circuit(elements_sampled)
         cr_sampled.set_trunc_nums(circuit.trunc_nums)
-        cr_sampled.diag(n_eig)  # make sure n_eig or the like is defined
+        cr_sampled.diag(n_eig)
         _, vals[i] = T1_loss(cr_sampled)
     E = torch.std(vals) / torch.mean(vals)
     loss = E

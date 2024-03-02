@@ -241,7 +241,8 @@ def main() -> None:
             bounds=bounds,
             max_iter=parameters['epochs'],
             tolerance=0,
-            verbose=True
+            verbose=True,
+            save_intermediate_circuits=save_intermediate_circuits
         )
 
 

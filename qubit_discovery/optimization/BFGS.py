@@ -32,7 +32,7 @@ def run_BFGS(
     max_iter=100,
     tolerance=1e-7,
     verbose=False,
-    save_circuit=True
+    save_intermediate_circuits=True
     ) -> Tuple[Tensor, RecordType]: 
     """
     Runs BFGS for a maximum of `max_iter` beginning with `circuit` using 
