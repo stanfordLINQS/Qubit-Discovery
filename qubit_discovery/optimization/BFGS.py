@@ -103,7 +103,7 @@ def run_BFGS(
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
         save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                     save_loc, 'BFGS', save_intermediate_circuits=save_circuit)
+                     save_loc, 'BFGS', save_intermediate_circuits=save_intermediate_circuits)
 
 
         loss = objective_func(circuit, params, num_eigenvalues)
