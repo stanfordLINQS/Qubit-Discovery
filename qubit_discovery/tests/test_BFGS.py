@@ -17,7 +17,7 @@ from qubit_discovery.tests.conftest import (
 )
 
 
-def test_BFGS() -> None:
+def test_bfgs_run() -> None:
     """Test one step of BFGS algorithm."""
 
     target_params = torch.tensor(
@@ -46,8 +46,10 @@ def test_BFGS() -> None:
 
     sq.set_optim_mode(True)
 
+    total_trunc_num: int = 120
+
     circuit = get_fluxonium()
-    circuit.set_trunc_nums([200])
+    circuit.set_trunc_nums([total_trunc_num])
 
     params, loss_record = run_BFGS(
         circuit=circuit,
@@ -55,18 +57,17 @@ def test_BFGS() -> None:
         loss_metric_function=my_loss_function,
         name="BFGS_test",
         num_eigenvalues=10,
-        total_trunc_num=200,
+        total_trunc_num=total_trunc_num,
         save_loc="./",
         bounds=get_bounds(),
         lr=1.0,
         max_iter=1,
         tolerance=1e-7,
         verbose=False,
-        save_intermediate_circuits=True,
+        save_intermediate_circuits=False,
     )
 
     del loss_record['circuit_code']
-    del loss_record['experimental_sensitivity_loss']
 
     assert params.detach() == pytest.approx(target_params, rel=1e-2)
     assert are_loss_dicts_close(loss_record, target_loss_record, rel=1e-2)
