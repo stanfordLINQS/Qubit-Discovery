@@ -1,10 +1,10 @@
-from copy import copy
-from typing import List, Optional
+"""This module implements the SGD optimizer."""
 
-import numpy as np
+from typing import List
+
 import torch
 
-from SQcircuit import Capacitor, Circuit, Element, Inductor, Junction
+from SQcircuit import Circuit, Element
 
 from .utils import (
     clamp_gradient,
@@ -40,13 +40,12 @@ def run_SGD(
     bounds: List[Element],
     save_loc: str,
     save_intermediate_circuits=False
-) -> None:
-    """"
-    Runs SGD for `num_epochs` beginning with `circuit` using
+):
+    """Runs SGD for `num_epochs` beginning with `circuit` using
     `loss_metric_function`.
 
     `circuit` should have truncation numbers allocated, but need not have 
-    been diagonalised. Diagonalisation is attempted with max total truncation
+    been diagonalised. Diagonalizing is attempted with max total truncation
     number of `total_trunc_nums`, and with `num_eigenvalues`.
 
     `name` and `circuit_code` are just used to add metadata to file saved at
@@ -73,7 +72,7 @@ def run_SGD(
         circuit.diag(num_eigenvalues)
         assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
-        converged, _  = test_convergence(circuit, eig_vec_idx=1)
+        converged, _ = test_convergence(circuit, eig_vec_idx=1)
         if not converged:
             print("Warning: Circuit did not converge")
             # TODO: ArXiv circuits that do not converge
@@ -107,18 +106,7 @@ def run_SGD(
         with torch.no_grad():
             # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
-                # norm_factor = 1
                 norm_factor = element._value
-                # for element_type in bounds.keys():
-                #     if type(element) is element_type:
-                #         norm_factor = bounds[T][1] - bounds[element_type][0]
-                #         print(element._value.item(), norm_factor)
-                #         break
-                # for T in bounds.keys():
-                #     if type(element) is T:
-                #         norm_factor = np.log(bounds[T][1]) - np.log(bounds[T][0])
-
-                # element._value.grad = torch.as_tensor((1/learning_rate) * ((np.exp(- (norm_factor)**2 * learning_rate * element._value.grad.item() * element._value.item())) - 1) * element._value.item())
                 element._value.grad *= norm_factor
                 if gradient_clipping:
                     clamp_gradient(element, gradient_clipping_threshold)
@@ -130,3 +118,5 @@ def run_SGD(
         # Step (to truly step, need to update the circuit as well)
         optimizer.step()
         circuit.update()
+
+        return loss_record
