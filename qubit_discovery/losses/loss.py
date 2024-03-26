@@ -44,16 +44,18 @@ def anharmonicity_loss(
     
     anharmonicity = calculate_anharmonicity(circuit)
     if get_optim_mode():
-        loss = torch.sum(torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))) + epsilon
+        loss = torch.sum(
+            torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))
+        ) + epsilon
     else:
         loss = np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2))) + epsilon
     return loss, anharmonicity
 
 
 def anharmonicity_loss_constantnorm(
-        circuit: Circuit,
-        alpha=1,
-        epsilon=1e-14
+    circuit: Circuit,
+    alpha=1,
+    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Designed to penalize energy level occupancy in the vicinity of
     ground state or twice resonant frequency"""
@@ -140,10 +142,12 @@ def flux_sensitivity_loss_constantnorm(
     return loss, S
 
 
-def charge_sensitivity_loss(circuit: Circuit,
-                            code=1,
-                            a=0.02,
-                            b=1) -> Tuple[SQValType, SQValType]:
+def charge_sensitivity_loss(
+    circuit: Circuit,
+    code=1,
+    a=0.02,
+    b=1
+) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
     S = charge_sensitivity(circuit, code)
@@ -158,10 +162,12 @@ def charge_sensitivity_loss(circuit: Circuit,
     return loss, S
 
 
-def experimental_sensitivity_loss(circuit: Circuit,
-                             N_SAMPLES=10,
-                             P_ERROR=1,
-                             n_eig=10) -> Tuple[SQValType, SQValType]:
+def experimental_sensitivity_loss(
+    circuit: Circuit,
+    N_SAMPLES=10,
+    P_ERROR=1,
+    n_eig=10
+) -> Tuple[SQValType, SQValType]:
     """"Returns an estimate of parameter sensitivity, as determined by variation of
     T1 value in Gaussian probability distribution about element values"""
     def set_elem_value(elem, val):
@@ -220,6 +226,16 @@ default_functions = {
 }
 
 
+def detach_if_optim(value: SQValType) -> SQValType:
+    """Detach the value if is in torch. Otherwise, return the value itself."""
+
+    if get_optim_mode():
+
+        return value.detach()
+
+    return value
+
+
 def calculate_loss_metrics(
     circuit: Circuit,
     function_dict=default_functions,
@@ -231,7 +247,6 @@ def calculate_loss_metrics(
     use_T1_loss=False,
     use_T2_loss=False,
     log_loss=False,
-    # loss_normalization=False,
     master_use_grad=True
 ) -> Tuple[SQValType, LossOut, MetricOut]:
 
@@ -247,47 +262,22 @@ def calculate_loss_metrics(
     charge_sensitivity_loss = function_dict['charge']
     # experimental_sensitivity_loss = function_dict['experiment']
 
-    # if loss_normalization:
-    #     if get_optim_mode():
-    #         loss_frequency_init = frequency_loss(circuit)[0].detach()
-    #         loss_anharmonicity_init = anharmonicity_loss(circuit)[0].detach()
-    #         loss_T1_init = T1_loss(circuit)[0].detach()
-    #         loss_T2_init = T2_loss(circuit)[0].detach()
-    #         loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
-    #         loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[0].detach()
-    #         loss_experimental_sensitivity_init = experimental_sensitivity_loss(circuit)[0].detach()
-    #     else:
-    #         loss_frequency_init, _ = frequency_loss(circuit)
-    #         loss_anharmonicity_init, _ = anharmonicity_loss(circuit)
-    #         loss_T1_init, _ = T1_loss(circuit)
-    #         loss_T2_init, _ = T2_loss(circuit)
-    #         loss_flux_sensitivity_init, _ = flux_sensitivity_loss(circuit)
-    #         loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
-    #         loss_experimental_sensitivity_init, _ = experimental_sensitivity_loss(circuit)
-
     # Calculate frequency
     with torch.set_grad_enabled(use_frequency_loss and master_use_grad):
         loss_frequency, frequency = frequency_loss(circuit)
-        # if loss_normalization:
-        #     loss_frequency /= loss_frequency_init
         if use_frequency_loss:
             loss = loss + loss_frequency
 
     # Calculate anharmonicity
     with torch.set_grad_enabled(use_anharmonicity_loss and master_use_grad):
         loss_anharmonicity, anharmonicity = anharmonicity_loss(circuit)
-        # if loss_normalization:
-        #     loss_anharmonicity /= loss_anharmonicity_init
         if use_anharmonicity_loss:
             loss = loss + loss_anharmonicity
 
     # Calculate T1
     with torch.set_grad_enabled(use_T1_loss and master_use_grad):
-    # with torch.no_grad():
         loss_T1, T1_time = T1_loss(circuit)
         # loss_T1 = 0
-        # if loss_normalization:
-        #     loss_T1 /= loss_T1_init
         if use_T1_loss:
             loss = loss + loss_T1
 
@@ -295,16 +285,12 @@ def calculate_loss_metrics(
     # Note: Gradient for T2 currently not computable, coming soon ;)
     with torch.no_grad():
         loss_T2, T2_time = T2_loss(circuit)
-        # if loss_normalization:
-        #     loss_T2 /= loss_T2_init
         # if use_T2_loss:
         #     loss = loss + loss_T2
 
     # Calculate flux sensitivity loss
     with torch.set_grad_enabled(use_flux_sensitivity_loss and master_use_grad):
         loss_flux_sensitivity, flux_sensitivity_value = flux_sensitivity_loss(circuit)
-        # if loss_normalization:
-        #     loss_flux_sensitivity /= loss_flux_sensitivity_init
         if use_flux_sensitivity_loss:
             loss = loss + loss_flux_sensitivity
 
@@ -312,8 +298,7 @@ def calculate_loss_metrics(
     charge_sensitivity_loss_bool = (True if use_charge_sensitivity_loss != 0 else False)
     with torch.set_grad_enabled(charge_sensitivity_loss_bool and master_use_grad):
         loss_charge_sensitivity, charge_sensitivity_value = charge_sensitivity_loss(circuit, code=use_charge_sensitivity_loss)
-        # if loss_normalization:
-        #     loss_charge_sensitivity /= loss_charge_sensitivity_init
+
         if charge_sensitivity_loss_bool:
             loss = loss + loss_charge_sensitivity
 
@@ -332,21 +317,21 @@ def calculate_loss_metrics(
 
     with torch.no_grad():
         loss_values: LossOut = {
-            'frequency_loss': loss_frequency.detach() if get_optim_mode() else loss_frequency,
-            'anharmonicity_loss': loss_anharmonicity.detach() if get_optim_mode() else loss_anharmonicity,
-            'T1_loss': loss_T1.detach() if get_optim_mode() else loss_T1,
-            'flux_sensitivity_loss': loss_flux_sensitivity.detach() if get_optim_mode() else loss_flux_sensitivity,
-            'charge_sensitivity_loss': loss_charge_sensitivity.detach() if get_optim_mode() else loss_charge_sensitivity,
-            # 'experimental_sensitivity_loss': loss_experimental_sensitivity.detach() if get_optim_mode() else loss_experimental_sensitivity,
-            'total_loss': loss.detach() if get_optim_mode() else loss
+            'frequency_loss': detach_if_optim(loss_frequency),
+            'anharmonicity_loss': detach_if_optim(loss_anharmonicity),
+            'T1_loss': detach_if_optim(loss_T1),
+            'flux_sensitivity_loss': detach_if_optim(loss_flux_sensitivity),
+            'charge_sensitivity_loss': detach_if_optim(loss_charge_sensitivity),
+            # 'experimental_sensitivity_loss': detach_if_optim(loss_experimental_sensitivity)
+            'total_loss': detach_if_optim(loss)
         }
         metrics: MetricOut = {
-            'omega': frequency.detach() if get_optim_mode() else frequency,
-            'A': anharmonicity.detach() if get_optim_mode() else anharmonicity,
-            'T1': T1_time.detach() if get_optim_mode() else T1_time,
-            'flux_sensitivity': flux_sensitivity_value.detach() if get_optim_mode() else flux_sensitivity_value,
-            'charge_sensitivity': charge_sensitivity_value.detach() if get_optim_mode() else charge_sensitivity_value,
-            'T2': T2_time,
+            'omega': detach_if_optim(frequency),
+            'A': detach_if_optim(anharmonicity),
+            'T1': detach_if_optim(T1_time),
+            'flux_sensitivity': detach_if_optim(flux_sensitivity_value),
+            'charge_sensitivity': detach_if_optim(charge_sensitivity_value),
+            'T2': detach_if_optim(T2_time),
         }
 
     return loss, loss_values, metrics
