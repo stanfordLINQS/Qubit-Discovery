@@ -8,6 +8,7 @@ import torch
 
 from SQcircuit import Circuit, CircuitSampler
 from SQcircuit.settings import get_optim_mode
+from SQcircuit import functions as sqf
 
 SQArrType = Union[np.ndarray, torch.Tensor]
 SQValType = Union[float, torch.Tensor]
@@ -111,7 +112,6 @@ def charge_sensitivity(circuit: Circuit,
 
 def flux_sensitivity(
         circuit: Circuit,
-        flux_point=0.5,
         delta=0.01
 ) -> SQValType:
     """Return the flux sensitivity of the circuit around half flux quantum."""
@@ -123,7 +123,7 @@ def flux_sensitivity(
     org_flux = loop.value() / (2 * np.pi) # should be `flux_point`
 
     # Change the flux and get the eigenfrequencies
-    loop.set_flux(flux_point + delta)
+    loop.set_flux(org_flux + delta)
     perturb_circ.diag(len(circuit.efreqs))
     f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
 
@@ -167,6 +167,29 @@ def flux_sensitivity_constantnorm(
 
     return S
 
+def calculate_T1_rate(
+    circuit: Circuit
+) -> SQValType:
+    Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
+    Gamma_2 = circuit.dec_rate('inductive', (0, 1))
+    Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
+    Gamma = Gamma_1 + Gamma_2 + Gamma_3
+
+    return Gamma
+
+def gate_metric(
+    circuit: Circuit
+) -> SQValType:
+    """Return a bound on the number of gate operations that can be performed."""
+    f21 = circuit.efreqs[2] - circuit.efreqs[1]
+    f10 = circuit.efreqs[1] - circuit.efreqs[0]
+    A = f21 - f10
+
+    Gamma = calculate_T1_rate(circuit)
+    T1 = 1 / Gamma
+    G = sqf.abs(A) * T1 * 1e9 # Convert from GHz to Hz
+
+    return G
 
 def reset_charge_modes(circuit: Circuit) -> None:
     """Sets gate charge of all charge degrees of freedom to zero."""

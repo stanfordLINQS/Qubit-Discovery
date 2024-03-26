@@ -5,15 +5,18 @@ from typing import TypedDict, Tuple
 
 from .functions import (
     calculate_anharmonicity,
+    calculate_T1_rate,
     charge_sensitivity,
     flux_sensitivity,
     flux_sensitivity_constantnorm,
     first_resonant_frequency,
+    gate_metric,
     reset_charge_modes,
     SQValType,
 )
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
+from SQcircuit import functions as sqf
 
 import numpy as np
 import torch
@@ -73,10 +76,7 @@ def anharmonicity_loss_constantnorm(
 
 
 def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
-    Gamma_2 = circuit.dec_rate('inductive', (0, 1))
-    Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
-    Gamma = Gamma_1 + Gamma_2 + Gamma_3
+    Gamma = calculate_T1_rate(circuit)
     T1 = 1 / Gamma
 
     loss = Gamma ** 2
@@ -137,7 +137,7 @@ def flux_sensitivity_loss_constantnorm(
     else:
         loss = b * (S - a) + epsilon
 
-    return loss, S
+    return 100 * loss, S
 
 
 def charge_sensitivity_loss(circuit: Circuit,
@@ -191,6 +191,12 @@ def experimental_sensitivity_loss(circuit: Circuit,
     loss = E
     return loss, E
 
+def gate_loss(circuit: Circuit):
+    """"Returns loss corresponding to the estimated bound on number of gates that circuit can perform"""
+    G = gate_metric(circuit)
+    loss = -sqf.log(G)
+    return loss, G
+
 
 class LossOut(TypedDict):
     frequency_loss: SQValType
@@ -198,6 +204,7 @@ class LossOut(TypedDict):
     T1_loss: SQValType
     flux_sensitivity_loss: SQValType
     charge_sensitivity_loss: SQValType
+    gate_loss: SQValType
     total_loss: SQValType
 
 
@@ -207,6 +214,7 @@ class MetricOut(TypedDict):
     T1: SQValType
     flux_sensitivity: SQValType
     charge_sensitivity: SQValType
+    gate: SQValType
     T2: SQValType
 
 
@@ -216,6 +224,7 @@ default_functions = {
     'T1': T1_loss,
     'flux': flux_sensitivity_loss,
     'charge': charge_sensitivity_loss,
+    'gate': gate_loss,
     'T2': T2_loss,
 }
 
@@ -230,6 +239,7 @@ def calculate_loss_metrics(
     use_experimental_sensitivity_loss=False,
     use_T1_loss=False,
     use_T2_loss=False,
+    use_gate_loss=False,
     log_loss=False,
     loss_normalization=False,
     master_use_grad=True
@@ -246,6 +256,7 @@ def calculate_loss_metrics(
     flux_sensitivity_loss = function_dict['flux']
     charge_sensitivity_loss = function_dict['charge']
     experimental_sensitivity_loss = function_dict['experiment']
+    gate_loss = function_dict['gate']
 
     if loss_normalization:
         if get_optim_mode():
@@ -256,6 +267,7 @@ def calculate_loss_metrics(
             loss_flux_sensitivity_init = flux_sensitivity_loss(circuit)[0].detach()
             loss_charge_sensitivity_init = charge_sensitivity_loss(circuit)[0].detach()
             loss_experimental_sensitivity_init = experimental_sensitivity_loss(circuit)[0].detach()
+            loss_gate_init = gate_loss(circuit)[0].detach()
         else:
             loss_frequency_init, _ = frequency_loss(circuit)
             loss_anharmonicity_init, _ = anharmonicity_loss(circuit)
@@ -264,6 +276,7 @@ def calculate_loss_metrics(
             loss_flux_sensitivity_init, _ = flux_sensitivity_loss(circuit)
             loss_charge_sensitivity_init, _ = charge_sensitivity_loss(circuit)
             loss_experimental_sensitivity_init, _ = experimental_sensitivity_loss(circuit)
+            loss_gate_init, _ = gate_loss(circuit)
 
     # Calculate frequency
     with torch.set_grad_enabled(use_frequency_loss and master_use_grad):
@@ -317,6 +330,14 @@ def calculate_loss_metrics(
         if charge_sensitivity_loss_bool:
             loss = loss + loss_charge_sensitivity
 
+    # Calculate gate loss
+    with torch.set_grad_enabled(use_gate_loss and master_use_grad):
+        loss_gate, gate_metric_value = gate_loss(circuit)
+        if loss_normalization:
+            loss_gate /= loss_gate_init
+        if use_gate_loss:
+            loss = loss + loss_gate
+
     with torch.set_grad_enabled(use_experimental_sensitivity_loss and master_use_grad):
         loss_experimental_sensitivity, experimental_sensitivity_value = experimental_sensitivity_loss(circuit)
         if loss_normalization:
@@ -338,6 +359,7 @@ def calculate_loss_metrics(
             'flux_sensitivity_loss': loss_flux_sensitivity.detach() if get_optim_mode() else loss_flux_sensitivity,
             'charge_sensitivity_loss': loss_charge_sensitivity.detach() if get_optim_mode() else loss_charge_sensitivity,
             'experimental_sensitivity_loss': loss_experimental_sensitivity.detach() if get_optim_mode() else loss_experimental_sensitivity,
+            'gate_loss': loss_gate.detach() if get_optim_mode() else loss_gate,
             'total_loss': loss.detach() if get_optim_mode() else loss
         }
         metrics: MetricOut = {
@@ -346,6 +368,7 @@ def calculate_loss_metrics(
             'T1': T1_time.detach() if get_optim_mode() else T1_time,
             'flux_sensitivity': flux_sensitivity_value.detach() if get_optim_mode() else flux_sensitivity_value,
             'charge_sensitivity': charge_sensitivity_value.detach() if get_optim_mode() else charge_sensitivity_value,
+            'gate': gate_metric_value.detach() if get_optim_mode() else gate_metric_value,
             'T2': T2_time,
         }
 
