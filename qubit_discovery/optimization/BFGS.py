@@ -1,4 +1,3 @@
-from copy import copy
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
@@ -19,6 +18,7 @@ from .utils import (
     RecordType
 )
 
+
 def run_BFGS(
     circuit: Circuit,
     circuit_code: str,
@@ -27,16 +27,15 @@ def run_BFGS(
     num_eigenvalues: int,
     total_trunc_num: int,
     save_loc: str,
-    bounds: Dict[SQcircuit.Element, Tensor] = None,
-    lr=1.0,
-    max_iter=100,
-    tolerance=1e-7,
-    verbose=False,
-    save_intermediate_circuits=True
-    ) -> Tuple[Tensor, RecordType]: 
-    """
-    Runs BFGS for a maximum of `max_iter` beginning with `circuit` using 
-    `loss_metric_function`.
+    bounds: Optional[Dict[SQcircuit.Element, Tensor]] = None,
+    lr: float = 1.0,
+    max_iter: int = 100,
+    tolerance: float = 1e-7,
+    verbose: bool = False,
+    save_intermediate_circuits: bool = True
+) -> Tuple[Tensor, RecordType]:
+    """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
+    ``loss_metric_function``.
 
     Parameters
     ----------
@@ -52,7 +51,7 @@ def run_BFGS(
         num_eigenvalues:
             Number of eigenvalues to calculate when diagonalizing.
         total_trunc_num:
-            Maximum total runcation number to allocate.
+            Maximum total truncation number to allocate.
         save_loc:
             Folder to save results in.
         bounds:
@@ -62,30 +61,31 @@ def run_BFGS(
         max_iter:
             Maximum number of iterations.
         tolerance:
-            Minimum change each step must achieve to not termiante.
+            Minimum change each step must achieve to not terminate.
         verbose:
             Whether to print out progress.
-        save_circuit:
+        save_intermediate_circuits:
             Whether to save the circuit at each iteration.
     """
     params = torch.stack(circuit.parameters).clone()
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
-    
     circuit.diag(num_eigenvalues)
     # Get gradient and loss values to start with
     loss, loss_values, metric_values = loss_metric_function(circuit)
-    loss_record, metric_record = init_records(circuit_code, 
-                                              loss_values, 
-                                              metric_values)
-    
-    def objective_func(circuit, x, num_eigenvalues):
-        set_params(circuit, x)
-        circuit.diag(num_eigenvalues)
-        total_loss, _, _ = loss_metric_function(circuit)
+    loss_record, metric_record = init_records(
+        circuit_code,
+        loss_values,
+        metric_values
+    )
 
-        return total_loss
+    def objective_func(cr: Circuit, x: Tensor, n_eigs: int):
+        set_params(cr, x)
+        cr.diag(n_eigs)
+        t_loss, _, _ = loss_metric_function(cr)
+
+        return t_loss
 
     for iteration in range(max_iter):
         print(f"Iteration {iteration}")
@@ -102,9 +102,17 @@ def run_BFGS(
         total_loss, loss_values, metric_values = loss_metric_function(circuit)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(loss_record, metric_record, circuit, circuit_code, name, 
-                     save_loc, 'BFGS', save_intermediate_circuits=save_intermediate_circuits)
 
+        save_results(
+            loss_record,
+            metric_record,
+            circuit,
+            circuit_code,
+            name,
+            save_loc,
+            'BFGS',
+            save_intermediate_circuits=save_intermediate_circuits
+        )
 
         loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()
@@ -113,10 +121,21 @@ def run_BFGS(
 
         p = -torch.matmul(H, gradient)
 
-        alpha = backtracking_line_search(circuit, objective_func, params, gradient, p, num_eigenvalues, bounds, lr=lr)
+        alpha = backtracking_line_search(
+            circuit,
+            objective_func,
+            params,
+            gradient,
+            p,
+            num_eigenvalues,
+            bounds,
+            lr=lr
+        )
         delta_params = alpha * p
 
-        params_next = (params + delta_params).clone().detach().requires_grad_(True)
+        params_next = (
+                params + delta_params
+        ).clone().detach().requires_grad_(True)
 
         loss_next = objective_func(circuit, params_next, num_eigenvalues)
         loss_next.backward()
@@ -127,10 +146,11 @@ def run_BFGS(
 
         if verbose:
             if iteration % 1 == 0:
-                print(f"i:{iteration}",
-                      f"loss: {loss.detach().numpy()}",
-                      f"loss_diff={loss_diff.detach().numpy()}",
-                      f"alpha={alpha}"
+                print(
+                    f"i:{iteration}",
+                    f"loss: {loss.detach().numpy()}",
+                    f"loss_diff={loss_diff.detach().numpy()}",
+                    f"alpha={alpha}"
                 )
 
         if torch.abs(loss_diff) < tolerance:
@@ -147,7 +167,10 @@ def run_BFGS(
         else:
             A = identity - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
             B = identity - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
-            H = torch.matmul(A, torch.matmul(H, B)) + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+            H = (
+                torch.matmul(A, torch.matmul(H, B))
+                + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+            )
 
         params = params_next
         circuit.update()
@@ -169,30 +192,32 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
     return False
 
+
 def backtracking_line_search(
     circuit: Circuit,
-    objective_func: Callable[[Circuit, Tensor], Tensor],
-    params: torch.tensor, # params at starting pioint
-    gradient: torch.tensor, # gradient at starting point
-    p: torch.tensor, # search direction,
+    objective_func: Callable[[Circuit, Tensor, int], Tensor],
+    params: torch.tensor,  # params at starting point
+    gradient: torch.tensor,  # gradient at starting point
+    p: torch.tensor,  # search direction,
     num_eigenvalues: int,
     bounds=None,
     lr=1.0,
     c=1e-45,
     rho=0.1
 ) -> float:
-    """"
-    At end of line search, `circuit` will have its internal parameters set to 
-    `params + alpha * p`.
+    """At end of line search, `circuit` will have its internal parameters set
+    to ``params + alpha * p``.
     """
     alpha = lr
     circuit_elements = circuit.get_all_circuit_elements()
     circuit_element_types = [type(element) for element in circuit_elements]
 
     if bounds is not None:
-        while (
-            not_param_in_bounds(params + alpha * p, bounds, circuit_element_types)
-        ):
+        while (not_param_in_bounds(
+            params + alpha * p,
+            bounds,
+            circuit_element_types
+        )):
             alpha *= rho
 
     baseline_loss = objective_func(circuit, params, num_eigenvalues)
