@@ -34,8 +34,8 @@ def run_BFGS(
     verbose: bool = False,
     save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
-    """Runs BFGS for a maximum of `max_iter` beginning with `circuit` using
-    `loss_metric_function`.
+    """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
+    ``loss_metric_function``.
 
     Parameters
     ----------
@@ -74,9 +74,11 @@ def run_BFGS(
     circuit.diag(num_eigenvalues)
     # Get gradient and loss values to start with
     loss, loss_values, metric_values = loss_metric_function(circuit)
-    loss_record, metric_record = init_records(circuit_code, 
-                                              loss_values, 
-                                              metric_values)
+    loss_record, metric_record = init_records(
+        circuit_code,
+        loss_values,
+        metric_values
+    )
 
     def objective_func(cr: Circuit, x: Tensor, n_eigs: int):
         set_params(cr, x)
@@ -100,6 +102,7 @@ def run_BFGS(
         total_loss, loss_values, metric_values = loss_metric_function(circuit)
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
+
         save_results(
             loss_record,
             metric_record,
@@ -164,7 +167,10 @@ def run_BFGS(
         else:
             A = identity - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
             B = identity - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
-            H = torch.matmul(A, torch.matmul(H, B)) + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+            H = (
+                torch.matmul(A, torch.matmul(H, B))
+                + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+            )
 
         params = params_next
         circuit.update()
@@ -207,9 +213,11 @@ def backtracking_line_search(
     circuit_element_types = [type(element) for element in circuit_elements]
 
     if bounds is not None:
-        while (
-            not_param_in_bounds(params + alpha * p, bounds, circuit_element_types)
-        ):
+        while (not_param_in_bounds(
+            params + alpha * p,
+            bounds,
+            circuit_element_types
+        )):
             alpha *= rho
 
     baseline_loss = objective_func(circuit, params, num_eigenvalues)
