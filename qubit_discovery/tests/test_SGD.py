@@ -1,8 +1,6 @@
 """Test Module for BFGS algorithm."""
-import pytest
 
 import torch
-import numpy as np
 
 import SQcircuit as sq
 
@@ -17,7 +15,7 @@ from qubit_discovery.tests.conftest import (
 
 
 def test_sgd_run() -> None:
-    """Test one step of BFGS algorithm."""
+    """Test one step of SGD algorithm."""
 
     target_params = torch.tensor(
         [1.9758e-14, 1.6673e-07, 6.4088e+09],
