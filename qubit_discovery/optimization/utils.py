@@ -1,22 +1,34 @@
 from collections import defaultdict
 import os
-from typing import (Callable, Dict, Iterable, List,
-                    Tuple, TypeVar, Union)
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Tuple,
+    TypeVar,
+    Union
+)
 
 import dill as pickle
-import numpy as np
-from SQcircuit import (Circuit, CircuitSampler, Loop,
-                       Element, Inductor, Junction, Capacitor)
+from SQcircuit import (
+    Circuit,
+    CircuitSampler,
+    Loop,
+    Element,
+    Inductor,
+    Junction,
+    Capacitor
+)
 import torch
 
-## General utilities
+
+# General utilities
 SQValType = Union[float, torch.Tensor]
-LossFunctionType = Callable[[Circuit],
-                            Tuple[torch.Tensor,
-                                  Dict[str, List[torch.tensor]], 
-                                  Dict[str, List[torch.tensor]]]]
+LossFunctionType = Callable[[Circuit], Tuple[torch.Tensor, Dict[str, List[torch.tensor]], Dict[str, List[torch.tensor]]]]
 
 T = TypeVar('T')
+
 
 def flatten(l: Iterable[Iterable[T]]) -> List[T]:
     """Converts array of arrays into single contiguous one-dimensional array."""
@@ -34,8 +46,7 @@ def get_element_counts(circuit: Circuit) -> Tuple[int, int, int]:
     return junction_count, inductor_count, capacitor_count
 
 
-## Utilities for gradient updates
-
+# Utilities for gradient updates
 def set_params(circuit: Circuit, params: torch.Tensor) -> None:
     """
     Set the parameters of a circuit to new values.
@@ -44,6 +55,7 @@ def set_params(circuit: Circuit, params: torch.Tensor) -> None:
         element._value = params[i].clone().detach().requires_grad_(True)
 
     circuit.update()
+
 
 def get_grad(circuit: Circuit) -> torch.Tensor:
 
@@ -57,15 +69,18 @@ def get_grad(circuit: Circuit) -> torch.Tensor:
 
     return torch.stack(grad_list).detach().clone()
 
+
 def set_grad_zero(circuit: Circuit) -> None:
     for key in circuit._parameters.keys():
         circuit._parameters[key].grad = None
+
 
 def clamp_gradient(element: Element, epsilon: float) -> None:
   max = torch.squeeze(torch.Tensor([epsilon, ]))
   max = max.double()
   element._value.grad = torch.minimum(max, element._value.grad)
   element._value.grad = torch.maximum(-max, element._value.grad)
+
 
 def reset_charge_modes(circuit: Circuit) -> None:
     """Sets gate charge of all charge degrees of freedom to zero."""
@@ -78,8 +93,7 @@ def reset_charge_modes(circuit: Circuit) -> None:
             circuit.set_charge_offset(charge_mode, default_n_g)
 
 
-## Sampling utilities
-
+# Sampling utilities
 def create_sampler(N: int, 
                    capacitor_range, 
                    inductor_range, 
@@ -90,6 +104,7 @@ def create_sampler(N: int,
     circuit_sampler.inductor_range = inductor_range
     circuit_sampler.junction_range = junction_range
     return circuit_sampler
+
 
 def print_new_circuit_sampled_message(total_l=131) -> None:
     message = "NEW CIRCUIT SAMPLED"
@@ -102,11 +117,13 @@ def print_new_circuit_sampled_message(total_l=131) -> None:
     print(+ total_l * "*")
     print(total_l * "*")
 
-## Loss record utilities
 
-RecordType = Dict[str, Union[str,
-                             List[torch.Tensor],
-                             List[Circuit]]]
+# Loss record utilities
+RecordType = Dict[
+    str, Union[str,List[torch.Tensor], List[Circuit]]
+]
+
+
 @torch.no_grad()
 def init_records(circuit_code: str,
                  loss_values: Dict[str, List[torch.tensor]],
@@ -127,6 +144,7 @@ def init_records(circuit_code: str,
 
     return loss_record, metric_record
 
+
 @torch.no_grad()
 def update_record(circuit: Circuit,  
                   record: RecordType, 
@@ -134,6 +152,7 @@ def update_record(circuit: Circuit,
     """Updates record based on next iteration of optimization."""
     for key in values.keys():
         record[key].append(values[key].detach().numpy())
+
 
 def save_results(loss_record: RecordType, 
                  metric_record: RecordType, 
@@ -160,7 +179,8 @@ def save_results(loss_record: RecordType,
     circuit_save_url = os.path.join(save_loc, f'{optim_type}_circuit_record_{circuit_code}_{name}.pickle')
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
-    
+
+
 def element_code_to_class(code):
     if code == 'J':
         return Junction
