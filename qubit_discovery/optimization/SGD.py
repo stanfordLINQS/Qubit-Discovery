@@ -119,4 +119,4 @@ def run_SGD(
         optimizer.step()
         circuit.update()
 
-        return loss_record
+    return loss_record
