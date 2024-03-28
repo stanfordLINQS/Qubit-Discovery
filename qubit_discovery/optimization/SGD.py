@@ -1,6 +1,6 @@
 """This module implements the SGD optimizer."""
 
-from typing import List
+from typing import List, Optional
 
 import torch
 
@@ -38,7 +38,7 @@ def run_SGD(
     total_trunc_num: int,
     num_epochs: int,
     bounds: List[Element],
-    save_loc: str,
+    save_loc: Optional[str] = None,
     save_intermediate_circuits=False
 ):
     """Runs SGD for `num_epochs` beginning with `circuit` using
@@ -91,16 +91,18 @@ def run_SGD(
             )
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
-        save_results(
-            loss_record,
-            metric_record,
-            circuit,
-            circuit_code,
-            name,
-            save_loc,
-            'SGD',
-            save_intermediate_circuits=save_intermediate_circuits
-        )
+
+        if save_loc:
+            save_results(
+                loss_record,
+                metric_record,
+                circuit,
+                circuit_code,
+                name,
+                save_loc,
+                'SGD',
+                save_intermediate_circuits=save_intermediate_circuits
+            )
 
         # Clamp gradients, if desired
         with torch.no_grad():

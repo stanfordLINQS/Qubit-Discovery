@@ -48,8 +48,7 @@ def test_sgd_run() -> None:
         total_trunc_num=total_trunc_num,
         num_epochs=1,
         bounds=get_bounds(),
-        save_loc="./",
-        save_intermediate_circuits=False
+        save_intermediate_circuits=False,
     )
 
     assert torch.isclose(torch.stack(circuit.parameters), target_params).all()

@@ -26,7 +26,7 @@ def run_BFGS(
     name: str,
     num_eigenvalues: int,
     total_trunc_num: int,
-    save_loc: str,
+    save_loc: Optional[str] = None,
     bounds: Optional[Dict[SQcircuit.Element, Tensor]] = None,
     lr: float = 1.0,
     max_iter: int = 100,
@@ -103,16 +103,17 @@ def run_BFGS(
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
 
-        save_results(
-            loss_record,
-            metric_record,
-            circuit,
-            circuit_code,
-            name,
-            save_loc,
-            'BFGS',
-            save_intermediate_circuits=save_intermediate_circuits
-        )
+        if save_loc:
+            save_results(
+                loss_record,
+                metric_record,
+                circuit,
+                circuit_code,
+                name,
+                save_loc,
+                'BFGS',
+                save_intermediate_circuits=save_intermediate_circuits
+            )
 
         loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()

@@ -58,7 +58,6 @@ def test_bfgs_run() -> None:
         name="BFGS_test",
         num_eigenvalues=10,
         total_trunc_num=total_trunc_num,
-        save_loc="./",
         bounds=get_bounds(),
         lr=1.0,
         max_iter=1,
