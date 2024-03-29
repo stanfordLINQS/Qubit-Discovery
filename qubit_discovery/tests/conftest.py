@@ -1,4 +1,4 @@
-"""Module contains general configuration and functions  for
+"""Module contains general configuration and functions for
 qubit_discovery tests.
 """
 
@@ -50,7 +50,7 @@ def are_loss_dicts_close(dict1, dict2, rel: float = 1e-2) -> bool:
         return False
 
     for key in dict1:
-        if not np.isclose(dict1[key][0], dict2[key][0], rtol=rel):
+        if not np.isclose(dict1[key][-1], dict2[key][-1], rtol=rel):
             return False
 
     return True
