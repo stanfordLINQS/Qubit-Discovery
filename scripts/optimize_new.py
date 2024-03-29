@@ -35,11 +35,6 @@ from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics_new
 from plot_utils import load_final_circuit
 
-from settings import RESULTS_DIR
-
-# Default optimization settings.
-DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), 'defaults_new.yaml')
-element_verbose = False
 
 # Keys that must be included in Yaml file.
 YAML_KEYS = [
@@ -79,7 +74,10 @@ def set_seed(seed: int) -> None:
 
 
 def main() -> None:
-    global RESULTS_DIR
+
+    ###########################################################################
+    # Loading the Yaml file and command line parameters.
+    ###########################################################################
     arguments = docopt(__doc__, version='Optimize 0.8')
 
     with open(arguments['<yaml_file>'], 'r') as f:
@@ -99,6 +97,10 @@ def main() -> None:
             f"in the command line or yaml file"
         )
 
+    ###########################################################################
+    # Initiating the optimization settings.
+    ###########################################################################
+
     capacitor_range = eval_list(parameters['capacitor_range'])
     junction_range = eval_list(parameters['junction_range'])
     inductor_range = eval_list(parameters['inductor_range'])
@@ -110,9 +112,8 @@ def main() -> None:
 
     # Setup output folders for data
     record_folder = os.path.join(
-        RESULTS_DIR,
-        f'{parameters["optim_type"]}_{parameters["name"]}',
-        'records'
+        os.path.dirname(os.path.abspath(arguments['<yaml_file>'])),
+        f'{parameters["optim_type"]}_{parameters["name"]}', 'records'
     )
     os.makedirs(record_folder, exist_ok=True)
 
@@ -123,13 +124,6 @@ def main() -> None:
             use_metrics=parameters["use_metrics"],
         )
 
-    sampler = create_sampler(
-        len(parameters['circuit_code']),
-        capacitor_range,
-        inductor_range,
-        junction_range
-    )
-
     bounds = {
         sq.Junction: torch.tensor(junction_range),
         sq.Inductor: torch.tensor(inductor_range),
@@ -137,6 +131,12 @@ def main() -> None:
     }
 
     if parameters['init_circuit'] == "":
+        sampler = create_sampler(
+            len(parameters['circuit_code']),
+            capacitor_range,
+            inductor_range,
+            junction_range
+        )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
         print("Circuit sampled!")
     else:
@@ -147,6 +147,10 @@ def main() -> None:
 
     # Begin by allocating truncation numbers equally amongst all modes
     baseline_trunc_nums = circuit.truncate_circuit(parameters['K'])
+
+    ###########################################################################
+    # Running the optimizations.
+    ###########################################################################
 
     if parameters['optim_type'] == "SGD":
         run_SGD(
