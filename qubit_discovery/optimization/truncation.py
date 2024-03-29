@@ -6,7 +6,6 @@ import numpy as np
 import scipy, scipy.signal
 from matplotlib.axes import Axes
 
-import SQcircuit.functions as sqf
 from SQcircuit import get_optim_mode, Circuit
 
 
@@ -114,6 +113,7 @@ def fit_mode(
 
     return fit_results
 
+
 def get_slow_fit(
     fit_results, 
     ignore_threshold=1e-5
@@ -134,6 +134,7 @@ def get_slow_fit(
             return k1, m1, peak1
         else:
             return k2, m2, peak2
+
 
 def trunc_num_heuristic(
     circuit: Circuit,
@@ -247,6 +248,7 @@ def assign_trunc_nums(
         return trunc_nums
     else:
         raise NotImplementedError
+
 
 def test_convergence(
     circuit: Circuit,
