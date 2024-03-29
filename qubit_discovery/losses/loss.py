@@ -329,9 +329,9 @@ use_metrics_default = [
 
 def calculate_loss_metrics_new(
     circuit: Circuit,
-    master_use_grad: bool = True,
     use_losses: Dict[str, float] = None,
     use_metrics: List[str] = None,
+    master_use_grad: bool = True,
 ) -> Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]:
 
     if use_metrics is None:
