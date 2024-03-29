@@ -1,9 +1,8 @@
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import torch
 from torch import Tensor
 
-import SQcircuit
 from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
@@ -14,9 +13,15 @@ from .utils import (
     init_records,
     update_record,
     save_results,
-    LossFunctionType,
     RecordType
 )
+
+
+SQValType = Union[float, Tensor]
+LossFunctionType = Callable[
+    [Circuit],
+    Tuple[Tensor, Dict[str, SQValType], Dict[str, SQValType]]
+]
 
 
 def run_BFGS(
@@ -27,7 +32,7 @@ def run_BFGS(
     num_eigenvalues: int,
     total_trunc_num: int,
     save_loc: Optional[str] = None,
-    bounds: Optional[Dict[SQcircuit.Element, Tensor]] = None,
+    bounds: Optional = None,
     lr: float = 1.0,
     max_iter: int = 100,
     tolerance: float = 1e-7,

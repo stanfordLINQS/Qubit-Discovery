@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import torch
 
-from SQcircuit import Circuit, Element
+from SQcircuit import Circuit
 
 from .utils import (
     clamp_gradient,
@@ -37,7 +37,6 @@ def run_SGD(
     baseline_trunc_nums: List[int],
     total_trunc_num: int,
     num_epochs: int,
-    bounds: List[Element],
     save_loc: Optional[str] = None,
     save_intermediate_circuits=False
 ):
@@ -104,9 +103,7 @@ def run_SGD(
                 save_intermediate_circuits=save_intermediate_circuits
             )
 
-        # Clamp gradients, if desired
         with torch.no_grad():
-            # without .no_grad() the element._value.grads track grad themselves
             for element in list(circuit._parameters.keys()):
                 norm_factor = element._value
                 element._value.grad *= norm_factor

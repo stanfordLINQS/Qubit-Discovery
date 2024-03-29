@@ -25,7 +25,10 @@ import torch
 
 # General utilities
 SQValType = Union[float, torch.Tensor]
-LossFunctionType = Callable[[Circuit], Tuple[torch.Tensor, Dict[str, List[torch.tensor]], Dict[str, List[torch.tensor]]]]
+LossFunctionType = Callable[
+    [Circuit],
+    Tuple[torch.Tensor, Dict[str, SQValType], Dict[str, SQValType]]
+]
 
 T = TypeVar('T')
 
