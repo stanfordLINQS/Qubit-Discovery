@@ -204,7 +204,8 @@ def main() -> None:
                 use_anharmonicity_loss=parameters['losses']['anharmonicity_loss'],
                 use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
                 use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
-                use_T1_loss=parameters['losses']['T1_loss']
+                use_T1_loss=parameters['losses']['T1_loss'],
+                use_gate_loss=parameters['losses']['gate_loss']
             ),
             run_name,
             parameters['num_eigenvalues'],
@@ -232,6 +233,7 @@ def main() -> None:
                 use_flux_sensitivity_loss=parameters['losses']['flux_sensitivity_loss'], 
                 use_charge_sensitivity_loss=parameters['losses']['charge_sensitivity_loss'],
                 use_T1_loss=parameters['losses']['T1_loss'],
+                use_gate_loss=parameters['losses']['gate_loss'],
                 master_use_grad=master_use_grad
             ),
             run_name,
