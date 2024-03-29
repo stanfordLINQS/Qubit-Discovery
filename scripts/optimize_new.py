@@ -2,7 +2,8 @@
 Optimize.
 
 Usage:
-  optimize yaml <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code> --optim_type=<optim_type> --init_circuit=<init_circuit> --save-intermediate]
+  optimize yaml <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
+  --optim_type=<optim_type> --init_circuit=<init_circuit> --save-intermediate]
   optimize -h | --help
   optimize --version
 
@@ -13,7 +14,6 @@ Options:
   -c, --circuit_code=<circuit_code>         Circuit code
   -s, --seed=<seed>                         Seed for random generators
   -o, --optim_type=<optim_type>             Optimization method
-  -d, --output_dir=<output_dir>             Set output directory
   -i, --init_circuit=<init_circuit>         Set initial circuit params
   --save-intermediate                       Save intermediate circuits
 """
@@ -78,6 +78,7 @@ def main() -> None:
     ###########################################################################
     # Loading the Yaml file and command line parameters.
     ###########################################################################
+
     arguments = docopt(__doc__, version='Optimize 0.8')
 
     with open(arguments['<yaml_file>'], 'r') as f:
@@ -101,14 +102,22 @@ def main() -> None:
     # Initiating the optimization settings.
     ###########################################################################
 
+    sq.set_optim_mode(True)
+
     capacitor_range = eval_list(parameters['capacitor_range'])
     junction_range = eval_list(parameters['junction_range'])
     inductor_range = eval_list(parameters['inductor_range'])
 
-    set_seed(int(parameters['seed']))
-    run_name = parameters['name'] + '_' + str(parameters['seed'])
+    bounds = {
+        sq.Junction: torch.tensor(junction_range),
+        sq.Inductor: torch.tensor(inductor_range),
+        sq.Capacitor: torch.tensor(capacitor_range)
+    }
 
-    sq.set_optim_mode(True)
+    print(bounds)
+    print(type(bounds))
+
+    set_seed(int(parameters['seed']))
 
     # Setup output folders for data
     record_folder = os.path.join(
@@ -123,12 +132,6 @@ def main() -> None:
             use_losses=parameters["use_losses"],
             use_metrics=parameters["use_metrics"],
         )
-
-    bounds = {
-        sq.Junction: torch.tensor(junction_range),
-        sq.Inductor: torch.tensor(inductor_range),
-        sq.Capacitor: torch.tensor(capacitor_range)
-    }
 
     if parameters['init_circuit'] == "":
         sampler = create_sampler(
@@ -145,40 +148,35 @@ def main() -> None:
         circuit._toggle_fullcopy = True
         print("Circuit loaded!")
 
-    # Begin by allocating truncation numbers equally amongst all modes
-    baseline_trunc_nums = circuit.truncate_circuit(parameters['K'])
-
     ###########################################################################
     # Running the optimizations.
     ###########################################################################
 
     if parameters['optim_type'] == "SGD":
         run_SGD(
-            circuit,
-            parameters['circuit_code'],
-            my_loss_function,
-            run_name,
-            parameters['num_eigenvalues'],
-            baseline_trunc_nums,
-            parameters['K'],
-            parameters['epochs'],
-            bounds,
-            record_folder,
+            circuit=circuit,
+            circuit_code=parameters['circuit_code'],
+            loss_metric_function=my_loss_function,
+            name=parameters['name'] + '_' + str(parameters['seed']),
+            num_eigenvalues=parameters['num_eigenvalues'],
+            baseline_trunc_nums=circuit.truncate_circuit(parameters['K']),
+            total_trunc_num=parameters['K'],
+            num_epochs=parameters['epochs'],
+            save_loc=record_folder,
             save_intermediate_circuits=parameters['save-intermediate']
         )
     elif parameters['optim_type'] == "BFGS":
-
         run_BFGS(
-            circuit,
-            parameters['circuit_code'],
-            my_loss_function,
-            run_name,
-            parameters['num_eigenvalues'],
-            parameters['K'],
-            record_folder,
+            circuit=circuit,
+            circuit_code=parameters['circuit_code'],
+            loss_metric_function=my_loss_function,
+            name=parameters['name'] + '_' + str(parameters['seed']),
+            num_eigenvalues=parameters['num_eigenvalues'],
+            total_trunc_num=parameters['K'],
             bounds=bounds,
+            save_loc=record_folder,
             max_iter=parameters['epochs'],
-            tolerance=0,
+            tolerance=1e-10,
             verbose=True,
             save_intermediate_circuits=parameters['save-intermediate']
         )
