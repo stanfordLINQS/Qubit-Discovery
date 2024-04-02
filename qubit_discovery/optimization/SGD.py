@@ -38,7 +38,8 @@ def run_SGD(
     total_trunc_num: int,
     num_epochs: int,
     save_loc: Optional[str] = None,
-    save_intermediate_circuits=False
+    save_intermediate_circuits=False,
+    bounds=None,
 ):
     """Runs SGD for `num_epochs` beginning with `circuit` using
     `loss_metric_function`.
