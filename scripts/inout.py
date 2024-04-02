@@ -51,20 +51,20 @@ The working tree for the outputs of scripts will look like:
  main_folder/                       - main directory
  ├── yaml_file.yaml
  │
- ├── {optim_type}_{name}/           - experiment_directory
- │   │
- │   ├── records/                   - record_directory
- │   │   │
- │   │   ├── {optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle
- │   │   ├── {optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle
- │   │   └── {optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle
- │   │
- │   └── plots/                     - plots_directory
- │       │
- │       ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.pickle
- │       └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.pickle
- │
- └── experiment_folder_2/
+ └── {optim_type}_{name}/           - experiment_directory
+     │
+     ├── records/                   - record_directory
+     │   │
+     │   ├── {optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle
+     │   ├── {optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle
+     │   └── {optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle
+     │
+     └── plots/                     - plots_directory
+         │
+         ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.pickle
+         └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.pickle
+
+
 
 Ensure that you have the correct file structure for proper operation
 of the scripts and modules within this project.
