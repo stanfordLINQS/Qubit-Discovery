@@ -3,6 +3,12 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import List, TypedDict, Tuple, Dict
 
+import numpy as np
+import torch
+
+from SQcircuit import Circuit
+from SQcircuit.settings import get_optim_mode
+
 from .functions import (
     calculate_anharmonicity,
     charge_sensitivity,
@@ -11,11 +17,7 @@ from .functions import (
     reset_charge_modes,
     SQValType,
 )
-from SQcircuit import Circuit
-from SQcircuit.settings import get_optim_mode
 
-import numpy as np
-import torch
 
 # Loss function settings
 OMEGA_TARGET = 0.64  # GHz
