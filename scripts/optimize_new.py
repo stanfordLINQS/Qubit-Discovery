@@ -19,7 +19,6 @@ Options:
 """
 import os
 import random
-import yaml
 
 import numpy as np
 import torch
@@ -34,20 +33,11 @@ from qubit_discovery.optimization.utils import create_sampler
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics_new
 from plot_utils import load_final_circuit
+from inout import load_yaml_file, add_command_line_keys
 
-
-# Keys that must be included in Yaml file.
-YAML_KEYS = [
-    'name',
-    'K',
-    "epochs",
-    "num_eigenvalues",
-    "use_losses",
-    "use_metrics",
-    "capacitor_range",
-    "inductor_range",
-    "junction_range",
-]
+################################################################################
+# General Settings.
+################################################################################
 
 # Keys that should be in either command line or Yaml file.
 YAML_OR_COMMANDLINE_KEYS = [
@@ -57,6 +47,10 @@ YAML_OR_COMMANDLINE_KEYS = [
     "save-intermediate",
     "init_circuit",
 ]
+
+################################################################################
+# Helper functions.
+################################################################################
 
 
 def eval_list(ls: list) -> list:
@@ -72,6 +66,10 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+################################################################################
+# Main.
+################################################################################
+
 
 def main() -> None:
 
@@ -81,22 +79,13 @@ def main() -> None:
 
     arguments = docopt(__doc__, version='Optimize 0.8')
 
-    with open(arguments['<yaml_file>'], 'r') as f:
-        parameters = yaml.safe_load(f.read())
+    parameters = load_yaml_file(arguments['<yaml_file>'])
 
-    for key in YAML_KEYS:
-        assert key in parameters.keys(), (
-            f"Yaml file must include \"{key}\" key."
-        )
-
-    for key in YAML_OR_COMMANDLINE_KEYS:
-        if arguments['--' + key] is not None:
-            parameters[key] = arguments['--' + key]
-
-        assert key in parameters.keys(), (
-            f"\"{key}\" key must be either passed "
-            f"in the command line or yaml file"
-        )
+    parameters = add_command_line_keys(
+        parameters=parameters,
+        arguments=arguments,
+        keys=YAML_OR_COMMANDLINE_KEYS,
+    )
 
     ###########################################################################
     # Initiating the optimization settings.
@@ -113,9 +102,6 @@ def main() -> None:
         sq.Inductor: torch.tensor(inductor_range),
         sq.Capacitor: torch.tensor(capacitor_range)
     }
-
-    print(bounds)
-    print(type(bounds))
 
     set_seed(int(parameters['seed']))
 
@@ -148,6 +134,8 @@ def main() -> None:
         circuit._toggle_fullcopy = True
         print("Circuit loaded!")
 
+    baseline_trunc_num = circuit.truncate_circuit(parameters['K'])
+
     ###########################################################################
     # Running the optimizations.
     ###########################################################################
@@ -159,7 +147,7 @@ def main() -> None:
             loss_metric_function=my_loss_function,
             name=parameters['name'] + '_' + str(parameters['seed']),
             num_eigenvalues=parameters['num_eigenvalues'],
-            baseline_trunc_nums=circuit.truncate_circuit(parameters['K']),
+            baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
             num_epochs=parameters['epochs'],
             save_loc=record_folder,
