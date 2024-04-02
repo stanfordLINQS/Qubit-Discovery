@@ -1,8 +1,6 @@
 import argparse
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
 import SQcircuit as sq
 
 import analysis as an
@@ -10,28 +8,42 @@ from plot_utils import add_file_args, load_final_circuit
 from qubit_discovery.losses import loss_functions
 from settings import RESULTS_DIR
 
+################################################################################
+# General Settings.
+################################################################################
+
 N_EIG = 10
 
-METRICS = {'omega': 'Frequency',
-           'flux_sensitivity': 'Flux Sensitivity',
-           'charge_sensitivity': 'Charge Sensitivity',
-           'A': 'Anharmonicity',
-           'T1': 'T_1 Time (s)',
-           'T2': 'T_2 Time (s)'}
-LOSSES = {'frequency_loss': 'Frequency Loss',
-          'anharmonicity_loss': 'Anharmonicity Loss',
-          'T1_loss': 'T_1 Loss',
-          'flux_sensitivity_loss': 'Flux Sensitivity Loss',
-          'charge_sensitivity_loss': 'Charge Sensitivity Loss',
-          'experimental_sensitivity_loss': 'Experimental Sensitivity Loss',
-          'total_loss': 'Total Loss'
-          }
+METRICS = {
+    'omega': 'Frequency',
+    'flux_sensitivity': 'Flux Sensitivity',
+    'charge_sensitivity': 'Charge Sensitivity',
+    'A': 'Anharmonicity',
+    'T1': 'T_1 Time (s)',
+    'T2': 'T_2 Time (s)'
+}
+LOSSES = {
+    'frequency_loss': 'Frequency Loss',
+    'anharmonicity_loss': 'Anharmonicity Loss',
+    'T1_loss': 'T_1 Loss',
+    'flux_sensitivity_loss': 'Flux Sensitivity Loss',
+    'charge_sensitivity_loss': 'Charge Sensitivity Loss',
+    'experimental_sensitivity_loss': 'Experimental Sensitivity Loss',
+    'total_loss': 'Total Loss'
+}
+
+################################################################################
+# Main.
+################################################################################
+
 
 def main():       
     parser = argparse.ArgumentParser()
     add_file_args(parser)
-    parser.add_argument('-i', '--ids', required=True,
-                        help='Id numbers of circuit to plot, in comma-delimited list')
+    parser.add_argument(
+        '-i', '--ids', required=True,
+        help='Id numbers of circuit to plot, in comma-delimited list'
+    )
     args = parser.parse_args()
 
     name = args.name
@@ -47,7 +59,10 @@ def main():
     sq.set_optim_mode(True)
     for id_num in ids:
         circuit_path = os.path.join(
-            RESULTS_DIR, records_folder, f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.pickle')
+            RESULTS_DIR,
+            records_folder,
+            f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.pickle'
+        )
         cr = load_final_circuit(circuit_path)
         cr._toggle_fullcopy = True
 
@@ -58,8 +73,11 @@ def main():
         out_txt = ""
         out_txt += f"Description:\n{cr.description(_test=True)}\n"
         summary_path = os.path.join(
-            RESULTS_DIR, plot_output_folder, f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.txt')
-        loss_metric_function = loss_functions['constant_norm']
+            RESULTS_DIR,
+            plot_output_folder,
+            f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.txt'
+        )
+        loss_metric_function = loss_functions['default']
         total_loss, loss_values, metric_values = loss_metric_function(cr)
 
         out_txt += an.build_circuit_topology_string(cr)
