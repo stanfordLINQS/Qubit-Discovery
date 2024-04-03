@@ -16,7 +16,6 @@ Options:
   -o, --optim_type=<optim_type>             Optimization method
   -b, --num_best=<num_best>                 <num_best> number of best [Optional]
 """
-import os
 
 from collections import defaultdict
 from typing import Dict, List
@@ -26,7 +25,7 @@ from matplotlib import pyplot as plt
 
 from plot_utils import load_record
 from qubit_discovery.losses.loss import OMEGA_TARGET
-from inout import load_yaml_file, add_command_line_keys
+from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
 # General Settings.
@@ -187,54 +186,6 @@ def build_save_prefix(parameters) -> str:
 
     return save_prefix
 
-
-def get_experiment_dir(
-    optim_type: str,
-    job_name: str,
-) -> str:
-    """Return directory for the record based on type and job run name."""
-
-    return f"{optim_type}_{job_name}"
-
-
-def get_record_dir(
-    record_type: str,
-    result_dir: str,
-    optim_type: str,
-    job_name: str,
-    circuit_code: str,
-    id_num: int,
-) -> str:
-    """Return directory for the record based on record type, optimization
-    type, circuit code, job run name, and id number."""
-
-    experiment_dir = get_experiment_dir(optim_type, job_name)
-    record_dir = os.path.join(experiment_dir, "records")
-
-    return os.path.join(
-        result_dir,
-        record_dir,
-        f"{optim_type}_{record_type}_record_"
-        f"{circuit_code}_{job_name}_{id_num}.pickle"
-    )
-
-
-def get_plot_dir(
-    result_dir: str,
-    optim_type: str,
-    job_name: str,
-) -> str:
-    """Return directory for the plots."""
-    plot_dir = os.path.join(
-        result_dir,
-        get_experiment_dir(optim_type, job_name),
-        "plots"
-    )
-
-    os.makedirs(plot_dir, exist_ok=True)
-
-    return plot_dir
-
 ################################################################################
 # Main.
 ################################################################################
@@ -242,9 +193,9 @@ def get_plot_dir(
 
 def main() -> None:
 
-    ###########################################################################
+    ############################################################################
     # Loading the Yaml file and command line parameters.
-    ###########################################################################
+    ############################################################################
 
     arguments = docopt(__doc__, version='Optimize 0.8')
 
@@ -257,18 +208,16 @@ def main() -> None:
         optional_keys=OPTIONAL_KEYS,
     )
 
-    result_directory = os.path.dirname(os.path.abspath(
-        arguments['<yaml_file>']
-    ))
-
     if parameters['num_best'] is not None:
         best_n = int(parameters['num_best'])
     else:
         best_n = int(parameters['num_runs'])
 
-    ###########################################################################
+    directory = Directory(parameters, arguments)
+
+    ############################################################################
     # Plotting
-    ###########################################################################
+    ############################################################################
 
     circuit_codes = parameters['circuit_code'].split(',')
     aggregate_loss_record = defaultdict(dict)
@@ -278,22 +227,16 @@ def main() -> None:
     for circuit_code in circuit_codes:
         for id_num in range(int(parameters['num_runs'])):
 
-            loss_record = load_record(get_record_dir(
+            loss_record = load_record(directory.get_record_file_dir(
                 record_type="loss",
-                result_dir=result_directory,
-                optim_type=parameters['optim_type'],
-                job_name=parameters['name'],
                 circuit_code=circuit_code,
-                id_num=id_num,
+                idx=id_num,
             ))
 
-            metrics_record = load_record(get_record_dir(
+            metrics_record = load_record(directory.get_record_file_dir(
                 record_type="metrics",
-                result_dir=result_directory,
-                optim_type=parameters['optim_type'],
-                job_name=parameters['name'],
                 circuit_code=circuit_code,
-                id_num=id_num,
+                idx=id_num,
             ))
 
             if loss_record is not None and metrics_record is not None:
@@ -302,23 +245,18 @@ def main() -> None:
                 aggregate_metrics_record[circuit_code][id_num] = metrics_record
 
     save_prefix = build_save_prefix(parameters)
-
     best_ids = compute_best_ids(aggregate_loss_record, best_n, circuit_codes)
-    plot_dir = get_plot_dir(
-        result_directory,
-        parameters['optim_type'],
-        parameters['name'],
-    )
+
     plot_results(
         record=aggregate_loss_record,
-        plot_folder_directory=plot_dir,
+        plot_folder_directory=directory.get_plots_dir(),
         best_ids=best_ids,
         plot_type='loss',
         save_prefix=save_prefix
     )
     plot_results(
         record=aggregate_metrics_record,
-        plot_folder_directory=plot_dir,
+        plot_folder_directory=directory.get_plots_dir(),
         best_ids=best_ids,
         plot_type='metrics',
         save_prefix=save_prefix

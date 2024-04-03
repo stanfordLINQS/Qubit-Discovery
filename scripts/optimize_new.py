@@ -17,7 +17,7 @@ Options:
   -i, --init_circuit=<init_circuit>         Set initial circuit params
   --save-intermediate                       Save intermediate circuits
 """
-import os
+
 import random
 
 import numpy as np
@@ -33,7 +33,7 @@ from qubit_discovery.optimization.utils import create_sampler
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics_new
 from plot_utils import load_final_circuit
-from inout import load_yaml_file, add_command_line_keys
+from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
 # General Settings.
@@ -73,9 +73,9 @@ def set_seed(seed: int) -> None:
 
 def main() -> None:
 
-    ###########################################################################
+    ############################################################################
     # Loading the Yaml file and command line parameters.
-    ###########################################################################
+    ############################################################################
 
     arguments = docopt(__doc__, version='Optimize 0.8')
 
@@ -87,9 +87,11 @@ def main() -> None:
         keys=YAML_OR_COMMANDLINE_KEYS,
     )
 
-    ###########################################################################
+    directory = Directory(parameters, arguments)
+
+    ############################################################################
     # Initiating the optimization settings.
-    ###########################################################################
+    ############################################################################
 
     sq.set_optim_mode(True)
 
@@ -104,13 +106,6 @@ def main() -> None:
     }
 
     set_seed(int(parameters['seed']))
-
-    # Setup output folders for data
-    record_folder = os.path.join(
-        os.path.dirname(os.path.abspath(arguments['<yaml_file>'])),
-        f'{parameters["optim_type"]}_{parameters["name"]}', 'records'
-    )
-    os.makedirs(record_folder, exist_ok=True)
 
     def my_loss_function(cr: Circuit):
         return calculate_loss_metrics_new(
@@ -136,9 +131,9 @@ def main() -> None:
 
     baseline_trunc_num = circuit.truncate_circuit(parameters['K'])
 
-    ###########################################################################
+    ############################################################################
     # Running the optimizations.
-    ###########################################################################
+    ############################################################################
 
     if parameters['optim_type'] == "SGD":
         run_SGD(
@@ -150,7 +145,7 @@ def main() -> None:
             baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
             num_epochs=parameters['epochs'],
-            save_loc=record_folder,
+            save_loc=directory.get_records_dir(),
             save_intermediate_circuits=parameters['save-intermediate']
         )
     elif parameters['optim_type'] == "BFGS":
@@ -162,7 +157,7 @@ def main() -> None:
             num_eigenvalues=parameters['num_eigenvalues'],
             total_trunc_num=parameters['K'],
             bounds=bounds,
-            save_loc=record_folder,
+            save_loc=directory.get_records_dir(),
             max_iter=parameters['epochs'],
             tolerance=1e-10,
             verbose=True,
