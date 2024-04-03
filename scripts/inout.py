@@ -53,22 +53,25 @@ The working tree for the outputs of scripts will look like:
  │
  └── {optim_type}_{name}/           - experiment_directory
      │
-     ├── records/                   - record_directory
+     ├── records/                   - records_directory
      │   │
      │   ├── {optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle
      │   ├── {optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle
      │   └── {optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle
      │
-     └── plots/                     - plots_directory
+     ├── plots/                     - plots_directory
+     │   │
+     │   ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.pickle
+     │   └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.pickle
+     │
+     └── summaries/                 - summaries_directory
          │
-         ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.pickle
-         └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.pickle
-
-
+         └── {optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.txt
 
 Ensure that you have the correct file structure for proper operation
 of the scripts and modules within this project.
 """
+import os
 import yaml
 
 from typing import List
@@ -125,16 +128,16 @@ def add_command_line_keys(
 
     Parameters
     ----------
-    parameters:
-        A dictionary containing the parameters of the yaml file.
-    arguments:
-        A dictionary containing the arguments of the command line.
-    keys:
-        A list of string keys that must be either specified in the yaml
-        file or command line options.
-    optional_keys:
-        A list of string keys that are optional and can be not specified in both
-        the yaml file and the command line options.
+        parameters:
+            A dictionary containing the parameters of the yaml file.
+        arguments:
+            A dictionary containing the arguments of the command line.
+        keys:
+            A list of string keys that must be either specified in the yaml
+            file or command line options.
+        optional_keys:
+            A list of string keys that are optional and can be not specified in
+            both the yaml file and the command line options.
     """
 
     if optional_keys is None:
@@ -152,5 +155,148 @@ def add_command_line_keys(
     return parameters
 
 ################################################################################
-# Write Functionalities.
+# Directories
 ################################################################################
+
+
+class Directory:
+    """Directory class to address the files in the main directories.
+
+    Parameters
+    ----------
+        parameters:
+            A dictionary containing the parameters of the yaml file.
+        arguments:
+            A dictionary containing the arguments of the command line.
+    """
+
+    def __init__(self, parameters: dict, arguments: dict) -> None:
+
+        self.parameters = parameters
+        self.arguments = arguments
+
+    def get_main_dir(self) -> str:
+        """Return the directory for the main_folder (where the yaml file
+        is located)."""
+
+        return os.path.dirname(os.path.abspath(
+            self.arguments['<yaml_file>']
+        ))
+
+    def get_experiment_dir(self) -> str:
+        """Return the directory for the experiment folder. The experiment folder
+        has the following format:
+        {optim_type}_{name}/
+        """
+
+        experiment_dir = os.path.join(
+            self.get_main_dir(),
+            f"{self.parameters['optim_type']}_{self.parameters['name']}"
+        )
+
+        # create the folder if it's not excited.
+        os.makedirs(experiment_dir, exist_ok=True)
+
+        return experiment_dir
+
+    def get_records_dir(self) -> str:
+        """Return the directory for the records folder inside the experiment
+        folder."""
+
+        records_dir = os.path.join(
+            self.get_experiment_dir(),
+            "records",
+        )
+
+        # create the folder if it's not excited.
+        os.makedirs(records_dir, exist_ok=True)
+
+        return records_dir
+
+    def get_plots_dir(self) -> str:
+        """Return the directory for the plot folder inside the experiment
+        folder."""
+
+        plots_dir = os.path.join(
+            self.get_experiment_dir(),
+            "plots"
+        )
+
+        # create the folder if it's not excited.
+        os.makedirs(plots_dir, exist_ok=True)
+
+        return plots_dir
+
+    def get_summaries_dir(self) -> str:
+        """Return the directory for the summaries folder inside the experiment
+        folder."""
+
+        summaries_dir = os.path.join(
+            self.get_experiment_dir(),
+            "summaries"
+        )
+
+        # create the folder if it's not excited.
+        os.makedirs(summaries_dir, exist_ok=True)
+
+        return summaries_dir
+
+    def get_record_file_dir(
+        self,
+        record_type: str,
+        circuit_code: str,
+        idx: int,
+    ) -> str:
+        """Return the directory for the saved circuit record as pickled file
+        in the records_directory.
+
+        Parameters
+        ----------
+            record_type :
+                A string indicating the type of record. It can be either 'loss',
+                `metrics` or circuit.
+            circuit_code:
+                A string specifying circuit_code of the circuit.
+            idx:
+                An Integer specifying the index of the circuit in the records.
+        """
+
+        record_name = (
+            f"{self.parameters['optim_type']}"
+            f"_{record_type}"
+            f"_record"
+            f"_{circuit_code}"
+            f"_{self.parameters['name']}"
+            f"_{idx}"
+            f".pickle"
+        )
+
+        return os.path.join(
+            self.get_records_dir(),
+            record_name,
+        )
+
+    def get_summary_file_dir(self, circuit_code: str, idx: int) -> str:
+        """Return the text file directory to save summary files inside summary
+        folder.
+
+        Parameters
+        ----------
+            circuit_code:
+                A string specifying circuit_code of the circuit.
+            idx:
+                An Integer specifying the index of the circuit in the records.
+        """
+
+        summary_name = (
+            f"{self.parameters['optim_type']}"
+            f"_circuit_summary"
+            f"_{circuit_code}"
+            f"_{self.parameters['name']}"
+            f"_{idx}.txt"
+        )
+
+        return os.path.join(
+            self.get_summaries_dir(),
+            summary_name,
+        )
