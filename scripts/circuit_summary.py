@@ -28,7 +28,7 @@ LOSSES = {
     'T1_loss': 'T_1 Loss',
     'flux_sensitivity_loss': 'Flux Sensitivity Loss',
     'charge_sensitivity_loss': 'Charge Sensitivity Loss',
-    'experimental_sensitivity_loss': 'Experimental Sensitivity Loss',
+    # 'experimental_sensitivity_loss': 'Experimental Sensitivity Loss',
     'total_loss': 'Total Loss'
 }
 
