@@ -9,7 +9,7 @@ import SQcircuit as sq
 from SQcircuit import Circuit
 
 from qubit_discovery.optimization import run_BFGS
-from qubit_discovery.losses.loss import calculate_loss_metrics_new
+from qubit_discovery.losses.loss import calculate_loss_metrics
 from qubit_discovery.tests.conftest import (
     get_fluxonium,
     get_bounds,
@@ -35,7 +35,7 @@ def test_bfgs_run() -> None:
     }
 
     def my_loss_function(cr: Circuit):
-        return calculate_loss_metrics_new(
+        return calculate_loss_metrics(
             cr,
             use_losses={
                 "frequency": 1.0,

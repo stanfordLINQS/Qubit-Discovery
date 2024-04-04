@@ -31,7 +31,7 @@ from SQcircuit import Circuit
 
 from qubit_discovery.optimization.utils import create_sampler
 from qubit_discovery.optimization import run_SGD, run_BFGS
-from qubit_discovery.losses.loss import calculate_loss_metrics_new
+from qubit_discovery.losses.loss import calculate_loss_metrics
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
 
@@ -108,7 +108,7 @@ def main() -> None:
     set_seed(int(parameters['seed']))
 
     def my_loss_function(cr: Circuit):
-        return calculate_loss_metrics_new(
+        return calculate_loss_metrics(
             cr,
             use_losses=parameters["use_losses"],
             use_metrics=parameters["use_metrics"],

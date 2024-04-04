@@ -202,7 +202,7 @@ use_metrics_default = [
 ]
 
 
-def calculate_loss_metrics_new(
+def calculate_loss_metrics(
     circuit: Circuit,
     use_losses: Dict[str, float] = None,
     use_metrics: List[str] = None,

@@ -22,7 +22,7 @@ import SQcircuit as sq
 
 import analysis as an
 from plot_utils import load_final_circuit
-from qubit_discovery.losses.loss import calculate_loss_metrics_new
+from qubit_discovery.losses.loss import calculate_loss_metrics
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -94,7 +94,7 @@ def main():
 
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
-        total_loss, loss_details, metrics = calculate_loss_metrics_new(
+        total_loss, loss_details, metrics = calculate_loss_metrics(
             circuit=cr,
             use_losses=USE_LOSSES,
             use_metrics=USE_METRICS
