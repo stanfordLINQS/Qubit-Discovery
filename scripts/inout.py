@@ -61,12 +61,12 @@ The working tree for the outputs of scripts will look like:
      │
      ├── plots/                     - plots_directory
      │   │
-     │   ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.pickle
-     │   └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.pickle
+     │   ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.png
+     │   └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.png
      │
      └── summaries/                 - summaries_directory
          │
-         └── {optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.txt
+         └── {optim_type}_circuit_summary_{circuit_code}_{name}_{id_num}.txt
 
 Ensure that you have the correct file structure for proper operation
 of the scripts and modules within this project.
