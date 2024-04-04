@@ -1,7 +1,7 @@
 """Contains code for defining loss functions used in circuit optimization."""
 from collections import defaultdict
 from copy import deepcopy
-from typing import List, TypedDict, Tuple, Dict
+from typing import List, Tuple, Dict
 
 import numpy as np
 import torch
@@ -166,34 +166,6 @@ def element_sensitivity_loss(
     return loss, sensitivity
 
 
-class LossOut(TypedDict):
-    frequency_loss: SQValType
-    anharmonicity_loss: SQValType
-    T1_loss: SQValType
-    flux_sensitivity_loss: SQValType
-    charge_sensitivity_loss: SQValType
-    total_loss: SQValType
-
-
-class MetricOut(TypedDict):
-    omega: SQValType
-    A: SQValType
-    T1: SQValType
-    flux_sensitivity: SQValType
-    charge_sensitivity: SQValType
-    T2: SQValType
-
-
-default_functions = {
-    'omega': frequency_loss,
-    'aharm': anharmonicity_loss,
-    'T1': T1_loss,
-    'flux': flux_sensitivity_loss,
-    'charge': charge_sensitivity_loss,
-    'T2': T2_loss,
-}
-
-
 def detach_if_optim(value: SQValType) -> SQValType:
     """Detach the value if is in torch. Otherwise, return the value itself."""
 
@@ -201,105 +173,6 @@ def detach_if_optim(value: SQValType) -> SQValType:
         return value.detach()
 
     return value
-
-
-def calculate_loss_metrics(
-    circuit: Circuit,
-    function_dict=default_functions,
-    use_frequency_loss=True,
-    use_anharmonicity_loss=True,
-    use_flux_sensitivity_loss=True,
-    use_charge_sensitivity_loss=1,
-    use_T1_loss=False,
-    log_loss=False,
-    master_use_grad=True
-) -> Tuple[SQValType, LossOut, MetricOut]:
-
-    if get_optim_mode():    
-        loss = torch.zeros((), requires_grad=master_use_grad)
-    else:
-        loss = 0
-
-    frequency_loss = function_dict['omega']
-    anharmonicity_loss = function_dict['aharm']
-    T1_loss = function_dict['T1']
-    flux_sensitivity_loss = function_dict['flux']
-    charge_sensitivity_loss = function_dict['charge']
-    # experimental_sensitivity_loss = function_dict['experiment']
-
-    # Calculate frequency
-    with torch.set_grad_enabled(use_frequency_loss and master_use_grad):
-        loss_frequency, frequency = frequency_loss(circuit)
-        if use_frequency_loss:
-            loss = loss + loss_frequency
-
-    # Calculate anharmonicity
-    with torch.set_grad_enabled(use_anharmonicity_loss and master_use_grad):
-        loss_anharmonicity, anharmonicity = anharmonicity_loss(circuit)
-        if use_anharmonicity_loss:
-            loss = loss + loss_anharmonicity
-
-    # Calculate T1
-    with torch.set_grad_enabled(use_T1_loss and master_use_grad):
-        loss_T1, T1_time = T1_loss(circuit)
-        # loss_T1 = 0
-        if use_T1_loss:
-            loss = loss + loss_T1
-
-    # Calculate T2
-    # Note: Gradient for T2 currently not computable, coming soon ;)
-    with torch.no_grad():
-        loss_T2, T2_time = T2_loss(circuit)
-        # if use_T2_loss:
-        #     loss = loss + loss_T2
-
-    # Calculate flux sensitivity loss
-    with torch.set_grad_enabled(use_flux_sensitivity_loss and master_use_grad):
-        loss_flux_sensitivity, flux_sensitivity_value = (
-            flux_sensitivity_loss(circuit)
-        )
-        if use_flux_sensitivity_loss:
-            loss = loss + loss_flux_sensitivity
-
-    # Calculate charge sensitivity loss
-    charge_sensitivity_loss_bool = (
-        True if use_charge_sensitivity_loss != 0 else False
-    )
-    with torch.set_grad_enabled(
-            charge_sensitivity_loss_bool and master_use_grad
-    ):
-        loss_charge_sensitivity, charge_sensitivity_value = (
-            charge_sensitivity_loss(circuit, code=use_charge_sensitivity_loss)
-        )
-
-        if charge_sensitivity_loss_bool:
-            loss = loss + loss_charge_sensitivity
-
-    if log_loss:
-        if get_optim_mode():
-            loss = torch.log(1 + loss)
-        else:
-            loss = np.log(1 + loss)
-
-    with torch.no_grad():
-        loss_values: LossOut = {
-            'frequency_loss': detach_if_optim(loss_frequency),
-            'anharmonicity_loss': detach_if_optim(loss_anharmonicity),
-            'T1_loss': detach_if_optim(loss_T1),
-            'flux_sensitivity_loss': detach_if_optim(loss_flux_sensitivity),
-            'charge_sensitivity_loss': detach_if_optim(loss_charge_sensitivity),
-            'total_loss': detach_if_optim(loss)
-        }
-        metrics: MetricOut = {
-            'omega': detach_if_optim(frequency),
-            'A': detach_if_optim(anharmonicity),
-            'T1': detach_if_optim(T1_time),
-            'flux_sensitivity': detach_if_optim(flux_sensitivity_value),
-            'charge_sensitivity': detach_if_optim(charge_sensitivity_value),
-            'T2': detach_if_optim(T2_time),
-        }
-
-    return loss, loss_values, metrics
 
 
 def get_all_functions() -> Dict[str, callable]:
