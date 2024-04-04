@@ -15,14 +15,14 @@ Options:
   -c, --circuit_code=<circuit_code>         Circuit code
   -o, --optim_type=<optim_type>             Optimization method
 """
-
+from collections import defaultdict
 from docopt import docopt
 
 import SQcircuit as sq
 
 import analysis as an
 from plot_utils import load_final_circuit
-from qubit_discovery.losses import loss_functions
+from qubit_discovery.losses.loss import calculate_loss_metrics_new
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -36,23 +36,23 @@ YAML_OR_COMMANDLINE_KEYS = [
     "optim_type",
 ]
 
-METRICS = {
-    'omega': 'Frequency',
-    'flux_sensitivity': 'Flux Sensitivity',
-    'charge_sensitivity': 'Charge Sensitivity',
-    'A': 'Anharmonicity',
-    'T1': 'T_1 Time (s)',
-    'T2': 'T_2 Time (s)'
-}
-LOSSES = {
-    'frequency_loss': 'Frequency Loss',
-    'anharmonicity_loss': 'Anharmonicity Loss',
-    'T1_loss': 'T_1 Loss',
-    'flux_sensitivity_loss': 'Flux Sensitivity Loss',
-    'charge_sensitivity_loss': 'Charge Sensitivity Loss',
-    'total_loss': 'Total Loss'
+USE_LOSSES = {
+    'frequency': 1.0,
+    'anharmonicity': 1.0,
+    'flux_sensitivity': 1.0,
+    'charge_sensitivity': 1.0,
+    'T1': 1.0,
 }
 
+USE_METRICS = ["T2"]
+
+# unit keys for metrics.
+UNITS = {
+    'frequency': '[GHz]',
+    'T1': '[s]',
+    "T2": '[s]'
+}
+UNITS = defaultdict(lambda: "", UNITS)
 ################################################################################
 # Main.
 ################################################################################
@@ -94,14 +94,21 @@ def main():
 
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
-        loss_function = loss_functions['default']
-        total_loss, loss_details, metrics = loss_function(cr)
+        total_loss, loss_details, metrics = calculate_loss_metrics_new(
+            circuit=cr,
+            use_losses=USE_LOSSES,
+            use_metrics=USE_METRICS
+        )
         summary_text += an.build_circuit_topology_string(cr)
         summary_text += (
             "Metrics:\n" +
-            "\n".join(f"{METRICS[key]}: {metrics[key]}" for key in METRICS) +
+            "\n".join(
+                f"{key}{UNITS[key]}: {metrics[key]}" for key in metrics.keys()
+            ) +
             "\n\nLosses:\n" +
-            "\n".join(f"{LOSSES[key]}: {loss_details[key]}" for key in LOSSES)
+            "\n".join(
+                f"{key}: {loss_details[key]}" for key in loss_details.keys()
+            )
         )
 
         with open(
