@@ -113,9 +113,9 @@ def charge_sensitivity(
 
 
 def flux_sensitivity(
-        circuit: Circuit,
-        flux_point=0.5,
-        delta=0.01
+    circuit: Circuit,
+    flux_point=0.5,
+    delta=0.01
 ) -> SQValType:
     """Return the flux sensitivity of the circuit around half flux quantum."""
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
@@ -123,9 +123,9 @@ def flux_sensitivity(
     # Copy circuit to create new container for perturbed eigenstates
     perturb_circ = copy(circuit)
     loop = perturb_circ.loops[0]
-    org_flux = loop.value() / (2 * np.pi) # should be `flux_point`
+    org_flux = loop.value() / (2 * np.pi)  # should be `flux_point`
 
-    # Change the flux and get the eigenfrequencies
+    # Change the flux and get the eigen-frequencies
     loop.set_flux(flux_point + delta)
     perturb_circ.diag(len(circuit.efreqs))
     f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
@@ -150,3 +150,32 @@ def reset_charge_modes(circuit: Circuit) -> None:
         for charge_island_idx in circuit.charge_islands.keys():
             charge_mode = charge_island_idx + 1
             circuit.set_charge_offset(charge_mode, default_n_g)
+
+
+def fastest_gate_speed(circuit: Circuit) -> SQValType:
+    """Calculates the upper bound for the speed of the single qubit gate of the
+    qubit. The upper bound is:
+    min{f_i0 - f_10, |f_i0 - 2f_10|};  for i>1
+
+    Parameters
+    ----------
+        circuit:
+            A Circuit object of SQcircuit specifying the qubit.
+    """
+
+    omega = circuit.efreqs[2] - circuit.efreqs[1]
+
+    for i in range(2, len(circuit.efreqs)):
+
+        f_i1 = circuit.efreqs[i] - circuit.efreqs[1]
+        anharm_i = abs(
+            (circuit.efreqs[i] - circuit.efreqs[0]) -
+            2*(circuit.efreqs[1] - circuit.efreqs[0])
+        )
+
+        if f_i1 < omega:
+            omega = f_i1
+        elif anharm_i < omega:
+            omega = anharm_i
+
+    return omega
