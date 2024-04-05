@@ -17,9 +17,15 @@ def get_fluxonium() -> Circuit:
     """Returns a Fluxonium qubit for test purposes."""
 
     loop = sq.Loop(0.5)
-    cap = sq.Capacitor(1.0, requires_grad=True)
-    ind = sq.Inductor(1.0, loops=[loop], requires_grad=True)
-    junc = sq.Junction(1.0, loops=[loop], requires_grad=True)
+    cap = sq.Capacitor(
+        1.0, requires_grad=sq.get_optim_mode()
+    )
+    ind = sq.Inductor(
+        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+    )
+    junc = sq.Junction(
+        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+    )
 
     circuit = sq.Circuit(
         elements={
