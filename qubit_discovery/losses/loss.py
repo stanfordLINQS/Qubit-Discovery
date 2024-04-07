@@ -1,7 +1,7 @@
 """Contains code for defining loss functions used in circuit optimization."""
 from collections import defaultdict
 from copy import deepcopy
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 import torch
@@ -15,21 +15,27 @@ from .functions import (
     flux_sensitivity,
     first_resonant_frequency,
     reset_charge_modes,
-    SQValType,
+    zero,
+    decoherence_time,
+    fastest_gate_speed,
 )
 
+# when the loss are close to zero, but we want to reserve the zero value for
+# the metric that do not have loss functions.
+EPSILON = 1e-14
+SQValType = Union[float, torch.Tensor]
+
 ################################################################################
-# All loss functions implementation
+# Only metric loss functions
 ################################################################################
 
-# Loss function settings
-OMEGA_TARGET = 0.64  # GHz
 
-
-def frequency_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    omega = first_resonant_frequency(circuit)
-    loss = (omega - OMEGA_TARGET) ** 2 / OMEGA_TARGET ** 2
-    return loss, omega
+def frequency_loss(
+        circuit: Circuit,
+) -> Tuple[SQValType, SQValType]:
+    freq = first_resonant_frequency(circuit)
+    # loss = (freq - freq_target) ** 2 / freq_target ** 2
+    return zero(), freq
 
 
 def anharmonicity_loss(
@@ -56,72 +62,29 @@ def anharmonicity_loss(
     return loss, anharmonicity
 
 
-def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    gamma_1 = circuit.dec_rate('capacitive', (0, 1))
-    gamma_2 = circuit.dec_rate('inductive', (0, 1))
-    gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
-    gamma = gamma_1 + gamma_2 + gamma_3
-    T1 = 1 / gamma
-
-    loss = gamma ** 2
-    if not get_optim_mode():
-        loss = loss.item()
-
-    return loss, T1
-
-
-def T2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    gamma_1 = circuit.dec_rate('charge', (0, 1))
-    gamma_2 = circuit.dec_rate('cc', (0, 1))
-    gamma_3 = circuit.dec_rate('flux', (0, 1))
-    gamma = gamma_1 + gamma_2 + gamma_3
-    T2 = 1 / gamma
-
-    loss = gamma ** 2
-    if not get_optim_mode():
-        loss = loss.item()
-
-    return loss, T2
-
-
-def flux_sensitivity_loss(
+def t1_loss(
     circuit: Circuit,
-    a=0.1,
-    b=1,
-    epsilon=1e-14
+    dec_type: str = 'total',
 ) -> Tuple[SQValType, SQValType]:
-    """Return the flux sensitivity of the circuit around flux operation point
-    (typically half flux quantum)."""
 
-    S = flux_sensitivity(circuit)
+    t1 = decoherence_time(
+        circuit=circuit,
+        t_type="t1",
+        dec_type=dec_type
+    )
 
-    # Apply hinge loss
-    if S < a:
-        loss = 0.0 * S + epsilon
-    else:
-        loss = b * (S - a) + epsilon
-
-    return loss, S
+    return zero(), t1
 
 
-def charge_sensitivity_loss(
-    circuit: Circuit,
-    code=1,
-    a=0.02,
-    b=1
-) -> Tuple[SQValType, SQValType]:
-    """Assigns a hinge loss to charge sensitivity of circuit."""
+def t2_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
 
-    S = charge_sensitivity(circuit, code)
+    t2 = decoherence_time(
+        circuit=circuit,
+        t_type="t2",
+        dec_type=dec_type
+    )
 
-    # Hinge loss transform
-    if S < a:
-        loss = 0.0 * S
-    else:
-        loss = b * (S - a)
-
-    reset_charge_modes(circuit)
-    return loss, S
+    return zero(), t2
 
 
 def element_sensitivity_loss(
@@ -163,14 +126,108 @@ def element_sensitivity_loss(
         cr_sampled = Circuit(elements_sampled)
         cr_sampled.set_trunc_nums(circuit.trunc_nums)
         cr_sampled.diag(n_eig)
-        _, vals[i] = T1_loss(cr_sampled)
+        _, vals[i] = t1_loss(cr_sampled)
     sensitivity = torch.std(vals) / torch.mean(vals)
-    loss = sensitivity
-    return loss, sensitivity
+
+    return zero(), sensitivity
+
+
+def gate_speed_loss(circuit: Circuit):
+
+    gate_speed = fastest_gate_speed(circuit)
+
+    return zero(), gate_speed
+
+
+################################################################################
+# In Optimization loss functions
+################################################################################
+
+
+def flux_sensitivity_loss(
+    circuit: Circuit,
+    a=0.1,
+    b=1,
+    epsilon=1e-14
+) -> Tuple[SQValType, SQValType]:
+    """Return the flux sensitivity of the circuit around flux operation point
+    (typically half flux quantum)."""
+
+    sens = flux_sensitivity(circuit)
+
+    # Apply hinge loss
+    if sens < a:
+        loss = 0.0 * sens + epsilon
+    else:
+        loss = b * (sens - a) + epsilon
+
+    return loss + EPSILON, sens
+
+
+def charge_sensitivity_loss(
+    circuit: Circuit,
+    code=1,
+    a=0.02,
+) -> Tuple[SQValType, SQValType]:
+    """Assigns a hinge loss to charge sensitivity of circuit."""
+
+    sens = charge_sensitivity(circuit, code)
+
+    # Hinge loss transform
+    if sens < a:
+        loss = 0.0 * sens
+    else:
+        loss = sens * (sens - a)
+
+    reset_charge_modes(circuit)
+    return loss + EPSILON, sens
+
+
+def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
+    """Return the number of single qubit gate of the qubit as well as the loss
+    associated with the metric."""
+
+    gate_speed = fastest_gate_speed(circuit)
+
+    t1 = decoherence_time(
+        circuit=circuit,
+        t_type="t1",
+        dec_type='total'
+    )
+
+    number_of_gates = t1*gate_speed
+
+    if get_optim_mode():
+        loss = -torch.log(number_of_gates)
+    else:
+        loss = -np.log(number_of_gates)
+
+    return loss, number_of_gates
+
 
 ################################################################################
 # Incorporating all losses into one loss function
 ################################################################################
+
+
+ALL_FUNCTIONS = {
+    # IN optimization loss:
+    'anharmonicity': anharmonicity_loss,
+    'flux_sensitivity': flux_sensitivity_loss,
+    'charge_sensitivity': charge_sensitivity_loss,
+    'number_of_gates': number_of_gates_loss,
+    # Only metrics losses
+    'frequency': frequency_loss,
+    'gate_speed': gate_speed_loss,
+    'T1': t1_loss,
+    't1_capacitive': lambda cr: t1_loss(cr, dec_type='capacitive'),
+    't1_inductive': lambda cr: t1_loss(cr, dec_type='inductive'),
+    't1_quasiparticle': lambda cr: t1_loss(cr, dec_type='quasiparticle'),
+    'T2': t2_loss,
+    't2_charge': lambda cr: t2_loss(cr, dec_type='charge'),
+    't2_cc': lambda cr: t2_loss(cr, dec_type='cc'),
+    't2_flux': lambda cr: t2_loss(cr, dec_type='flux'),
+}
 
 
 def detach_if_optim(value: SQValType) -> SQValType:
@@ -180,23 +237,6 @@ def detach_if_optim(value: SQValType) -> SQValType:
         return value.detach()
 
     return value
-
-
-ALL_FUNCTIONS = {
-    'frequency': frequency_loss,
-    'anharmonicity': anharmonicity_loss,
-    'flux_sensitivity': flux_sensitivity_loss,
-    'charge_sensitivity': charge_sensitivity_loss,
-    # 'element_sensitivity': element_sensitivity_loss,
-    'T1': T1_loss,
-    'T2': T2_loss,
-}
-
-
-def get_all_functions() -> Dict[str, callable]:
-    """Returns a dictionary of all loss function with their proper keys."""
-
-    return ALL_FUNCTIONS
 
 
 def get_all_metrics() -> List[str]:
@@ -212,8 +252,6 @@ def calculate_loss_metrics(
     master_use_grad: bool = True,
 ) -> Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]:
 
-    function_dict = get_all_functions()
-
     if get_optim_mode():
         loss = torch.zeros((), requires_grad=master_use_grad)
     else:
@@ -226,7 +264,7 @@ def calculate_loss_metrics(
 
         if key in use_losses:
             with torch.set_grad_enabled(master_use_grad):
-                specific_loss, specific_metric = function_dict[key](circuit)
+                specific_loss, specific_metric = ALL_FUNCTIONS[key](circuit)
                 loss = loss + use_losses[key] * specific_loss
 
             with torch.no_grad():
@@ -235,7 +273,7 @@ def calculate_loss_metrics(
 
         elif key not in use_losses and key in use_metrics:
             with torch.no_grad():
-                specific_loss, specific_metric = function_dict[key](circuit)
+                specific_loss, specific_metric = ALL_FUNCTIONS[key](circuit)
 
                 loss_values[key + '_loss'] = detach_if_optim(specific_loss)
                 metrics[key] = detach_if_optim(specific_metric)
