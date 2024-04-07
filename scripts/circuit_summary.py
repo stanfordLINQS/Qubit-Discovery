@@ -15,7 +15,7 @@ Options:
   -c, --circuit_code=<circuit_code>         Circuit code
   -o, --optim_type=<optim_type>             Optimization method
 """
-from collections import defaultdict
+
 from docopt import docopt
 
 import SQcircuit as sq
@@ -23,7 +23,13 @@ import SQcircuit as sq
 import analysis as an
 from plot_utils import load_final_circuit
 from qubit_discovery.losses.loss import calculate_loss_metrics
-from inout import load_yaml_file, add_command_line_keys, Directory
+from inout import (
+    load_yaml_file,
+    add_command_line_keys,
+    Directory,
+    get_metrics_dist,
+    get_units,
+)
 
 ################################################################################
 # General Settings.
@@ -36,23 +42,6 @@ YAML_OR_COMMANDLINE_KEYS = [
     "optim_type",
 ]
 
-USE_LOSSES = {
-    'frequency': 1.0,
-    'anharmonicity': 1.0,
-    'flux_sensitivity': 1.0,
-    'charge_sensitivity': 1.0,
-    'T1': 1.0,
-}
-
-USE_METRICS = ["T2"]
-
-# unit keys for metrics.
-UNITS = {
-    'frequency': '[GHz]',
-    'T1': '[s]',
-    "T2": '[s]'
-}
-UNITS = defaultdict(lambda: "", UNITS)
 ################################################################################
 # Main.
 ################################################################################
@@ -92,23 +81,50 @@ def main():
         cr.update()  # rebuild op memory
         cr.diag(parameters["num_eigenvalues"])
 
+        metrics_in_optim, metrics_not_in_optim = get_metrics_dist(parameters)
+
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
+        summary_text += an.build_circuit_topology_string(cr)
+
         total_loss, loss_details, metrics = calculate_loss_metrics(
             circuit=cr,
-            use_losses=USE_LOSSES,
-            use_metrics=USE_METRICS
+            use_losses=parameters['use_losses'],
+            use_metrics=metrics_not_in_optim
         )
-        summary_text += an.build_circuit_topology_string(cr)
-        summary_text += (
-            "Metrics:\n" +
-            "\n".join(
-                f"{key}{UNITS[key]}: {metrics[key]}" for key in metrics.keys()
-            ) +
-            "\n\nLosses:\n" +
-            "\n".join(
-                f"{key}: {loss_details[key]}" for key in loss_details.keys()
+        ########################################################################
+        # In optimization losses
+        ########################################################################
+        loss_in_optim_summary = "Loss in Optimization:\n"
+        for key in metrics_in_optim:
+            loss_in_optim_summary += (
+                f"{key + '_loss'}: {loss_details[key + '_loss']}\n"
+                # f"weight: {parameters['use_losses'][key]}\n"
             )
+        loss_in_optim_summary += (
+            f"{'total_loss'}: {loss_details['total_loss']}\n"
+        )
+        ########################################################################
+        # Not in optimization losses
+        ########################################################################
+        loss_not_in_optim_summary = "Other Losses:\n"
+        for key in metrics_not_in_optim:
+            loss_not_in_optim_summary += (
+                f"{key + '_loss'}: {loss_details[key+ '_loss']}\n"
+            )
+        ########################################################################
+        # All the metrics
+        ########################################################################
+        metrics_summary = "Metrics:\n"
+        for key in metrics_in_optim + metrics_not_in_optim:
+            metrics_summary += f"{key} {get_units()[key]}: {metrics[key]}\n"
+
+        summary_text += (
+            metrics_summary +
+            '\n' +
+            loss_in_optim_summary +
+            '\n' +
+            loss_not_in_optim_summary
         )
 
         with open(
