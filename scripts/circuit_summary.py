@@ -97,9 +97,10 @@ def main():
         ########################################################################
         loss_in_optim_summary = "Loss in Optimization:\n"
         for key in metrics_in_optim:
+            if loss_details[key + '_loss'] == 0.0:
+                continue
             loss_in_optim_summary += (
                 f"{key + '_loss'}: {loss_details[key + '_loss']}\n"
-                # f"weight: {parameters['use_losses'][key]}\n"
             )
         loss_in_optim_summary += (
             f"{'total_loss'}: {loss_details['total_loss']}\n"
@@ -109,6 +110,8 @@ def main():
         ########################################################################
         loss_not_in_optim_summary = "Other Losses:\n"
         for key in metrics_not_in_optim:
+            if loss_details[key + '_loss'] == 0.0:
+                continue
             loss_not_in_optim_summary += (
                 f"{key + '_loss'}: {loss_details[key+ '_loss']}\n"
             )
