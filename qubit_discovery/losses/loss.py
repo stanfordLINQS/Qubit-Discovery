@@ -18,6 +18,9 @@ from .functions import (
     SQValType,
 )
 
+################################################################################
+# All loss functions implementation
+################################################################################
 
 # Loss function settings
 OMEGA_TARGET = 0.64  # GHz
@@ -165,6 +168,10 @@ def element_sensitivity_loss(
     loss = sensitivity
     return loss, sensitivity
 
+################################################################################
+# Incorporating all losses into one loss function
+################################################################################
+
 
 def detach_if_optim(value: SQValType) -> SQValType:
     """Detach the value if is in torch. Otherwise, return the value itself."""
@@ -175,45 +182,35 @@ def detach_if_optim(value: SQValType) -> SQValType:
     return value
 
 
+ALL_FUNCTIONS = {
+    'frequency': frequency_loss,
+    'anharmonicity': anharmonicity_loss,
+    'flux_sensitivity': flux_sensitivity_loss,
+    'charge_sensitivity': charge_sensitivity_loss,
+    # 'element_sensitivity': element_sensitivity_loss,
+    'T1': T1_loss,
+    'T2': T2_loss,
+}
+
+
 def get_all_functions() -> Dict[str, callable]:
     """Returns a dictionary of all loss function with their proper keys."""
 
-    all_functions = {
-        'frequency': frequency_loss,
-        'anharmonicity': anharmonicity_loss,
-        'flux_sensitivity': flux_sensitivity_loss,
-        'charge_sensitivity': charge_sensitivity_loss,
-        'element_sensitivity': element_sensitivity_loss,
-        'T1': T1_loss,
-        'T2': T2_loss,
-    }
-
-    return all_functions
+    return ALL_FUNCTIONS
 
 
-use_losses_default = {
-    'anharmonicity': 1.0,
-    'flux_sensitivity': 1.0,
-    'charge_sensitivity': 1.0,
-}
+def get_all_metrics() -> List[str]:
+    """Returns a list of all metrics."""
 
-use_metrics_default = [
-    'T1', 'T2',
-]
+    return list(ALL_FUNCTIONS.keys())
 
 
 def calculate_loss_metrics(
     circuit: Circuit,
-    use_losses: Dict[str, float] = None,
-    use_metrics: List[str] = None,
+    use_losses: Dict[str, float],
+    use_metrics: List[str],
     master_use_grad: bool = True,
 ) -> Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]:
-
-    if use_metrics is None:
-        use_metrics = use_metrics_default
-
-    if use_losses is None:
-        use_losses = use_losses_default
 
     function_dict = get_all_functions()
 
@@ -225,7 +222,7 @@ def calculate_loss_metrics(
     loss_values: Dict[str, SQValType] = {}
     metrics: Dict[str, SQValType] = {}
 
-    for key in function_dict.keys():
+    for key in get_all_metrics():
 
         if key in use_losses:
             with torch.set_grad_enabled(master_use_grad):
