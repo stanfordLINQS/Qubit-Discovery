@@ -9,12 +9,19 @@ import torch
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
 
-SQArrType = Union[np.ndarray, torch.Tensor]
 SQValType = Union[float, torch.Tensor]
 
 # Helper functions
 # NOTE: Ensure all functions treat the input `circuit` as const, at least
 # in effect.
+
+
+def zero() -> SQValType:
+
+    if get_optim_mode():
+        return torch.tensor(0.0)
+
+    return 0.0
 
 
 def first_resonant_frequency(circuit: Circuit) -> SQValType:
@@ -34,7 +41,6 @@ def charge_sensitivity(
     circuit: Circuit,
     code=1,
     epsilon=1e-14,
-    loss_type='diag'
 ) -> SQValType:
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
@@ -70,7 +76,10 @@ def charge_sensitivity(
     for charge_offset in charge_offsets:
         for charge_island_idx in perturb_circ.charge_islands.keys():
             charge_mode = charge_island_idx + 1
-            perturb_circ.set_charge_offset(charge_mode, charge_offset[charge_island_idx])
+            perturb_circ.set_charge_offset(
+                charge_mode,
+                charge_offset[charge_island_idx]
+            )
 
         perturb_circ.diag(len(circuit.efreqs))
         c_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
@@ -91,7 +100,6 @@ def charge_sensitivity(
 
         if code == 2 or code == 4:
             c_avg = torch.mean(torch.stack(omega_values))
-            # c_var = torch.sum(torch.abs(torch.stack(omega_values) - c_avg) / len(omega_values))
             c_var = torch.var(torch.stack(omega_values) - c_avg)
             return c_var
     else:
@@ -102,14 +110,8 @@ def charge_sensitivity(
 
         if code == 2 or code == 4:
             c_avg = np.mean(np.stack(omega_values))
-            # c_var = np.sum(np.abs(np.stack(omega_values) - c_avg)) / len(omega_values)
             c_var = np.var(np.stack(omega_values) - c_avg)
             return c_var
-
-   # if get_optim_mode():
-   #      return torch.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
-   #  else:
-   #      return np.abs((c_delta - c_0) / ((c_delta + c_0) / 2))
 
 
 def flux_sensitivity(
@@ -152,6 +154,55 @@ def reset_charge_modes(circuit: Circuit) -> None:
             circuit.set_charge_offset(charge_mode, default_n_g)
 
 
+def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
+    """Return the decoherence time for a given circuit and its decoherence type.
+
+    Parameters
+    ----------
+        circuit:
+            A Circuit object of SQcircuit specifying the qubit.
+        t_type:
+            A string specifying the type of decoherence. It must be either 't1'
+            or 't2.
+        dec_type:
+            A string specifying the channel of the decoherence time. It must be
+            either 'capacitive', 'inductive', 'quasiparticle', 'charge', 'cc',
+            'flux', or 'total'.
+    """
+
+    gamma = 0.0
+
+    if t_type == "t1":
+        all_t1_channels = ['capacitive', 'inductive', 'quasiparticle']
+        if dec_type == 'total':
+            dec_type_list = all_t1_channels
+        else:
+            assert dec_type in all_t1_channels, (
+                f"dec_type with 't1' mode should be {all_t1_channels}, or "
+                "'total'"
+            )
+            dec_type_list = [dec_type]
+
+    elif t_type == "t2":
+        all_t2_channels = ['charge', 'cc', 'flux']
+        if dec_type == 'total':
+            dec_type_list = all_t2_channels
+        else:
+            assert dec_type in all_t2_channels, (
+                f"dec_type with 't2' mode should be {all_t2_channels}, or "
+                "'total'"
+            )
+            dec_type_list = [dec_type]
+
+    else:
+        raise ValueError("t_type must be either 't1' or 't2'")
+
+    for dec_type in dec_type_list:
+        gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
+
+    return 1 / gamma
+
+
 def fastest_gate_speed(circuit: Circuit) -> SQValType:
     """Calculates the upper bound for the speed of the single qubit gate of the
     qubit. The upper bound is:
@@ -179,3 +230,4 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
             omega = anharm_i
 
     return omega
+
