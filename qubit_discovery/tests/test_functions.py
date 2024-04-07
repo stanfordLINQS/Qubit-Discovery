@@ -1,4 +1,4 @@
-"""Test Module for BFGS algorithm."""
+"""Test Module for loss helper functions."""
 
 import torch
 import numpy as np
