@@ -98,6 +98,7 @@ YAML_KEYS = [
 # unit keys for metrics.
 UNITS = {
     'frequency': '[GHz]',
+    'gate_speed': '[GHz]',
     'T1': '[s]',
     'T2': '[s]'
 }
