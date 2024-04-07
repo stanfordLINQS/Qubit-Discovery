@@ -24,7 +24,6 @@ from docopt import docopt
 from matplotlib import pyplot as plt
 
 from plot_utils import load_record
-from qubit_discovery.losses.loss import OMEGA_TARGET
 from inout import (
     load_yaml_file,
     add_command_line_keys,
@@ -60,14 +59,23 @@ METRIC_KEYS = [
     'T1'                            # (1, 2) plot position
 ]
 
+# Todo:
+# metric keys for plotting.
+# METRIC_KEYS = [
+#     'flux_sensitivity',             # (0, 0) plot position
+#     'charge_sensitivity',           # (1, 0) plot position
+#     'number_of_gates',              # (0, 1) plot position
+#     'T1',                           # (1, 1) plot position
+#     'T2',                           # (0, 2) plot position
+#     'T2_proxy'                      # (1, 2) plot position
+# ]
+
 # loss keys for plotting .
 LOSS_KEYS = [
-    'frequency_loss',               # (0, 0) plot position
+    'flux_sensitivity_loss',        # (0, 0) plot position
     'anharmonicity_loss',           # (1, 0) plot position
-    'T1_loss',                      # (0, 1) plot position
-    'flux_sensitivity_loss',        # (1, 1) plot position
-    'charge_sensitivity_loss',      # (0, 2) plot position
-    'total_loss'                    # (1, 2) plot position
+    'charge_sensitivity_loss',      # (0, 1) plot position
+    'total_loss'                    # (1, 1) plot position
 ]
 
 ################################################################################
@@ -118,7 +126,7 @@ def plot_circuit_metrics(
 
     record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
 
-    for plot_idx in range(6):
+    for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
         i, j = plot_idx % 2, plot_idx // 2
         axs[i, j].plot(
@@ -143,10 +151,15 @@ def plot_results(
     save_prefix: str = '',
 ) -> None:
 
-    fig, axs = plt.subplots(2, 3, figsize=(22, 11))
-
     if plot_type == 'metrics':
-        axs[1, 0].axhline(y=OMEGA_TARGET, color='m', linestyle=':')
+        fig, axs = plt.subplots(2, 3, figsize=(22, 11))
+    elif plot_type == 'loss':
+        fig, axs = plt.subplots(2, 2, figsize=(15, 11))
+    else:
+        raise ValueError(
+            f"Unknown plot type: {plot_type}. Must be "
+            f"'metrics' or 'loss'"
+        )
 
     for circuit_code, ids_list in best_ids.items():
         # Plot best run for that specific code
