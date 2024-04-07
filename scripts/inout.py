@@ -74,7 +74,10 @@ of the scripts and modules within this project.
 import os
 import yaml
 
-from typing import List
+from typing import List, Tuple, Dict
+from collections import defaultdict
+
+from qubit_discovery.losses.loss import get_all_metrics
 ################################################################################
 # General Settings.
 ################################################################################
@@ -92,9 +95,44 @@ YAML_KEYS = [
     "use_metrics",
 ]
 
+# unit keys for metrics.
+UNITS = {
+    'frequency': '[GHz]',
+    'T1': '[s]',
+    'T2': '[s]'
+}
+UNITS = defaultdict(lambda: "", UNITS)
+
 ################################################################################
 # Read Functionalities.
 ################################################################################
+
+
+def get_metrics_dist(config: dict) -> Tuple[List[str], List[str]]:
+    """Return a list of the metrics that were not used in optimization and the
+    metrics that were used in optimization.
+
+    Parameters
+    ----------
+        config:
+            A dictionary containing the parameters of the yaml file.
+    """
+
+    metrics_in_optim = list(config['use_losses'].keys())
+    metrics_not_in_optim = []
+    all_metrics = get_all_metrics()
+
+    for metric in all_metrics:
+        if metric not in metrics_in_optim:
+            metrics_not_in_optim.append(metric)
+
+    return metrics_in_optim, metrics_not_in_optim
+
+
+def get_units() -> Dict[str, str]:
+    """Return a dictionary containing the units of the metrics"""
+
+    return UNITS
 
 
 def load_yaml_file(path_to_yaml: str) -> dict:
