@@ -1,13 +1,15 @@
 """Contains helper functions used in remainder of code."""
 
-from copy import copy
-from typing import Union
+from copy import copy, deepcopy
+from typing import Union, Tuple
 
 import numpy as np
 import torch
 
-from SQcircuit import Circuit
+from SQcircuit import Circuit, Loop, Element
 from SQcircuit.settings import get_optim_mode
+import SQcircuit.functions as sqf
+import SQcircuit.units as unt
 
 SQValType = Union[float, torch.Tensor]
 
@@ -231,3 +233,200 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
 
     return omega
 
+def partial_deriv_approx_flux(circuit: Circuit, 
+                              loop: Loop, 
+                              delta=0.001,
+                              symmetric=True) -> SQValType:
+    """ Calculates an approximation to the derivative of the first 
+    eigenfrequency of `circuit` with respect to the external flux through
+    `loop`.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+        loop:
+            The loop in `circuit` to calculate the derivative of external
+            flux with respect to
+        delta:
+            The perturbation to use to calculate the finite difference
+        symmetric:
+            Whether to calculate the symmetric difference quotient or not
+    """
+
+    # Create a copy circuit, to ensure old eigenfreqs/values aren't overwritten
+    perturb_circ = copy(circuit)
+    org_flux = loop.value() / (2 * np.pi)
+    omega10 = (circuit.efreqs[1] - circuit.efreqs[0]) * 1e9
+
+    # Eigenfrequencies at perturbed phi_ext + delta
+    loop.set_flux(org_flux + (delta / 2 / np.pi))
+    perturb_circ.diag(len(circuit.efreqs))
+    omega10_plus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+
+    # If doing symmetric difference, also calculate at phi_ext - delta
+    if symmetric:
+        loop.set_flux(org_flux - (delta / 2 / np.pi))
+        perturb_circ.diag(len(circuit.efreqs))
+        omega10_minus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+
+    # Reset the external circuit flux
+    loop.set_flux(org_flux)
+
+    if symmetric:
+        return sqf.abs((omega10_plus - omega10_minus) / (2 * delta))
+    else:
+        return sqf.abs((omega10_plus - omega10) / (delta))
+    
+def flux_decoherence_approx(cr: Circuit):
+    """ Calculates the decoherence due to flux noise for the 0-1 transition,
+    using the value calculated by `partial_deriv_approx_flux` to approximate
+    the partial derivative of the eigenfrequencies.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+    """
+    decay = sqf.array(0.0)
+    for loop in cr.loops:
+        # Need to convert from Hz to rad to match `._dephasing` use.
+        partial_omega = partial_deriv_approx_flux(cr, loop) * 2 * np.pi
+        A = loop.A
+        decay += cr._dephasing(A, partial_omega)
+    return decay
+
+def partial_deriv_approx_charge(
+        circuit: Circuit,
+        charge_mode: int,
+        charge_point=0,
+        delta=0.01,
+        symmetric=True,
+) -> SQValType:
+    """ Calculates an approximation to the derivative of the first 
+    eigenfrequency of `circuit` with respect to the gate charge of
+    the `charge_mode`th charge_mode.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+        charge_mode:
+            The number of the charge mode to calculate the derivative of
+        charge_point:
+            The current gate charge of `charge_mode`
+        delta:
+            The perturbation of ng to use to approximate the derivative.
+        symmetric:
+            Whether to calculate the symmetric difference quotient or not
+    """
+    perturb_circ = copy(circuit)
+    omega10 = (circuit.efreqs[1] - circuit.efreqs[0]) * 1e9
+    
+    perturb_circ.set_charge_offset(charge_mode, charge_point+delta)
+    perturb_circ.diag(len(circuit.efreqs))
+    omega10_plus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+    
+    if symmetric:
+        perturb_circ.set_charge_offset(charge_mode, charge_point-delta)
+        perturb_circ.diag(len(circuit.efreqs))
+        omega10_minus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+    
+    perturb_circ.set_charge_offset(charge_mode, charge_point)
+    
+    if symmetric:
+        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta))
+    else:
+        return sqf.abs((omega10_plus - omega10)/(delta))
+
+def charge_decoherence_approx(cr: Circuit) -> SQValType:
+    decay = sqf.array(0.0)
+    for charge_island_idx in cr.charge_islands.keys():
+        charge_mode = charge_island_idx + 1
+        
+        partial_omega = partial_deriv_approx_charge(cr, charge_mode)
+        A = cr.charge_islands[charge_island_idx].A * 2 * unt.e
+        decay = decay + cr._dephasing(A, partial_omega)
+    return decay
+
+def set_elem_value(elem, val):
+    elem._value = val
+
+def partial_deriv_approx_elem(circuit: Circuit, 
+                            edge: Tuple[int, int], 
+                            el_idx: int, 
+                            delta=0.001, 
+                            symmetric=True) -> SQValType:
+    """ Calculates an approximation to the derivative of the first 
+    eigenfrequency of `circuit` with respect to the element at
+    `circuit.elements[edge][el_idx]`.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+        loop:
+            The loop in `circuit` to calculate the derivative of external
+            flux with respect to
+        delta:
+            The perturbation to use to calculate the finite difference
+        symmetric:
+            Whether to calculate the symmetric difference quotient or not
+    """
+    omega10 = (circuit.efreqs[1] - circuit.efreqs[0]) * 1e9
+    
+    new_elements = deepcopy(circuit.elements)
+    
+    set_elem_value(new_elements[edge][el_idx], 
+                   circuit.elements[edge][el_idx]._value + delta)
+    perturb_circ = Circuit(new_elements)
+    perturb_circ.set_trunc_nums(circuit.trunc_nums)
+    perturb_circ.diag(len(circuit.efreqs))
+    omega10_plus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+    
+    if symmetric:
+        set_elem_value(new_elements[edge][el_idx],
+                       circuit.elements[edge][el_idx]._value - delta)
+        perturb_circ.update()
+        perturb_circ.diag(len(circuit.efreqs))
+        omega10_minus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
+    
+    if symmetric:
+        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta))
+    else:
+        return sqf.abs((omega10_plus - omega10)/(delta))
+
+def find_elem(cr: Circuit, el: Element) -> Tuple[Tuple[int, int], int]:
+    """ Finds the index of `el` in the edge graph of `circuit`.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+        element:
+            The element to locate
+    """
+    for edge in cr.elements.keys():
+        for i in range(len(cr.elements[edge])):
+            if cr.elements[edge][i] is el:
+                return edge, i
+    return None
+
+def cc_decoherence_approx(cr: Circuit) -> SQValType:
+    """ Calculates the decoherence due to critical current noise for the 
+    0-1 transition, using the value calculated by `partial_deriv_approx_elem` 
+    to approximate to calculate the partial derivative with respect to the
+    Josephson energy.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+    """
+    decay = sqf.array(0.0)
+    for el, B_idx in cr._memory_ops['cos']:
+        edge, el_idx = find_elem(cr, el)
+        partial_omega = partial_deriv_approx_elem(cr, edge, el_idx) * 2 * np.pi
+        A = el.A * el.get_value()
+        decay = decay + cr._dephasing(A, partial_omega)
+    return decay

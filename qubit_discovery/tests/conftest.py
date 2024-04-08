@@ -35,6 +35,25 @@ def get_fluxonium() -> Circuit:
 
     return circuit
 
+def get_transmon() -> Circuit:
+    """Returns a Transmon qubit for test purposes."""
+    
+    loop = sq.Loop(0.5)
+    cap = sq.Capacitor(
+        1.0, requires_grad=sq.get_optim_mode()
+    )
+    junc = sq.Junction(
+        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+    )
+
+    circuit = sq.Circuit(
+        elements={
+            (0, 1): [cap, junc]
+        }
+    )
+
+    return circuit
+
 
 def get_bounds() -> Dict[Element, Tensor]:
     """Returns element bounds for test purposes."""
