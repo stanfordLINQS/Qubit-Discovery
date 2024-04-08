@@ -51,30 +51,22 @@ PLOT_SCHEME = {
 
 # metric keys for plotting.
 METRIC_KEYS = [
-    'T2',                           # (0, 0) plot position
-    'frequency',                    # (1, 0) plot position
-    'flux_sensitivity',             # (0, 1) plot position
-    'charge_sensitivity',           # (1, 1) plot position
-    'anharmonicity',                # (0, 2) plot position
-    'T1'                            # (1, 2) plot position
+    'flux_sensitivity',             # (0, 0) plot position
+    'charge_sensitivity',           # (0, 1) plot position
+    'number_of_gates',              # (0, 2) plot position
+    't2_flux',                      # (1, 0) plot position
+    't2_charge',                    # (1, 1) plot position
+    't2_cc',                        # (1, 2) plot position
+    'T1',                           # (2, 0) plot position
+    'T2',                           # (2, 1) plot position
+    't2_proxy'                      # (2, 2) plot position
 ]
-
-# Todo:
-# metric keys for plotting.
-# METRIC_KEYS = [
-#     'flux_sensitivity',             # (0, 0) plot position
-#     'charge_sensitivity',           # (1, 0) plot position
-#     'number_of_gates',              # (0, 1) plot position
-#     'T1',                           # (1, 1) plot position
-#     'T2',                           # (0, 2) plot position
-#     'T2_proxy'                      # (1, 2) plot position
-# ]
 
 # loss keys for plotting .
 LOSS_KEYS = [
     'flux_sensitivity_loss',        # (0, 0) plot position
-    'anharmonicity_loss',           # (1, 0) plot position
     'charge_sensitivity_loss',      # (0, 1) plot position
+    'number_of_gates_loss',         # (1, 0) plot position
     'total_loss'                    # (1, 1) plot position
 ]
 
@@ -125,10 +117,11 @@ def plot_circuit_metrics(
 ) -> None:
 
     record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
+    l = 3 if plot_type == 'metrics' else 2
 
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
-        i, j = plot_idx % 2, plot_idx // 2
+        i, j = plot_idx // l, plot_idx % l
         axs[i, j].plot(
             run[key],
             PLOT_SCHEME[circuit_code],
@@ -152,7 +145,7 @@ def plot_results(
 ) -> None:
 
     if plot_type == 'metrics':
-        fig, axs = plt.subplots(2, 3, figsize=(22, 11))
+        fig, axs = plt.subplots(3, 3, figsize=(22, 11))
     elif plot_type == 'loss':
         fig, axs = plt.subplots(2, 2, figsize=(15, 11))
     else:
