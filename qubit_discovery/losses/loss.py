@@ -87,6 +87,15 @@ def t2_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
     return zero(), t2
 
 
+def t2_proxy_loss(
+    circuit: Circuit,
+    dec_type='total'
+) -> Tuple[SQValType, SQValType]:
+    """Not implemented yet. """
+
+    return zero(), zero()
+
+
 def element_sensitivity_loss(
     circuit: Circuit,
     n_samples=10,
@@ -211,12 +220,12 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 
 ALL_FUNCTIONS = {
-    # IN optimization loss:
-    'anharmonicity': anharmonicity_loss,
+    # IN optimization losses:
     'flux_sensitivity': flux_sensitivity_loss,
     'charge_sensitivity': charge_sensitivity_loss,
     'number_of_gates': number_of_gates_loss,
     # Only metrics losses
+    'anharmonicity': anharmonicity_loss,
     'frequency': frequency_loss,
     'gate_speed': gate_speed_loss,
     'T1': t1_loss,
@@ -227,6 +236,10 @@ ALL_FUNCTIONS = {
     't2_charge': lambda cr: t2_loss(cr, dec_type='charge'),
     't2_cc': lambda cr: t2_loss(cr, dec_type='cc'),
     't2_flux': lambda cr: t2_loss(cr, dec_type='flux'),
+    't2_proxy': t2_proxy_loss,
+    't2_proxy_charge': lambda cr: t2_proxy_loss(cr, dec_type='charge'),
+    't2_proxy_cc': lambda cr: t2_proxy_loss(cr, dec_type='cc'),
+    't2_proxy_flux': lambda cr: t2_proxy_loss(cr, dec_type='flux'),
 }
 
 
