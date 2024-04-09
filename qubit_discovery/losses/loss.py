@@ -8,6 +8,7 @@ import torch
 
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
+from SQcircuit.units import get_unit_freq
 
 from .functions import (
     calculate_anharmonicity,
@@ -22,20 +23,12 @@ from .functions import (
 
 # when the loss are close to zero, but we want to reserve the zero value for
 # the metric that do not have loss functions.
-EPSILON = 1e-14
+EPSILON = 1e-13
 SQValType = Union[float, torch.Tensor]
 
 ################################################################################
 # Only metric loss functions
 ################################################################################
-
-
-def frequency_loss(
-        circuit: Circuit,
-) -> Tuple[SQValType, SQValType]:
-    freq = first_resonant_frequency(circuit)
-    # loss = (freq - freq_target) ** 2 / freq_target ** 2
-    return zero(), freq
 
 
 def anharmonicity_loss(
@@ -152,12 +145,25 @@ def gate_speed_loss(circuit: Circuit):
 # In Optimization loss functions
 ################################################################################
 
+def frequency_loss(
+        circuit: Circuit,
+        freq_threshold: float = 100.0,
+) -> Tuple[SQValType, SQValType]:
+    """Loss function for frequency that penalizes the qubit that has frequencies
+     larger than the freq_threshold.
+     """
+    freq = first_resonant_frequency(circuit)
+    if freq > freq_threshold:
+        loss = (freq - freq_threshold)**2
+    else:
+        loss = zero()
+    return loss + EPSILON, freq
+
 
 def flux_sensitivity_loss(
     circuit: Circuit,
     a=0.1,
     b=1,
-    epsilon=1e-14
 ) -> Tuple[SQValType, SQValType]:
     """Return the flux sensitivity of the circuit around flux operation point
     (typically half flux quantum)."""
@@ -166,9 +172,9 @@ def flux_sensitivity_loss(
 
     # Apply hinge loss
     if sens < a:
-        loss = 0.0 * sens + epsilon
+        loss = 0.0 * sens
     else:
-        loss = b * (sens - a) + epsilon
+        loss = b * (sens - a)
 
     return loss + EPSILON, sens
 
@@ -196,7 +202,8 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     """Return the number of single qubit gate of the qubit as well as the loss
     associated with the metric."""
 
-    gate_speed = fastest_gate_speed(circuit)
+    # we should not forget the units
+    gate_speed = fastest_gate_speed(circuit) * get_unit_freq()
 
     t1 = decoherence_time(
         circuit=circuit,
@@ -207,9 +214,11 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     number_of_gates = t1*gate_speed
 
     if get_optim_mode():
-        loss = -torch.log(number_of_gates)
+        # loss = -torch.log(number_of_gates)
+        loss = 1 / number_of_gates * 1e3
     else:
-        loss = -np.log(number_of_gates)
+        # loss = -np.log(number_of_gates)
+        loss = 1 / number_of_gates * 1e3
 
     return loss, number_of_gates
 
@@ -220,25 +229,25 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 
 ALL_FUNCTIONS = {
-    # IN optimization losses:
+    ############################################################################
+    'frequency': frequency_loss,
     'flux_sensitivity': flux_sensitivity_loss,
     'charge_sensitivity': charge_sensitivity_loss,
     'number_of_gates': number_of_gates_loss,
-    # Only metrics losses
+    ############################################################################
     'anharmonicity': anharmonicity_loss,
-    'frequency': frequency_loss,
     'gate_speed': gate_speed_loss,
-    'T1': t1_loss,
+    't1': t1_loss,
     't1_capacitive': lambda cr: t1_loss(cr, dec_type='capacitive'),
     't1_inductive': lambda cr: t1_loss(cr, dec_type='inductive'),
     't1_quasiparticle': lambda cr: t1_loss(cr, dec_type='quasiparticle'),
-    'T2': t2_loss,
-    't2_charge': lambda cr: t2_loss(cr, dec_type='charge'),
-    't2_cc': lambda cr: t2_loss(cr, dec_type='cc'),
-    't2_flux': lambda cr: t2_loss(cr, dec_type='flux'),
+    't2': t2_loss,
     't2_proxy': t2_proxy_loss,
+    't2_charge': lambda cr: t2_loss(cr, dec_type='charge'),
     't2_proxy_charge': lambda cr: t2_proxy_loss(cr, dec_type='charge'),
+    't2_cc': lambda cr: t2_loss(cr, dec_type='cc'),
     't2_proxy_cc': lambda cr: t2_proxy_loss(cr, dec_type='cc'),
+    't2_flux': lambda cr: t2_loss(cr, dec_type='flux'),
     't2_proxy_flux': lambda cr: t2_proxy_loss(cr, dec_type='flux'),
 }
 
