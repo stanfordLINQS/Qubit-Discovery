@@ -99,8 +99,18 @@ YAML_KEYS = [
 UNITS = {
     'frequency': '[GHz]',
     'gate_speed': '[GHz]',
-    'T1': '[s]',
-    'T2': '[s]'
+    't1': '[s]',
+    't1_capacitive': '[s]',
+    't1_inductive': '[s]',
+    't1_quasiparticle': '[s]',
+    't2': '[s]',
+    't2_proxy': '[s]',
+    't2_charge': '[s]',
+    't2_proxy_charge': '[s]',
+    't2_cc': '[s]',
+    't2_proxy_cc': '[s]',
+    't2_flux': '[s]',
+    't2_proxy_flux': '[s]',
 }
 UNITS = defaultdict(lambda: "", UNITS)
 
