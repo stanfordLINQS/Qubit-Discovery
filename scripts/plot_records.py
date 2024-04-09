@@ -53,19 +53,23 @@ PLOT_SCHEME = {
 METRIC_KEYS = [
     'flux_sensitivity',             # (0, 0) plot position
     'charge_sensitivity',           # (0, 1) plot position
-    'number_of_gates',              # (0, 2) plot position
+    'anharmonicity',                # (0, 2) plot position
     't2_flux',                      # (1, 0) plot position
     't2_charge',                    # (1, 1) plot position
     't2_cc',                        # (1, 2) plot position
-    'T1',                           # (2, 0) plot position
-    'T2',                           # (2, 1) plot position
-    't2_proxy'                      # (2, 2) plot position
+    't1',                           # (2, 0) plot position
+    'gate_speed',                   # (2, 1) plot position
+    'number_of_gates',              # (2, 2) plot position
+    't2',                           # (3, 0) plot position
+    't2_proxy',                     # (3, 1) plot position
+    'frequency',                    # (3, 2) plot position
 ]
 
 # loss keys for plotting .
 LOSS_KEYS = [
     'flux_sensitivity_loss',        # (0, 0) plot position
     'charge_sensitivity_loss',      # (0, 1) plot position
+    'frequency_loss',               # (0, 2) plot position
     'number_of_gates_loss',         # (1, 0) plot position
     'total_loss'                    # (1, 1) plot position
 ]
@@ -117,11 +121,11 @@ def plot_circuit_metrics(
 ) -> None:
 
     record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
-    l = 3 if plot_type == 'metrics' else 2
+    # l = 3 if plot_type == 'metrics' else 2
 
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
-        i, j = plot_idx // l, plot_idx % l
+        i, j = plot_idx // 3, plot_idx % 3
         axs[i, j].plot(
             run[key],
             PLOT_SCHEME[circuit_code],
@@ -132,6 +136,7 @@ def plot_circuit_metrics(
         axs[i, j].set_title(
             capitalize_metric(key) + f" {get_units()[key]}"
         )
+        # if key not in ['number_of_gates_loss', 'total_loss']:
         axs[i, j].set_yscale('log')
         axs[i, j].legend(loc="upper left")
 
@@ -145,9 +150,9 @@ def plot_results(
 ) -> None:
 
     if plot_type == 'metrics':
-        fig, axs = plt.subplots(3, 3, figsize=(22, 11))
+        fig, axs = plt.subplots(4, 3, figsize=(28, 16))
     elif plot_type == 'loss':
-        fig, axs = plt.subplots(2, 2, figsize=(15, 11))
+        fig, axs = plt.subplots(2, 3, figsize=(20, 8))
     else:
         raise ValueError(
             f"Unknown plot type: {plot_type}. Must be "
@@ -170,7 +175,7 @@ def plot_results(
 
     plt.savefig(
         f'{plot_folder_directory}/{save_prefix}_{plot_type}_record.png',
-        dpi=300
+        dpi=500
     )
 
 
