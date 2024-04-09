@@ -159,7 +159,6 @@ def main() -> None:
             bounds=bounds,
             save_loc=directory.get_records_dir(),
             max_iter=parameters['epochs'],
-            tolerance=1e-10,
             verbose=True,
             save_intermediate_circuits=parameters['save-intermediate']
         )
