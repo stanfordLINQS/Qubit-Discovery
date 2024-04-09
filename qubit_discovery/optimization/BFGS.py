@@ -33,9 +33,9 @@ def run_BFGS(
     total_trunc_num: int,
     save_loc: Optional[str] = None,
     bounds: Optional = None,
-    lr: float = 1.0,
+    lr: float = 1e3,
     max_iter: int = 100,
-    tolerance: float = 1e-7,
+    tolerance: float = 1e-15,
     verbose: bool = False,
     save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
@@ -149,17 +149,18 @@ def run_BFGS(
         set_grad_zero(circuit)
 
         loss_diff = loss_next - loss
+        loss_diff_ratio = torch.abs(loss_diff/(loss+1e-30))
 
         if verbose:
             if iteration % 1 == 0:
                 print(
                     f"i:{iteration}",
                     f"loss: {loss.detach().numpy()}",
-                    f"loss_diff={loss_diff.detach().numpy()}",
+                    f"loss_diff_ratio={loss_diff_ratio.detach().numpy()}",
                     f"alpha={alpha}"
                 )
 
-        if torch.abs(loss_diff) < tolerance:
+        if loss_diff_ratio < tolerance:
             break
 
         s = delta_params
