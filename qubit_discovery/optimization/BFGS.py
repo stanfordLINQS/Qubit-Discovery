@@ -16,7 +16,6 @@ from .utils import (
     RecordType
 )
 
-
 SQValType = Union[float, Tensor]
 LossFunctionType = Callable[
     [Circuit],
@@ -25,19 +24,19 @@ LossFunctionType = Callable[
 
 
 def run_BFGS(
-    circuit: Circuit,
-    circuit_code: str,
-    loss_metric_function: LossFunctionType,
-    name: str,
-    num_eigenvalues: int,
-    total_trunc_num: int,
-    save_loc: Optional[str] = None,
-    bounds: Optional = None,
-    lr: float = 1e3,
-    max_iter: int = 100,
-    tolerance: float = 1e-15,
-    verbose: bool = False,
-    save_intermediate_circuits: bool = True
+        circuit: Circuit,
+        circuit_code: str,
+        loss_metric_function: LossFunctionType,
+        name: str,
+        num_eigenvalues: int,
+        total_trunc_num: int,
+        save_loc: Optional[str] = None,
+        bounds: Optional = None,
+        lr: float = 1e3,
+        max_iter: int = 100,
+        tolerance: float = 1e-15,
+        verbose: bool = False,
+        save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
@@ -149,7 +148,7 @@ def run_BFGS(
         set_grad_zero(circuit)
 
         loss_diff = loss_next - loss
-        loss_diff_ratio = torch.abs(loss_diff/(loss+1e-30))
+        loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))
 
         if verbose:
             if iteration % 1 == 0:
@@ -175,13 +174,13 @@ def run_BFGS(
             A = identity - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
             B = identity - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
             H = (
-                torch.matmul(A, torch.matmul(H, B))
-                + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+                    torch.matmul(A, torch.matmul(H, B))
+                    + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
             )
 
         params = params_next
         circuit.update()
-        
+
     return params, loss_record
 
 
@@ -199,16 +198,16 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 
 def backtracking_line_search(
-    circuit: Circuit,
-    objective_func: Callable[[Circuit, Tensor, int], Tensor],
-    params: torch.tensor,  # params at starting point
-    gradient: torch.tensor,  # gradient at starting point
-    p: torch.tensor,  # search direction,
-    num_eigenvalues: int,
-    bounds=None,
-    lr=1.0,
-    c=1e-45,
-    rho=0.1
+        circuit: Circuit,
+        objective_func: Callable[[Circuit, Tensor, int], Tensor],
+        params: torch.tensor,  # params at starting point
+        gradient: torch.tensor,  # gradient at starting point
+        p: torch.tensor,  # search direction,
+        num_eigenvalues: int,
+        bounds=None,
+        lr=1.0,
+        c=1e-45,
+        rho=0.1
 ) -> float:
     """At end of line search, `circuit` will have its internal parameters set
     to ``params + alpha * p``.
@@ -219,16 +218,16 @@ def backtracking_line_search(
 
     if bounds is not None:
         while (not_param_in_bounds(
-            params + alpha * p,
-            bounds,
-            circuit_element_types
+                params + alpha * p,
+                bounds,
+                circuit_element_types
         )):
             alpha *= rho
 
     baseline_loss = objective_func(circuit, params, num_eigenvalues)
     while (
-        objective_func(circuit, params + alpha * p, num_eigenvalues)
-        > baseline_loss + c * alpha * torch.dot(p, gradient)
+            objective_func(circuit, params + alpha * p, num_eigenvalues)
+            > baseline_loss + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
     return alpha
