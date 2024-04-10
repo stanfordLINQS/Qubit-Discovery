@@ -78,6 +78,8 @@ from typing import List, Tuple, Dict
 from collections import defaultdict
 
 from qubit_discovery.losses.loss import get_all_metrics
+from settings import RESULTS_DIR
+
 ################################################################################
 # General Settings.
 ################################################################################
@@ -228,6 +230,8 @@ class Directory:
         """Return the directory for the main_folder (where the yaml file
         is located)."""
 
+        if RESULTS_DIR != "":
+            return RESULTS_DIR
         return os.path.dirname(os.path.abspath(
             self.arguments['<yaml_file>']
         ))
