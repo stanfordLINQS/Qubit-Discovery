@@ -1,4 +1,4 @@
-"""Module contains general configuration and functions  for
+"""Module contains general configuration and functions for
 qubit_discovery tests.
 """
 
@@ -17,9 +17,15 @@ def get_fluxonium() -> Circuit:
     """Returns a Fluxonium qubit for test purposes."""
 
     loop = sq.Loop(0.5)
-    cap = sq.Capacitor(1.0, requires_grad=True)
-    ind = sq.Inductor(1.0, loops=[loop], requires_grad=True)
-    junc = sq.Junction(1.0, loops=[loop], requires_grad=True)
+    cap = sq.Capacitor(
+        1.0, requires_grad=sq.get_optim_mode()
+    )
+    ind = sq.Inductor(
+        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+    )
+    junc = sq.Junction(
+        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+    )
 
     circuit = sq.Circuit(
         elements={
@@ -50,7 +56,7 @@ def are_loss_dicts_close(dict1, dict2, rel: float = 1e-2) -> bool:
         return False
 
     for key in dict1:
-        if not np.isclose(dict1[key][0], dict2[key][0], rtol=rel):
+        if not np.isclose(dict1[key][-1], dict2[key][-1], rtol=rel):
             return False
 
     return True

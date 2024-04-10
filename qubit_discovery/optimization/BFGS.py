@@ -1,9 +1,8 @@
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import torch
 from torch import Tensor
 
-import SQcircuit
 from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
@@ -14,9 +13,15 @@ from .utils import (
     init_records,
     update_record,
     save_results,
-    LossFunctionType,
     RecordType
 )
+
+
+SQValType = Union[float, Tensor]
+LossFunctionType = Callable[
+    [Circuit],
+    Tuple[Tensor, Dict[str, SQValType], Dict[str, SQValType]]
+]
 
 
 def run_BFGS(
@@ -26,11 +31,11 @@ def run_BFGS(
     name: str,
     num_eigenvalues: int,
     total_trunc_num: int,
-    save_loc: str,
-    bounds: Optional[Dict[SQcircuit.Element, Tensor]] = None,
-    lr: float = 1.0,
+    save_loc: Optional[str] = None,
+    bounds: Optional = None,
+    lr: float = 1e3,
     max_iter: int = 100,
-    tolerance: float = 1e-7,
+    tolerance: float = 1e-15,
     verbose: bool = False,
     save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
@@ -103,16 +108,17 @@ def run_BFGS(
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
 
-        save_results(
-            loss_record,
-            metric_record,
-            circuit,
-            circuit_code,
-            name,
-            save_loc,
-            'BFGS',
-            save_intermediate_circuits=save_intermediate_circuits
-        )
+        if save_loc:
+            save_results(
+                loss_record,
+                metric_record,
+                circuit,
+                circuit_code,
+                name,
+                save_loc,
+                'BFGS',
+                save_intermediate_circuits=save_intermediate_circuits
+            )
 
         loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()
@@ -143,17 +149,18 @@ def run_BFGS(
         set_grad_zero(circuit)
 
         loss_diff = loss_next - loss
+        loss_diff_ratio = torch.abs(loss_diff/(loss+1e-30))
 
         if verbose:
             if iteration % 1 == 0:
                 print(
                     f"i:{iteration}",
                     f"loss: {loss.detach().numpy()}",
-                    f"loss_diff={loss_diff.detach().numpy()}",
+                    f"loss_diff_ratio={loss_diff_ratio.detach().numpy()}",
                     f"alpha={alpha}"
                 )
 
-        if torch.abs(loss_diff) < tolerance:
+        if loss_diff_ratio < tolerance:
             break
 
         s = delta_params
@@ -174,8 +181,6 @@ def run_BFGS(
 
         params = params_next
         circuit.update()
-        # TODO: Following diag call may not be necessary
-        circuit.diag(num_eigenvalues)
         
     return params, loss_record
 

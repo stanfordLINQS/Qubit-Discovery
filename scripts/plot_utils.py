@@ -1,10 +1,10 @@
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import dill as pickle
 from SQcircuit import Capacitor, Circuit, Inductor, Junction
 from matplotlib import pyplot as plt
+from SQcircuit import Circuit
 
-from qubit_discovery.optimization.utils import flatten
 
 def load_record(url: str) -> Any:
     try:
@@ -13,6 +13,7 @@ def load_record(url: str) -> Any:
         return record
     except FileNotFoundError:
         return None
+
 
 # TODO: Generalize codename to account for element ordering
 # (ex. for N=4, JJJL and JJLJ should be distinct)
@@ -29,6 +30,7 @@ def lookup_codename(num_junctions: int, num_inductors: int) -> Optional[str]:
         return "JLL"
     return None
 
+
 def code_to_codename(circuit_code: str) -> str:
     if circuit_code == "JJ":
         return "Transmon"
@@ -36,25 +38,25 @@ def code_to_codename(circuit_code: str) -> str:
         return "Fluxonium"
     return circuit_code
 
-def get_element_counts(circuit: Circuit) -> Tuple[int, int, int]:
-    """Gets counts of each type of circuit element."""
-    inductor_count = sum([type(xi) is Inductor for xi in
-                          flatten(list(circuit.elements.values()))])
-    junction_count = sum([type(xi) is Junction for xi in
-                          flatten(list(circuit.elements.values()))])
-    capacitor_count = sum([type(xi) is Capacitor for xi in
-                           flatten(list(circuit.elements.values()))])
-    return junction_count, inductor_count, capacitor_count
 
 def add_file_args(parser):
-    parser.add_argument('-c', '--codes', type=str, required=True,
-                        help="Circuit codes to plot, each with <num_runs>")
-    parser.add_argument('-o', '--optimization_type', type=str, required=True,
-                        help="Optimization type to plot")
-    parser.add_argument('-n', '--name', required=True,
-                        help="Name of run, either explict or passed in via YAML.")
-    parser.add_argument('-s', '--save_circuits', action='store_true',
-                        help="Unimplemented") #TODO: implement
+    parser.add_argument(
+        '-c', '--codes', type=str, required=True,
+        help="Circuit codes to plot, each with <num_runs>"
+    )
+    parser.add_argument(
+        '-o', '--optimization_type', type=str, required=True,
+        help="Optimization type to plot"
+    )
+    parser.add_argument(
+        '-n', '--name', required=True,
+        help="Name of run, either explict or passed in via YAML."
+    )
+    parser.add_argument(
+        '-s', '--save_circuits', action='store_true',
+        help="Unimplemented"
+    ) #TODO: implement
+
 
 
 def load_initial_circuit(circuit_record: str) -> Circuit:
