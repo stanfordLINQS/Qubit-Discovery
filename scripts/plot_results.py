@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import dill as pickle
 from SQcircuit import Circuit
 
-from plot_utils import add_file_args, code_to_codename, load_record
+from plot_utils import add_file_args, code_to_codename, load_record, set_plotting_defaults
 from qubit_discovery.losses.loss import OMEGA_TARGET
 from settings import RESULTS_DIR
     
@@ -37,8 +37,11 @@ def plot_results(record,
                      'Flux Sensitivity Loss', 'Charge Sensitivity Loss', 'Total Loss']
     LOSS_KEYS = ['frequency_loss', 'anharmonicity_loss', 'T1_loss',
                  'flux_sensitivity_loss', 'charge_sensitivity_loss', 'total_loss']
+    LOSS_YLABELS = [r'$\mathcal{L}_\mathcal{E}$', r'$\mathcal{L}_\mathcal{A}$', r'$\mathcal{L}_{T_1}$',
+                    r'$\mathcal{L}_\mathcal{F}$', r'$\mathcal{L}_\mathcal{C}$',
+                    r'$\mathcal{L}=\mathcal{L}_\mathcal{E}+\mathcal{L}_\mathcal{A}+\mathcal{L}_\mathcal{F}$']
     
-    fig, axs = plt.subplots(2, 3, figsize=(22, 11))
+    fig, axs = plt.subplots(2, 3, figsize=(21, 14))
     fig.suptitle(title, fontsize = 32)
     plot_titles = METRIC_TITLES if plot_type == 'metrics' else LOSS_TITLES
     record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
@@ -48,10 +51,13 @@ def plot_results(record,
                              best: bool,
                              show_label=False) -> None:
         codename = code_to_codename(code)
+        show_label = False
         label = codename if show_label else None
         for plot_idx in range(6):
             axs[plot_idx % 2, plot_idx // 2].set_title(plot_titles[plot_idx])
             axs[plot_idx % 2, plot_idx // 2].set_yscale('log')
+            axs[plot_idx % 2, plot_idx // 2].set_xlabel('# Steps')
+            axs[plot_idx % 2, plot_idx // 2].set_ylabel(LOSS_YLABELS[plot_idx])
         
         if best:
             alpha = None
@@ -63,21 +69,23 @@ def plot_results(record,
         for plot_idx in range(6):
             try:
                 axs[plot_idx % 2, plot_idx // 2].plot(run[record_keys[plot_idx]],
-                            PLOT_SCHEME[codename], label=label, alpha=alpha,
+                            label=label,
+                            alpha=alpha,
                             linestyle=linestyle)
             except KeyError:
                 print(plot_type)
                 print(record)
-        axs[0, 0].legend(loc='upper right')
-        axs[1, 0].legend(loc='lower right')
-        axs[0, 1].legend(loc='upper right')
-        axs[1, 1].legend(loc='center right')
-        axs[0, 2].legend(loc='upper right')
-        axs[1, 2].legend(loc='lower left')
+        if show_label:
+            axs[0, 0].legend(loc='upper right')
+            axs[1, 0].legend(loc='lower right')
+            axs[0, 1].legend(loc='upper right')
+            axs[1, 1].legend(loc='center right')
+            axs[0, 2].legend(loc='upper right')
+            axs[1, 2].legend(loc='lower left')
 
     if plot_type == 'metrics':
         axs[1, 0].axhline(y=OMEGA_TARGET, color='m', linestyle=':')
-        axs[0, 2].axhline(y=22, color='m', linestyle=':')
+        axs[0, 2].axhline(y=17.139, color='m', linestyle=':')
 
     for codename, ids_list in best_ids.items():
         # Plot best run for that specific code
@@ -87,7 +95,11 @@ def plot_results(record,
         for run in runs_list[1:]:
             plot_circuit_metrics(run, codename, False, False)
 
-    plt.savefig(f'{plot_folder}/{save_prefix}_{plot_type}_record.png', dpi=300)
+    fig.tight_layout()
+    plt.savefig(f'{plot_folder}/{save_prefix}_{plot_type}_record.png',
+                dpi=300,
+                bbox_inches="tight"
+                )
 
 def build_save_prefix(args) -> str:
     save_prefix = ""
@@ -117,6 +129,8 @@ def main() -> None:
     parser.add_argument('-d', '--directory', type=int,
                         help="Directory from results, if different than default.")
     args = parser.parse_args()
+
+    set_plotting_defaults(single_color = True)
 
     num_runs = int(args.num_runs)
     if args.best_n is not None:

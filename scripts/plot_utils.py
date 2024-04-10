@@ -2,6 +2,7 @@ from typing import Any, Optional, Tuple
 
 import dill as pickle
 from SQcircuit import Capacitor, Circuit, Inductor, Junction
+from matplotlib import pyplot as plt
 
 from qubit_discovery.optimization.utils import flatten
 
@@ -55,6 +56,13 @@ def add_file_args(parser):
     parser.add_argument('-s', '--save_circuits', action='store_true',
                         help="Unimplemented") #TODO: implement
 
+
+def load_initial_circuit(circuit_record: str) -> Circuit:
+    with open(circuit_record, 'rb') as f:
+        first_circ = pickle.load(f)
+    return first_circ
+
+
 def load_final_circuit(circuit_record: str) -> Circuit:
     with open(circuit_record, 'rb') as f:
         try:
@@ -63,3 +71,30 @@ def load_final_circuit(circuit_record: str) -> Circuit:
         except EOFError:
             pass
     return last_circ
+
+
+def load_all_circuits(circuit_record: str) -> Circuit:
+    circuits = []
+    with open(circuit_record, 'rb') as f:
+        try:
+            while True:
+                next_circuit = pickle.load(f)
+                circuits += [next_circuit, ]
+        except EOFError:
+            pass
+    return circuits
+
+def set_plotting_defaults(single_color = False):
+    plt.rcParams['lines.linewidth'] = 2.2
+    plt.rcParams["xtick.major.size"] = 5
+    plt.rcParams["xtick.major.width"] = 1.2
+    plt.rcParams["ytick.major.size"] = 5
+    plt.rcParams["ytick.major.width"] = 1.2
+    plt.rcParams["axes.titlesize"] = 18
+    plt.rcParams["font.size"] = 18
+    plt.rcParams['xtick.labelsize'] = 15
+    plt.rcParams['ytick.labelsize'] = 15
+    color_list = ['#8D1514', '#007662', '#333131', '#D1C295', '#FD7C34']
+    if single_color:
+        color_list = ['#8D1514', ]
+    plt.rcParams['axes.prop_cycle'] = plt.cycler(color=color_list)

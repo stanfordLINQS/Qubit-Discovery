@@ -9,6 +9,7 @@ import SQcircuit as sq
 import SQcircuit.functions as sqf
 import torch
 
+
 #############################
 # Load circuit              #
 #############################
@@ -231,10 +232,10 @@ def grid_charge_spectrum(circuit,
 
 def plot_1D_charge_spectrum(n_g_vals, spectrum, ax, n_eig=4):
     for eigen_idx in range(n_eig):
-        ax.plot(n_g_vals, spectrum[eigen_idx, :], 'o')
+        ax.plot(n_g_vals, spectrum[eigen_idx, :])
 
-    ax.set_xlabel(r"Gate Charge $n_g$", fontsize=13)
-    ax.set_ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
+    ax.set_xlabel(r"$n_g$")
+    ax.set_ylabel(r"$f_i-f_0$ [GHz]")
 
 def plot_2D_charge_spectrum(ng1, ng2, frequency, ax):
     c = ax.pcolormesh(ng1, ng2, frequency)
@@ -247,14 +248,15 @@ def calculate_flux_spectrum(circuit,
                             flux_min=0,
                             flux_max=1,
                             n_eig=4,
-                            count=20,
+                            count=200,
                             center_count=10,
                             delta=0.03):
     reset_charge_modes(circuit)
 
+    initial_flux_value = circuit.loops[0].value() / (2 * np.pi) # Currently assume one loop
     flux_values = np.linspace(flux_min, flux_max, count)
     center_values = np.linspace(0.5 - delta, 0.5 + delta, center_count)
-    flux_values = np.concatenate((flux_values, center_values))
+    flux_values = np.sort(np.concatenate((flux_values, center_values)))
     flux_spectrum = np.zeros((n_eig, count + center_count))
     for flux_idx, flux in enumerate(flux_values):
         for loop in circuit.loops:
@@ -263,16 +265,22 @@ def calculate_flux_spectrum(circuit,
         eigenvalues, _ = circuit.diag(n_eig)
         flux_spectrum[:, flux_idx] = sqf.numpy(eigenvalues)
         flux_spectrum -= flux_spectrum[0, :]
+
+    # Reset circuit
+    for loop in circuit.loops:
+        loop.set_flux(initial_flux_value)
+    circuit.update()
+    circuit.diag(n_eig)
     return flux_values, flux_spectrum
 
 def plot_flux_spectrum(flux_vals, spectrum, ax, n_eig=-1):
     if n_eig == -1:
         n_eig = np.shape(spectrum)[0]
     for eigen_idx in range(n_eig):
-        ax.plot(flux_vals, spectrum[eigen_idx, :], 'o')
+        ax.plot(flux_vals, spectrum[eigen_idx, :])
 
-    ax.set_xlabel(r"Flux Values $\varphi$", fontsize=13)
-    ax.set_ylabel(r"$\omega_{i0}$ in GHz", fontsize=13)
+    ax.set_xlabel(r"$\Phi_{ext}/\Phi_0$")
+    ax.set_ylabel(r"$f_i-f_0$ [GHz]")
 
 #############################
 # Plot eigenfunctions       #

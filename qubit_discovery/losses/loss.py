@@ -76,7 +76,10 @@ def anharmonicity_loss_constantnorm(
 
 
 def T1_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    Gamma = calculate_T1_rate(circuit)
+    Gamma_1 = circuit.dec_rate('capacitive', (0, 1))
+    Gamma_2 = circuit.dec_rate('inductive', (0, 1))
+    Gamma_3 = circuit.dec_rate('quasiparticle', (0, 1))
+    Gamma = Gamma_1 + Gamma_2 + Gamma_3
     T1 = 1 / Gamma
 
     loss = Gamma ** 2
@@ -338,6 +341,7 @@ def calculate_loss_metrics(
         if use_gate_loss:
             loss = loss + loss_gate
 
+    # Calculate experimental sensitivity
     with torch.set_grad_enabled(use_experimental_sensitivity_loss and master_use_grad):
         loss_experimental_sensitivity, experimental_sensitivity_value = experimental_sensitivity_loss(circuit)
         if loss_normalization:

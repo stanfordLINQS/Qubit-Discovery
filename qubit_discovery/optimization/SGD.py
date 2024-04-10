@@ -100,7 +100,7 @@ def run_SGD(
             name,
             save_loc,
             'SGD',
-            save_intermediate_circuits=save_intermediate_circuits
+            save_intermediate_circuits=True
         )
 
         # Clamp gradients, if desired
