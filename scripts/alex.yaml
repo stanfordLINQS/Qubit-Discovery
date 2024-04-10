@@ -1,5 +1,5 @@
 name: ""
-K0: 2000
+K0: 8000
 K: 8000
 epochs: 100
 # F
@@ -7,11 +7,11 @@ capacitor_range: [1e-15, 12e-12]
 # H
 inductor_range: [1e-15, 5e-6]
 junction_range: [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]
-loss_function: constant_norm
+loss_function: default
 num_eigenvalues: 10
 losses:
   frequency_loss: False
   anharmonicity_loss: True
   flux_sensitivity_loss: True
-  charge_sensitivity_loss: True
+  charge_sensitivity_loss: 1
   T1_loss: False
