@@ -356,10 +356,10 @@ def set_elem_value(elem, val):
     elem._value = val
 
 def partial_deriv_approx_elem(circuit: Circuit, 
-                              edge: Tuple[int, int], 
+                              edge, 
                               el_idx: int, 
-                              delta=0.001, 
-                              symmetric=True) -> SQValType:
+                              delta=0.05, 
+                              symmetric=True):
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the element at
     `circuit.elements[edge][el_idx]`.
