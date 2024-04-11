@@ -1,7 +1,7 @@
 """Contains helper functions used in remainder of code."""
 
 from copy import copy, deepcopy
-from typing import Union, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -334,17 +334,20 @@ def partial_deriv_approx_charge(
     
     perturb_circ.set_charge_offset(charge_mode, charge_point)
     
+    # When we change by ng we actually vary the gate charge by 2 * e * ng,
+    # so need to include in denominator
     if symmetric:
-        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta))
+        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta * 2 * unt.e))
     else:
-        return sqf.abs((omega10_plus - omega10)/(delta))
+        return sqf.abs((omega10_plus - omega10)/(delta * 2 * unt.e))
 
 def charge_decoherence_approx(cr: Circuit) -> SQValType:
     decay = sqf.array(0.0)
     for charge_island_idx in cr.charge_islands.keys():
         charge_mode = charge_island_idx + 1
         
-        partial_omega = partial_deriv_approx_charge(cr, charge_mode)
+        # Convert to rad
+        partial_omega = partial_deriv_approx_charge(cr, charge_mode) * 2 * np.pi / (2 * unt.e)
         A = cr.charge_islands[charge_island_idx].A * 2 * unt.e
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
@@ -353,10 +356,10 @@ def set_elem_value(elem, val):
     elem._value = val
 
 def partial_deriv_approx_elem(circuit: Circuit, 
-                            edge: Tuple[int, int], 
-                            el_idx: int, 
-                            delta=0.001, 
-                            symmetric=True) -> SQValType:
+                              edge: Tuple[int, int], 
+                              el_idx: int, 
+                              delta=0.001, 
+                              symmetric=True) -> SQValType:
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the element at
     `circuit.elements[edge][el_idx]`.
@@ -396,7 +399,8 @@ def partial_deriv_approx_elem(circuit: Circuit,
     else:
         return sqf.abs((omega10_plus - omega10)/(delta))
 
-def find_elem(cr: Circuit, el: Element) -> Tuple[Tuple[int, int], int]:
+def find_elem(cr: Circuit, 
+              el: Element) -> Optional[Tuple[Tuple[int, int], int]]:
     """ Finds the index of `el` in the edge graph of `circuit`.
 
     Parameters
