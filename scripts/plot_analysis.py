@@ -8,6 +8,10 @@ import SQcircuit as sq
 import analysis as an
 from plot_utils import add_file_args, load_final_circuit, load_initial_circuit, set_plotting_defaults
 from settings import RESULTS_DIR
+from inout import (
+    Directory,
+    get_units,
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -21,17 +25,23 @@ def main():
     optim_type = args.optimization_type
     ids = args.ids.split(',')
 
-    experiment_folder = f"{args.optimization_type}_{args.name}"
-    records_folder = os.path.join(experiment_folder, 'records/')
-    plot_output_folder = os.path.join(RESULTS_DIR, experiment_folder, "plots")
-    os.makedirs(plot_output_folder, exist_ok=True)
+    parameters = {
+        'optim_type': optim_type,
+        'name': name
+    }
+
+    directory = Directory(parameters, None)
+    plot_output_folder = directory.get_plots_dir()
 
     set_plotting_defaults()
 
     sq.set_optim_mode(True)
     for id_num in ids:
-        circuit_path = os.path.join(
-            RESULTS_DIR, records_folder, f'{optim_type}_circuit_record_{circuit_code}_{name}_{id_num}.pickle')
+        circuit_path = directory.get_record_file_dir(
+            record_type="circuit",
+            circuit_code=circuit_code,
+            idx=id_num,
+        )
         cr = load_final_circuit(circuit_path)
         cr.update() # rebuild op memory
 
