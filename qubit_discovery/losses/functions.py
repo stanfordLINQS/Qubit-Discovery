@@ -156,56 +156,6 @@ def reset_charge_modes(circuit: Circuit) -> None:
             charge_mode = charge_island_idx + 1
             circuit.set_charge_offset(charge_mode, default_n_g)
 
-
-def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
-    """Return the decoherence time for a given circuit and its decoherence type.
-
-    Parameters
-    ----------
-        circuit:
-            A Circuit object of SQcircuit specifying the qubit.
-        t_type:
-            A string specifying the type of decoherence. It must be either 't1'
-            or 't2'.
-        dec_type:
-            A string specifying the channel of the decoherence time. It must be
-            either 'capacitive', 'inductive', 'quasiparticle', 'charge', 'cc',
-            'flux', or 'total'.
-    """
-
-    gamma = 0.0
-
-    if t_type == "t1":
-        all_t1_channels = ['capacitive', 'inductive', 'quasiparticle']
-        if dec_type == 'total':
-            dec_type_list = all_t1_channels
-        else:
-            assert dec_type in all_t1_channels, (
-                f"dec_type with 't1' mode should be {all_t1_channels}, or "
-                "'total'"
-            )
-            dec_type_list = [dec_type]
-
-    elif t_type == "t2":
-        all_t2_channels = ['charge', 'cc', 'flux']
-        if dec_type == 'total':
-            dec_type_list = all_t2_channels
-        else:
-            assert dec_type in all_t2_channels, (
-                f"dec_type with 't2' mode should be {all_t2_channels}, or "
-                "'total'"
-            )
-            dec_type_list = [dec_type]
-
-    else:
-        raise ValueError("t_type must be either 't1' or 't2'")
-
-    for dec_type in dec_type_list:
-        gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
-
-    return 1 / gamma
-
-
 def fastest_gate_speed(circuit: Circuit) -> SQValType:
     """Calculates the upper bound for the speed of the single qubit gate of the
     qubit. The upper bound is:
@@ -459,3 +409,59 @@ def cc_decoherence_approx(cr: Circuit) -> SQValType:
         A = el.A * el.get_value()
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
+
+T2_proxy_funcs = {
+    'flux': flux_decoherence_approx,
+    'charge': charge_decoherence_approx,
+    'cc': cc_decoherence_approx,
+}
+
+def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
+    """Return the decoherence time for a given circuit and its decoherence type.
+
+    Parameters
+    ----------
+        circuit:
+            A Circuit object of SQcircuit specifying the qubit.
+        t_type:
+            A string specifying the type of decoherence. It must be either 
+            't1', 't2', or 't2_approx'.
+        dec_type:
+            A string specifying the channel of the decoherence time. It must be
+            either 'capacitive', 'inductive', 'quasiparticle', 'charge', 'cc',
+            'flux', or 'total'.
+    """
+
+    gamma = zero()
+
+    if t_type == 't1':
+        all_t1_channels = ['capacitive', 'inductive', 'quasiparticle']
+        if dec_type == 'total':
+            dec_type_list = all_t1_channels
+        else:
+            assert dec_type in all_t1_channels, (
+                f"dec_type with 't1' mode should be {all_t1_channels}, or "
+                "'total'"
+            )
+            dec_type_list = [dec_type]
+    elif t_type == 't2' or t_type == 't2_approx':
+        all_t2_channels = ['charge', 'cc', 'flux']
+        if dec_type == 'total':
+            dec_type_list = all_t2_channels
+        else:
+            assert dec_type in all_t2_channels, (
+                f"dec_type with 't2' mode should be {all_t2_channels}, or "
+                "'total'"
+            )
+            dec_type_list = [dec_type]
+    else:
+        raise ValueError("t_type must be either 't1' or 't2' or 't2_approx")
+
+    
+    for dec_type in dec_type_list:
+        if t_type in ('t1', 't2'):
+            gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
+        else:
+            gamma = gamma + T2_proxy_funcs[dec_type](circuit)
+
+    return 1 / gamma
