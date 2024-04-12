@@ -1,12 +1,13 @@
 """Contains helper functions used in remainder of code."""
 
+from collections import OrderedDict
 from copy import copy, deepcopy
-from typing import Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch
 
-from SQcircuit import Circuit, Loop, Element
+from SQcircuit import Circuit, Element, Junction, Loop
 from SQcircuit.settings import get_optim_mode
 import SQcircuit.functions as sqf
 import SQcircuit.units as unt
@@ -365,10 +366,19 @@ def charge_decoherence_approx(cr: Circuit) -> SQValType:
 def set_elem_value(elem, val):
     elem._value = val
 
+all_units = unt.farad_list | unt.freq_list | unt.henry_list
+
+def copy_elements_list(elem_list: OrderedDict):
+    new_elem_list = OrderedDict()
+    for edge in elem_list:
+        new_elem_list[edge] = copy(elem_list[edge])
+    
+    return new_elem_list
+
 def partial_deriv_approx_elem(circuit: Circuit, 
                               edge, 
                               el_idx: int, 
-                              delta=0.05, 
+                              delta=0.001, 
                               symmetric=True) -> SQValType:
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the element at
@@ -386,12 +396,17 @@ def partial_deriv_approx_elem(circuit: Circuit,
         symmetric:
             Whether to calculate the symmetric difference quotient or not
     """
+    # Not yet tested for other types of elements; will need diferent scaling
+    assert(type(circuit.elements[edge][el_idx]) is Junction)
+    
     omega10 = (circuit.efreqs[1] - circuit.efreqs[0]) * 1e9
     
-    new_elements = deepcopy(circuit.elements)
-    
+    new_elements = copy_elements_list(circuit.elements)
+    el_unit = all_units[circuit.elements[edge][el_idx].unit]
+    new_elements[edge][el_idx] = copy(new_elements[edge][el_idx])
     set_elem_value(new_elements[edge][el_idx], 
-                   circuit.elements[edge][el_idx]._value + delta)
+                   circuit.elements[edge][el_idx]._value + delta * el_unit)
+    
     perturb_circ = Circuit(new_elements)
     perturb_circ.set_trunc_nums(circuit.trunc_nums)
     perturb_circ.diag(len(circuit.efreqs))
@@ -399,15 +414,15 @@ def partial_deriv_approx_elem(circuit: Circuit,
     
     if symmetric:
         set_elem_value(new_elements[edge][el_idx],
-                       circuit.elements[edge][el_idx]._value - delta)
+                       circuit.elements[edge][el_idx]._value - delta * el_unit)
         perturb_circ.update()
         perturb_circ.diag(len(circuit.efreqs))
         omega10_minus = (perturb_circ.efreqs[1] - perturb_circ.efreqs[0]) * 1e9
     
     if symmetric:
-        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta))
+        return sqf.abs((omega10_plus - omega10_minus)/(2 * delta * el_unit))
     else:
-        return sqf.abs((omega10_plus - omega10)/(delta))
+        return sqf.abs((omega10_plus - omega10)/(delta * el_unit))
 
 def find_elem(cr: Circuit, 
               el: Element) -> Optional[Tuple[Tuple[int, int], int]]:

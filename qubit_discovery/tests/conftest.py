@@ -35,6 +35,28 @@ def get_fluxonium() -> Circuit:
 
     return circuit
 
+def get_fluxonium_random() -> Circuit:
+    """Returns a Fluxonium qubit for test purposes."""
+
+    loop = sq.Loop(0.5)
+    cap = sq.Capacitor(
+        np.random.normal(1.0, 0.1), requires_grad=sq.get_optim_mode()
+    )
+    ind = sq.Inductor(
+        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=sq.get_optim_mode()
+    )
+    junc = sq.Junction(
+        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=sq.get_optim_mode()
+    )
+
+    circuit = sq.Circuit(
+        elements={
+            (0, 1): [cap, ind, junc]
+        }
+    )
+
+    return circuit
+
 def get_cpb() -> Circuit:
     """Returns a Transmon qubit for test purposes."""
     

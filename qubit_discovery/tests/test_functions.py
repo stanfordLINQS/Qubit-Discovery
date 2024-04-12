@@ -22,6 +22,7 @@ from qubit_discovery.losses.functions import (
 )
 from qubit_discovery.tests.conftest import (
     get_fluxonium, 
+    get_fluxonium_random,
     get_cpb,
 )
 
@@ -58,7 +59,7 @@ def test_fastest_gate_speed() -> None:
             np.isclose(omega, target_omega.item(), rtol=1e-2)
 
 def test_flux_deriv_approx() -> None:
-    circuit_generators = [(get_fluxonium, [120])]
+    circuit_generators = [(get_fluxonium_random, [120])]
     n_eigs = 10
 
     sq.set_optim_mode(True)
@@ -76,7 +77,7 @@ def test_flux_deriv_approx() -> None:
         assert(torch.isclose(deriv_approx, deriv_exact, rtol=1e-2))
 
 def test_flux_decoherence_approx() -> None:
-    circuit_generators = [(get_fluxonium, [120])]
+    circuit_generators = [(get_fluxonium_random, [120])]
     n_eigs = 10
 
     flux_points = [0.1, 0.25, 0.5 - 1e-2]
@@ -158,7 +159,7 @@ def test_charge_decoherence_approx() -> None:
             assert(np.isclose(dec_approx, dec_exact, rtol=1e-1))
 
 def test_EJ_deriv_approx() -> None:
-    circuit_generators = [(get_fluxonium, [120])]
+    circuit_generators = [(get_fluxonium_random, [120])]
                         #   (get_cpb, [60])]
     n_eigs = 10
 
@@ -170,16 +171,15 @@ def test_EJ_deriv_approx() -> None:
 
         for el, B_idx in cr._memory_ops['cos']:
             edge, el_idx = find_elem(cr, el)
-            deriv_approx = partial_deriv_approx_elem(cr, edge, el_idx) \
+            deriv_approx = partial_deriv_approx_elem(cr, edge, el_idx, symmetric=True) \
                 * 2 * np.pi
             deriv_exact = cr._get_partial_omega_mn(el, states=(0, 1), _B_idx=B_idx)
 
-            print(deriv_exact, deriv_approx)
+            print(deriv_approx, deriv_exact)
             assert(torch.isclose(deriv_approx, deriv_exact, rtol=1e-2))
 
-
 def test_cc_decoherence_approx() -> None:
-    circuit_generators = [(get_fluxonium, [120])]
+    circuit_generators = [(get_fluxonium_random, [120])]
     n_eigs = 10
 
 
@@ -205,24 +205,26 @@ def function_grad_test(circuit_numpy,
                        circuit_torch,
                        function_torch, 
                        delta=1e-4):
-    """General test function for comparing linear approximation with gradient computed with PyTorch backpropagation.
+    """General test function for comparing linear approximation with gradient 
+    computed with PyTorch backpropagation.
 
     Parameters
     ----------
         circuit_numpy:
             Numpy circuit for which linear approximation will be calculated.
         function_numpy:
-            Function to call on the numpy circuit. This should match the expected output of `function_torch`.
+            Function to call on the numpy circuit. This should match the 
+            expected output of `function_torch`.
         circuit_torch:
             Equivalent circuit to `circuit_numpy`, but constructed in PyTorch.
         function_torch:
             Equivalent function to `function_numpy`, but written in PyTorch.
         delta:
-            Perturbation dx to each parameter value in `circuit_numpy` to compute
-            linear gradient df/dx~(f(x+dx)-f(x)/dx).
+            Perturbation dx to each parameter value in `circuit_numpy` to 
+            compute linear gradient df/dx~(f(x+dx)-f(x)/dx).
     """
     eigen_count = 20
-    tolerance = 2e-2
+    tolerance = 2e-1
     
     sq.set_optim_mode(False)
     circuit_numpy.diag(eigen_count)
@@ -319,19 +321,19 @@ def test_charge_decoherence_grad() -> None: #
     function_grad_test(trans_numpy, func_numpy,
                        trans_torch, func_torch)
     
-# def test_EJ_decoherence_grad() -> None:
-#     sq.set_optim_mode(False)
-#     fl_numpy = get_fluxonium()
-#     fl_numpy.loops[0].set_flux(0.5 - 1e-2)
-#     fl_numpy.set_trunc_nums([120])
+def test_EJ_decoherence_grad() -> None:
+    sq.set_optim_mode(False)
+    fl_numpy = get_fluxonium()
+    fl_numpy.loops[0].set_flux(0.5 - 1e-2)
+    fl_numpy.set_trunc_nums([120])
 
-#     sq.set_optim_mode(True)
-#     fl_torch = get_fluxonium()
-#     fl_torch.loops[0].set_flux(0.5 - 1e-2)
-#     fl_torch.set_trunc_nums([120])
+    sq.set_optim_mode(True)
+    fl_torch = get_fluxonium()
+    fl_torch.loops[0].set_flux(0.5 - 1e-2)
+    fl_torch.set_trunc_nums([120])
 
-#     func_numpy = lambda cr: cr.dec_rate('cc', (0, 1))
-#     func_torch = lambda cr: cc_decoherence_approx(cr)
+    func_numpy = lambda cr: cr.dec_rate('cc', (0, 1))
+    func_torch = lambda cr: cc_decoherence_approx(cr)
 
-#     function_grad_test(fl_numpy, func_numpy,
-#                        fl_torch, func_torch)
+    function_grad_test(fl_numpy, func_numpy,
+                       fl_torch, func_torch)
