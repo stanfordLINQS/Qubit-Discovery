@@ -2,10 +2,10 @@
 Plot optimization results.
 
 Usage:
-  plot yaml <yaml_file>  [--num_runs=<num_runs> \
+  plot_records.py <yaml_file>  [--num_runs=<num_runs> \
 --circuit_code=<circuit_code> --optim_type=<optim_type> --num_best=<num_best>]
-  plot -h | --help
-  plot --version
+  plot_records.py -h | --help
+  plot_records.py --version
 
 Options:
   -h --help     Show this screen.
@@ -126,19 +126,22 @@ def plot_circuit_metrics(
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
-        axs[i, j].plot(
-            run[key],
-            PLOT_SCHEME[circuit_code],
-            label=circuit_code if best else None,
-            alpha=None if best else 0.3,
-            linestyle=None if best else '--',
-        )
-        axs[i, j].set_title(
-            capitalize_metric(key) + f" {get_units()[key]}"
-        )
-        # if key not in ['number_of_gates_loss', 'total_loss']:
-        axs[i, j].set_yscale('log')
-        axs[i, j].legend(loc="upper left")
+        try:
+            axs[i, j].plot(
+                run[key],
+                PLOT_SCHEME[circuit_code],
+                label=circuit_code if best else None,
+                alpha=None if best else 0.3,
+                linestyle=None if best else '--',
+            )
+            axs[i, j].set_title(
+                capitalize_metric(key) + f" {get_units()[key]}"
+            )
+            # if key not in ['number_of_gates_loss', 'total_loss']:
+            axs[i, j].set_yscale('log')
+            axs[i, j].legend(loc="upper left")
+        except KeyError:
+            pass
 
 
 def plot_results(

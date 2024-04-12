@@ -2,10 +2,10 @@
 Optimize.
 
 Usage:
-  optimize yaml <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
+  optimize.py <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
   --optim_type=<optim_type> --init_circuit=<init_circuit> --save-intermediate]
-  optimize -h | --help
-  optimize --version
+  optimize.py -h | --help
+  optimize.py --version
 
 Options:
   -h --help     Show this screen.
