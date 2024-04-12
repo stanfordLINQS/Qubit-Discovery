@@ -224,7 +224,7 @@ def function_grad_test(circuit_numpy,
             compute linear gradient df/dx~(f(x+dx)-f(x)/dx).
     """
     eigen_count = 20
-    tolerance = 2e-1
+    tolerance = 2e-2
     
     sq.set_optim_mode(False)
     circuit_numpy.diag(eigen_count)
