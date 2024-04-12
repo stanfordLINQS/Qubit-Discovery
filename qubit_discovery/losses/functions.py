@@ -165,7 +165,7 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
             A Circuit object of SQcircuit specifying the qubit.
         t_type:
             A string specifying the type of decoherence. It must be either 't1'
-            or 't2.
+            or 't2'.
         dec_type:
             A string specifying the channel of the decoherence time. It must be
             either 'capacitive', 'inductive', 'quasiparticle', 'charge', 'cc',
@@ -278,7 +278,7 @@ def partial_deriv_approx_flux(circuit: Circuit,
     else:
         return sqf.abs((omega10_plus - omega10) / (delta))
     
-def flux_decoherence_approx(cr: Circuit):
+def flux_decoherence_approx(cr: Circuit) -> SQValType:
     """ Calculates the decoherence due to flux noise for the 0-1 transition,
     using the value calculated by `partial_deriv_approx_flux` to approximate
     the partial derivative of the eigenfrequencies.
@@ -299,10 +299,9 @@ def flux_decoherence_approx(cr: Circuit):
 def partial_deriv_approx_charge(
         circuit: Circuit,
         charge_mode: int,
-        charge_point=0,
         delta=0.01,
         symmetric=True,
-) -> SQValType:
+):
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the gate charge of
     the `charge_mode`th charge_mode.
@@ -322,6 +321,7 @@ def partial_deriv_approx_charge(
     """
     perturb_circ = copy(circuit)
     omega10 = (circuit.efreqs[1] - circuit.efreqs[0]) * 1e9
+    charge_point = circuit.charge_islands[charge_mode - 1].chValue
     
     perturb_circ.set_charge_offset(charge_mode, charge_point+delta)
     perturb_circ.diag(len(circuit.efreqs))
@@ -342,12 +342,22 @@ def partial_deriv_approx_charge(
         return sqf.abs((omega10_plus - omega10)/(delta * 2 * unt.e))
 
 def charge_decoherence_approx(cr: Circuit) -> SQValType:
+    """ Calculates the decoherence due to charge noise for the 0-1 transition,
+    using the value calculated by `partial_deriv_approx_charge` to approximate
+    the partial derivative of the eigenfrequencies.
+
+    Parameters
+    ----------
+        circuit:
+            A `Circuit` object of SQcircuit
+    """
     decay = sqf.array(0.0)
     for charge_island_idx in cr.charge_islands.keys():
         charge_mode = charge_island_idx + 1
         
         # Convert to rad
-        partial_omega = partial_deriv_approx_charge(cr, charge_mode) * 2 * np.pi / (2 * unt.e)
+        partial_omega = partial_deriv_approx_charge(cr, charge_mode) \
+            * 2 * np.pi
         A = cr.charge_islands[charge_island_idx].A * 2 * unt.e
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
@@ -359,7 +369,7 @@ def partial_deriv_approx_elem(circuit: Circuit,
                               edge, 
                               el_idx: int, 
                               delta=0.05, 
-                              symmetric=True):
+                              symmetric=True) -> SQValType:
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the element at
     `circuit.elements[edge][el_idx]`.
@@ -417,7 +427,7 @@ def find_elem(cr: Circuit,
     return None
 
 def cc_decoherence_approx(cr: Circuit) -> SQValType:
-    """ Calculates the decoherence due to critical current noise for the 
+    """ Calculates the decoherence due to critic2al current noise for the 
     0-1 transition, using the value calculated by `partial_deriv_approx_elem` 
     to approximate to calculate the partial derivative with respect to the
     Josephson energy.
@@ -425,7 +435,7 @@ def cc_decoherence_approx(cr: Circuit) -> SQValType:
     Parameters
     ----------
         circuit:
-            A `Circuit` object of SQcircuit
+            A SQcircuit `Circuit` object
     """
     decay = sqf.array(0.0)
     for el, B_idx in cr._memory_ops['cos']:

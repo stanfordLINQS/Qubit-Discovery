@@ -35,15 +35,15 @@ def get_fluxonium() -> Circuit:
 
     return circuit
 
-def get_transmon() -> Circuit:
+def get_cpb() -> Circuit:
     """Returns a Transmon qubit for test purposes."""
     
     loop = sq.Loop(0.5)
     cap = sq.Capacitor(
-        1.0, requires_grad=sq.get_optim_mode()
+        1.2, 'GHz', requires_grad=sq.get_optim_mode()
     )
     junc = sq.Junction(
-        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+        0.2, 'GHz', loops=[loop], requires_grad=sq.get_optim_mode()
     )
 
     circuit = sq.Circuit(
