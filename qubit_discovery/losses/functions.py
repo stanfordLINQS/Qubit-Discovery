@@ -131,7 +131,7 @@ def flux_sensitivity(
     org_flux = loop.value() / (2 * np.pi)  # should be `flux_point`
 
     # Change the flux and get the eigen-frequencies
-    loop.set_flux(flux_point + delta)
+    loop.set_flux(org_flux + delta)
     perturb_circ.diag(len(circuit.efreqs))
     f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
 
@@ -186,7 +186,7 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
 
 def partial_deriv_approx_flux(circuit: Circuit, 
                               loop: Loop, 
-                              delta=0.001,
+                              delta=1e-6, # 0.001
                               symmetric=True) -> SQValType:
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the external flux through
@@ -250,7 +250,7 @@ def flux_decoherence_approx(cr: Circuit) -> SQValType:
 def partial_deriv_approx_charge(
         circuit: Circuit,
         charge_mode: int,
-        delta=0.01,
+        delta=1e-6, # 0.01
         symmetric=True,
 ):
     """ Calculates an approximation to the derivative of the first 
@@ -313,22 +313,40 @@ def charge_decoherence_approx(cr: Circuit) -> SQValType:
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
 
-def set_elem_value(elem, val):
+def set_elem_value(elem: Element, val: SQValType):
+    """ Helper function to change the `._value` of an SQcircuit Element.
+
+    Parameters
+    ----------
+        elem:
+            The element to change the value of
+        val:
+            The new value
+    """
     elem._value = val
 
 all_units = unt.farad_list | unt.freq_list | unt.henry_list
 
-def copy_elements_list(elem_list: OrderedDict):
-    new_elem_list = OrderedDict()
-    for edge in elem_list:
-        new_elem_list[edge] = copy(elem_list[edge])
+def copy_elements_list(elem_dict: OrderedDict):
+    """ Creates a new element dictionary which has the same elements as
+    `elem_dict`. 
+
+    Parameters
+    ----------
+        elem:
+            The element to change the value of
+        val:
+    """
+    new_elem_dict = OrderedDict()
+    for edge in elem_dict:
+        new_elem_dict[edge] = copy(elem_dict[edge])
     
-    return new_elem_list
+    return new_elem_dict
 
 def partial_deriv_approx_elem(circuit: Circuit, 
                               edge, 
                               el_idx: int, 
-                              delta=0.001, 
+                              delta=1e-6,  # 0.001
                               symmetric=True) -> SQValType:
     """ Calculates an approximation to the derivative of the first 
     eigenfrequency of `circuit` with respect to the element at
