@@ -199,7 +199,7 @@ def charge_sensitivity_loss(
 
 
 def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    """Return the number of single qubit gate of the qubit as well as the loss
+    """Return an upper bound on the number of single qubit gates that can be applied to the qubit as well as the loss
     associated with the metric."""
 
     # we should not forget the units
@@ -211,14 +211,22 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
         dec_type='total'
     )
 
-    number_of_gates = t1*gate_speed
+    with torch.set_grad_enabled(False):
+        t2 = decoherence_time(
+            circuit=circuit,
+            t_type="t2",
+            dec_type='total'
+        )
+
+    number_of_gates_t1 = t1 * gate_speed
+    number_of_gates = 1 / (1/t1 + 1/t2) * gate_speed
 
     if get_optim_mode():
         # loss = -torch.log(number_of_gates)
-        loss = 1 / number_of_gates * 1e3
+        loss = 1 / number_of_gates_t1 * 1e3
     else:
         # loss = -np.log(number_of_gates)
-        loss = 1 / number_of_gates * 1e3
+        loss = 1 / number_of_gates_t1 * 1e3
 
     return loss, number_of_gates
 
