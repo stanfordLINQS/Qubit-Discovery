@@ -2,10 +2,10 @@
 Optimize.
 
 Usage:
-  optimize yaml <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
+  optimize.py <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
   --optim_type=<optim_type> --init_circuit=<init_circuit> --save-intermediate]
-  optimize -h | --help
-  optimize --version
+  optimize.py -h | --help
+  optimize.py --version
 
 Options:
   -h --help     Show this screen.
@@ -122,6 +122,7 @@ def main() -> None:
             junction_range
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
+        circuit.loops[0].set_flux(0.5 - 1e-2)
         print("Circuit sampled!")
     else:
         circuit = load_final_circuit(parameters['init_circuit'])

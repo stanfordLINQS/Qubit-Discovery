@@ -62,7 +62,7 @@ def t1_loss(
 
     t1 = decoherence_time(
         circuit=circuit,
-        t_type="t1",
+        t_type='t1',
         dec_type=dec_type
     )
 
@@ -73,21 +73,26 @@ def t2_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
 
     t2 = decoherence_time(
         circuit=circuit,
-        t_type="t2",
+        t_type='t2',
         dec_type=dec_type
     )
 
     return zero(), t2
 
 
+
 def t2_proxy_loss(
     circuit: Circuit,
     dec_type='total'
 ) -> Tuple[SQValType, SQValType]:
-    """Not implemented yet. """
 
-    return zero(), zero()
+    t2_approx = decoherence_time(
+        circuit=circuit,
+        t_type='t2_approx',
+        dec_type=dec_type
+    )
 
+    return zero(), t2_approx
 
 def element_sensitivity_loss(
     circuit: Circuit,
@@ -198,8 +203,9 @@ def charge_sensitivity_loss(
     return loss + EPSILON, sens
 
 
-def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    """Return an upper bound on the number of single qubit gates that can be applied to the qubit as well as the loss
+def number_of_gates_loss(circuit: Circuit,
+                         use_T2=True) -> Tuple[SQValType, SQValType]:
+    """Return the number of single qubit gate of the qubit as well as the loss
     associated with the metric."""
 
     # we should not forget the units
@@ -207,26 +213,32 @@ def number_of_gates_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
     t1 = decoherence_time(
         circuit=circuit,
-        t_type="t1",
+        t_type='t1',
         dec_type='total'
     )
-
-    with torch.set_grad_enabled(False):
-        t2 = decoherence_time(
+    if use_T2:
+        # t2_exact = decoherence_time(
+        #     circuit=circuit,
+        #     t_type='t2',
+        #     dec_type='total'
+        # )
+        t2_approx = decoherence_time(
             circuit=circuit,
-            t_type="t2",
+            t_type='t2_approx',
             dec_type='total'
         )
-
-    number_of_gates_t1 = t1 * gate_speed
-    number_of_gates = 1 / (1/t1 + 1/t2) * gate_speed
+        # number_of_gates_exact = gate_speed * t1 * t2_exact / (t1 + t2_exact)
+        number_of_gates = gate_speed * t1 * t2_approx / (t1 + t2_approx)
+    else:
+        number_of_gates = t1*gate_speed
+        # number_of_gates_exact = number_of_gates
 
     if get_optim_mode():
         # loss = -torch.log(number_of_gates)
-        loss = 1 / number_of_gates_t1 * 1e3
+        loss = 1 / number_of_gates * 1e3
     else:
         # loss = -np.log(number_of_gates)
-        loss = 1 / number_of_gates_t1 * 1e3
+        loss = 1 / number_of_gates * 1e3
 
     return loss, number_of_gates
 
