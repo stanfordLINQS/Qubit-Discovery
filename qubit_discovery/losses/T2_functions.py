@@ -20,7 +20,9 @@ def partial_H_ng(
 ):
     op = qt.Qobj()
     for j in range(cr.n):
-        op += (cr.cInvTrans[charge_idx, j] * cr._memory_ops["Q"][j] / np.sqrt(unt.hbar))
+        op += (cr.cInvTrans[charge_idx, j] 
+               * cr._memory_ops["Q"][j] 
+               / np.sqrt(unt.hbar))
     return op
 
 def partial_omega_ng(
@@ -32,7 +34,8 @@ def partial_omega_ng(
     state1 = cr._evecs[states[0]]
     state2 = cr._evecs[states[1]]
     op = partial_H_ng(cr, charge_idx)
-    return sqf.abs(sqf.operator_inner_product(state2, op, state2) - sqf.operator_inner_product(state1, op, state1))
+    return sqf.abs(sqf.operator_inner_product(state2, op, state2) 
+                   - sqf.operator_inner_product(state1, op, state1))
 
 def partial_squared_H_ng(
     cr: Circuit,
@@ -92,7 +95,10 @@ def partial_charge_dec(
         if cr._is_charge_mode(i):
             partial_omega_mn = partial_omega_ng(cr, i, states)
 
-            partial_squared_omega_mn = partial_squared_omega_mn_ng(cr, i, grad_el, states)
+            partial_squared_omega_mn = partial_squared_omega_mn_ng(cr, 
+                                                                   i, 
+                                                                   grad_el, 
+                                                                   states)
 
             A = (cr.charge_islands[i].A * 2 * unt.e)
             dec_rate_grad += (np.sign(partial_omega_mn)
@@ -132,9 +138,13 @@ def partial_cc_dec(
 ):
     dec_rate_grad = 0
     for EJ_el, B_idx in cr._memory_ops['cos']:
-        partial_omega_mn = cr._get_partial_omega_mn(EJ_el, states=states, _B_idx=B_idx)
+        partial_omega_mn = cr._get_partial_omega_mn(EJ_el, 
+                                                    states=states, 
+                                                    _B_idx=B_idx)
 
-        partial_squared_omega_mn = partial_squared_omega_mn_EJ(cr, EJ_el, grad_el, B_idx, states)
+        partial_squared_omega_mn = partial_squared_omega_mn_EJ(cr, EJ_el, 
+                                                               grad_el, B_idx, 
+                                                               states)
 
         partial_A = EJ_el.A if grad_el is EJ_el else 0
         dec_rate_grad += (np.sign(partial_omega_mn) 
@@ -198,7 +208,8 @@ def partial_squared_omega_mn_phi(
     partial_state_n = cr.get_partial_vec(grad_el, n)
 
     p2_omega_1 =  2 * np.real(partial_state_m.dag() * (partial_H * state_m)
-                              - partial_state_n.dag() * (partial_H * state_n))[0][0]
+                              - partial_state_n.dag() * (partial_H * state_n)
+                              )[0][0]
     p2_omega_2 = (state_m.dag() * (partial_H_squared * state_m)
                   - state_n.dag() * (partial_H_squared * state_n))[0][0]
     
@@ -219,8 +230,10 @@ def partial_flux_dec(
     for loop in cr.loops:
         partial_omega_mn = cr._get_partial_omega_mn(loop, states=states)
 
-        partial_squared_omega_mn = partial_squared_omega_mn_phi(cr, loop, grad_el, states)
-        partial_squared_omega_mn = np.real(partial_squared_omega_mn_phi(cr, loop, grad_el, states))
+        partial_squared_omega_mn = partial_squared_omega_mn_phi(cr, 
+                                                                loop, 
+                                                                grad_el, 
+                                                                states)
 
         A = loop.A
         dec_rate_grad += (np.sign(partial_omega_mn)
