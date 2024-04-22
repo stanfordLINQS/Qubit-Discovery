@@ -8,6 +8,7 @@ from qubit_discovery.losses.T2_functions import (
     partial_flux_dec
 )
 
+
 def build_trans_elements(EC, EJ, flux, flux_dist):
     loop1 = sq.Loop(flux)
     # define the circuit elements
@@ -21,6 +22,7 @@ def build_trans_elements(EC, EJ, flux, flux_dist):
 
     cr = sq.Circuit(elements, flux_dist=flux_dist)
     return cr
+
 
 def build_fl_elements(EC, EL, EJ, flux, flux_dist='junctions'):
     loop1 = sq.Loop(flux)
@@ -56,6 +58,7 @@ def test_cc_grad() -> None:
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
     assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
 
+
 def test_flux_grad_EJ() -> None:
     EC, EL, EJ = 3.6, 0.46, 10.2
     delta = 1e-6
@@ -75,6 +78,7 @@ def test_flux_grad_EJ() -> None:
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
     assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
 
+
 def test_flux_grad_EL() -> None:
     EC, EL, EJ = 3.6, 0.46, 10.2
     delta = 1e-6
@@ -93,6 +97,7 @@ def test_flux_grad_EL() -> None:
 
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
     assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
+
 
 def test_charge_grad() -> None:
     EC, EJ = 3.6, 10

@@ -12,7 +12,10 @@ from SQcircuit.noise import ENV
 from SQcircuit import functions as sqf
 from SQcircuit import units as unt
 
-## Charge
+################################################################################
+# Charge Noise
+################################################################################
+
 
 def partial_H_ng(
     cr: Circuit,
@@ -25,6 +28,7 @@ def partial_H_ng(
                / np.sqrt(unt.hbar))
     return op
 
+
 def partial_omega_ng(
     cr: Circuit,
     charge_idx: int,
@@ -36,6 +40,7 @@ def partial_omega_ng(
     op = partial_H_ng(cr, charge_idx)
     return sqf.abs(sqf.operator_inner_product(state2, op, state2) 
                    - sqf.operator_inner_product(state1, op, state1))
+
 
 def partial_squared_H_ng(
     cr: Circuit,
@@ -82,6 +87,7 @@ def partial_squared_omega_mn_ng(
     assert(np.imag(p2_omega)/np.real(p2_omega) < 1e-6)
     return np.real(p2_omega)
 
+
 def partial_charge_dec(
     cr: Circuit,
     grad_el: Element,
@@ -108,7 +114,10 @@ def partial_charge_dec(
 
     return dec_rate_grad
 
-## Critical current
+################################################################################
+# Critical Current Noise
+################################################################################
+
 
 def partial_squared_omega_mn_EJ(
     cr: Circuit,
@@ -126,7 +135,7 @@ def partial_squared_omega_mn_EJ(
     partial_state_n = cr.get_partial_vec(grad_el, n)
 
     return 2 * np.real(
-        partial_state_m.dag() * (partial_H * state_m) \
+        partial_state_m.dag() * (partial_H * state_m)
         - partial_state_n.dag() * (partial_H * state_n)
     )[0][0]
 
@@ -138,25 +147,37 @@ def partial_cc_dec(
 ):
     dec_rate_grad = 0
     for EJ_el, B_idx in cr._memory_ops['cos']:
-        partial_omega_mn = cr._get_partial_omega_mn(EJ_el, 
-                                                    states=states, 
-                                                    _B_idx=B_idx)
 
-        partial_squared_omega_mn = partial_squared_omega_mn_EJ(cr, EJ_el, 
-                                                               grad_el, B_idx, 
-                                                               states)
+        partial_omega_mn = cr._get_partial_omega_mn(
+            EJ_el,
+            states=states,
+            _B_idx=B_idx
+        )
+
+        partial_squared_omega_mn = partial_squared_omega_mn_EJ(
+            cr,
+            EJ_el,
+            grad_el,
+            B_idx,
+            states
+        )
 
         partial_A = EJ_el.A if grad_el is EJ_el else 0
-        dec_rate_grad += (np.sign(partial_omega_mn) 
-                          * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"]))) 
-                          * (partial_A * partial_omega_mn
-                             + EJ_el.A * EJ_el.get_value() * partial_squared_omega_mn
-                            )
-                         )
+        dec_rate_grad += (
+            np.sign(partial_omega_mn)
+            * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
+            * (
+                partial_A * partial_omega_mn
+                + EJ_el.A * EJ_el.get_value() * partial_squared_omega_mn
+            )
+        )
 
     return dec_rate_grad
 
-## Flux
+################################################################################
+# Flux Noise
+################################################################################
+
 
 def get_B_idx(
     cr: Circuit,
@@ -172,6 +193,7 @@ def get_B_idx(
                 return B_idx
 
     return None
+
 
 def partial_squared_H_phi(
     cr: Circuit,
@@ -191,6 +213,7 @@ def partial_squared_H_phi(
                 / -sqf.numpy(grad_el.get_value()**2)
                 * unt.Phi0 / np.sqrt(unt.hbar) / 2 / np.pi
                 * cr._memory_ops["ind_hamil"][(grad_el, B_idx)])
+
 
 def partial_squared_omega_mn_phi(
     cr: Circuit,
@@ -218,6 +241,7 @@ def partial_squared_omega_mn_phi(
 
     return p2_omega
 
+
 def partial_flux_dec(
     cr: Circuit,
     grad_el: Element,
@@ -242,6 +266,10 @@ def partial_flux_dec(
 
     return dec_rate_grad
 
+
+################################################################################
+# Torch Nodes
+################################################################################
 
 def DecRateFlux(Function):
     @staticmethod

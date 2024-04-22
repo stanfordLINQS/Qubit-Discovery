@@ -1,8 +1,8 @@
 """Contains helper functions used in remainder of code."""
 
 from collections import OrderedDict
-from copy import copy, deepcopy
-from typing import Dict, Optional, Tuple, Union
+from copy import copy
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -156,6 +156,7 @@ def reset_charge_modes(circuit: Circuit) -> None:
             charge_mode = charge_island_idx + 1
             circuit.set_charge_offset(charge_mode, default_n_g)
 
+
 def fastest_gate_speed(circuit: Circuit) -> SQValType:
     """Calculates the upper bound for the speed of the single qubit gate of the
     qubit. The upper bound is:
@@ -183,6 +184,7 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
             omega = anharm_i
 
     return omega
+
 
 def partial_deriv_approx_flux(circuit: Circuit,
                               loop: Loop,
@@ -229,6 +231,7 @@ def partial_deriv_approx_flux(circuit: Circuit,
     else:
         return sqf.abs((omega10_plus - omega10) / (delta))
 
+
 def flux_decoherence_approx(cr: Circuit) -> SQValType:
     """ Calculates the decoherence due to flux noise for the 0-1 transition,
     using the value calculated by `partial_deriv_approx_flux` to approximate
@@ -236,7 +239,7 @@ def flux_decoherence_approx(cr: Circuit) -> SQValType:
 
     Parameters
     ----------
-        circuit:
+        cr:
             A `Circuit` object of SQcircuit
     """
     decay = sqf.array(0.0)
@@ -246,6 +249,7 @@ def flux_decoherence_approx(cr: Circuit) -> SQValType:
         A = loop.A
         decay += cr._dephasing(A, partial_omega)
     return decay
+
 
 def partial_deriv_approx_charge(
         circuit: Circuit,
@@ -292,6 +296,7 @@ def partial_deriv_approx_charge(
     else:
         return sqf.abs((omega10_plus - omega10)/(delta * 2 * unt.e))
 
+
 def charge_decoherence_approx(cr: Circuit) -> SQValType:
     """ Calculates the decoherence due to charge noise for the 0-1 transition,
     using the value calculated by `partial_deriv_approx_charge` to approximate
@@ -299,7 +304,7 @@ def charge_decoherence_approx(cr: Circuit) -> SQValType:
 
     Parameters
     ----------
-        circuit:
+        cr:
             A `Circuit` object of SQcircuit
     """
     decay = sqf.array(0.0)
@@ -313,6 +318,7 @@ def charge_decoherence_approx(cr: Circuit) -> SQValType:
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
 
+
 def set_elem_value(elem: Element, val: SQValType):
     """ Helper function to change the `._value` of an SQcircuit Element.
 
@@ -325,7 +331,9 @@ def set_elem_value(elem: Element, val: SQValType):
     """
     elem._value = val
 
+
 all_units = unt.farad_list | unt.freq_list | unt.henry_list
+
 
 def copy_elements_list(elem_dict: OrderedDict):
     """ Creates a new element dictionary which has the same elements as
@@ -343,11 +351,14 @@ def copy_elements_list(elem_dict: OrderedDict):
 
     return new_elem_dict
 
-def partial_deriv_approx_elem(circuit: Circuit,
-                              edge,
-                              el_idx: int,
-                              delta=1e-6,  # 0.001
-                              symmetric=True) -> SQValType:
+
+def partial_deriv_approx_elem(
+    circuit: Circuit,
+    edge,
+    el_idx: int,
+    delta=1e-6,  # 0.001
+    symmetric=True
+) -> SQValType:
     """ Calculates an approximation to the derivative of the first
     eigenfrequency of `circuit` with respect to the element at
     `circuit.elements[edge][el_idx]`.
@@ -392,15 +403,18 @@ def partial_deriv_approx_elem(circuit: Circuit,
     else:
         return sqf.abs((omega10_plus - omega10)/(delta * el_unit))
 
-def find_elem(cr: Circuit,
-              el: Element) -> Optional[Tuple[Tuple[int, int], int]]:
+
+def find_elem(
+    cr: Circuit,
+    el: Element
+) -> Optional[Tuple[Tuple[int, int], int]]:
     """ Finds the index of `el` in the edge graph of `circuit`.
 
     Parameters
     ----------
-        circuit:
+        cr:
             A `Circuit` object of SQcircuit
-        element:
+        el:
             The element to locate
     """
     for edge in cr.elements.keys():
@@ -408,6 +422,7 @@ def find_elem(cr: Circuit,
             if cr.elements[edge][i] is el:
                 return edge, i
     return None
+
 
 def cc_decoherence_approx(cr: Circuit) -> SQValType:
     """ Calculates the decoherence due to critic2al current noise for the
@@ -417,7 +432,7 @@ def cc_decoherence_approx(cr: Circuit) -> SQValType:
 
     Parameters
     ----------
-        circuit:
+        cr:
             A SQcircuit `Circuit` object
     """
     decay = sqf.array(0.0)
@@ -428,11 +443,13 @@ def cc_decoherence_approx(cr: Circuit) -> SQValType:
         decay = decay + cr._dephasing(A, partial_omega)
     return decay
 
+
 T2_proxy_funcs = {
     'flux': flux_decoherence_approx,
     'charge': charge_decoherence_approx,
     'cc': cc_decoherence_approx,
 }
+
 
 def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
     """Return the decoherence time for a given circuit and its decoherence type.
@@ -474,7 +491,6 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
             dec_type_list = [dec_type]
     else:
         raise ValueError("t_type must be either 't1' or 't2' or 't2_approx")
-
 
     for dec_type in dec_type_list:
         if t_type in ('t1', 't2'):
