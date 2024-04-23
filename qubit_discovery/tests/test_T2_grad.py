@@ -112,8 +112,8 @@ def test_flux_grad_EL() -> None:
 def test_charge_grad() -> None:
     EC, EJ = 3.6, 10
     delta = 1e-4
-    cr = build_trans_elements(EC + delta, EJ, 0.1, 'junctions')
-    cr_delta = build_trans_elements(EC, EJ, 0.1, 'junctions')
+    cr = build_trans_elements(EC, EJ, 0.1, 'junctions')
+    cr_delta = build_trans_elements(EC + delta, EJ, 0.1, 'junctions')
 
     circuits = [cr, cr_delta]
     for circuit in circuits:
