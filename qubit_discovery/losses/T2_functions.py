@@ -79,16 +79,17 @@ def partial_squared_omega_mn_ng(
     partial_state_n = cr.get_partial_vec(grad_el, n)
 
     p2_omega_1 = 2 * np.real(
-                    partial_state_m.dag() * (partial_H * state_m) \
-                    - partial_state_n.dag() * (partial_H * state_n)
-                 )[0][0]
-    p2_omega_2 = (state_m.dag() * (partial_H_squared * state_m) \
-                   - state_n.dag() * (partial_H_squared * state_n))[0][0]
-    
-    print(p2_omega_1, p2_omega_2)
+        partial_state_m.dag() * (partial_H * state_m)
+        - partial_state_n.dag() * (partial_H * state_n)
+    )[0][0]
+    p2_omega_2 = (
+        state_m.dag() * (partial_H_squared * state_m)
+        - state_n.dag() * (partial_H_squared * state_n)
+    )[0][0]
+
     p2_omega = p2_omega_1 + p2_omega_2
     
-    assert(np.imag(p2_omega)/np.real(p2_omega) < 1e-6)
+    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
     return np.real(p2_omega)
 
 
@@ -105,15 +106,18 @@ def partial_charge_dec(
         if cr._is_charge_mode(i):
             partial_omega_mn = partial_omega_ng(cr, i, states)
 
-            partial_squared_omega_mn = partial_squared_omega_mn_ng(cr, 
-                                                                   i, 
-                                                                   grad_el, 
-                                                                   states)
+            partial_squared_omega_mn = partial_squared_omega_mn_ng(
+                cr=cr,
+                charge_idx=i,
+                grad_el=grad_el,
+                states=states
+            )
 
-            A = (cr.charge_islands[i].A * 2 * unt.e)
-            dec_rate_grad += (np.sign(partial_omega_mn)
-                              * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-                              * A * partial_squared_omega_mn
+            A = cr.charge_islands[i].A * 2 * unt.e
+            dec_rate_grad += (
+                np.sign(partial_omega_mn)
+                * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
+                * A * partial_squared_omega_mn
             )
 
     return dec_rate_grad
@@ -258,15 +262,19 @@ def partial_flux_dec(
     for loop in cr.loops:
         partial_omega_mn = cr._get_partial_omega_mn(loop, states=states)
 
-        partial_squared_omega_mn = partial_squared_omega_mn_phi(cr, 
-                                                                loop, 
-                                                                grad_el, 
-                                                                states)
+        partial_squared_omega_mn = partial_squared_omega_mn_phi(
+            cr,
+            loop,
+            grad_el,
+            states
+        )
 
         A = loop.A
-        dec_rate_grad += (np.sign(partial_omega_mn)
+        dec_rate_grad += (
+            np.sign(partial_omega_mn)
             * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-            * A * partial_squared_omega_mn)
+            * A * partial_squared_omega_mn
+        )
 
     return dec_rate_grad
 
