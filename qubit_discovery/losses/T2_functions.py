@@ -28,7 +28,7 @@ def partial_H_ng(
             * cr._memory_ops["Q"][j]
             / np.sqrt(unt.hbar)
         )
-    return op
+    return -op
 
 
 def partial_omega_ng(
@@ -40,7 +40,7 @@ def partial_omega_ng(
     state1 = cr._evecs[states[0]]
     state2 = cr._evecs[states[1]]
     op = partial_H_ng(cr, charge_idx)
-    return sqf.abs(
+    return (
         sqf.operator_inner_product(state2, op, state2)
         - sqf.operator_inner_product(state1, op, state1)
     )
@@ -240,16 +240,19 @@ def partial_squared_omega_mn_phi(
     state_n = sqf.qutip(cr._evecs[n], dims=cr._get_state_dims())
     partial_state_n = cr.get_partial_vec(grad_el, n)
 
-    p2_omega_1 =  2 * np.real(partial_state_m.dag() * (partial_H * state_m)
-                              - partial_state_n.dag() * (partial_H * state_n)
-                              )[0][0]
-    p2_omega_2 = (state_m.dag() * (partial_H_squared * state_m)
-                  - state_n.dag() * (partial_H_squared * state_n))[0][0]
-    
-    p2_omega = p2_omega_1 + p2_omega_2
-    assert(np.imag(p2_omega)/np.real(p2_omega) < 1e-6)
+    p2_omega_1 = 2 * np.real(
+        partial_state_m.dag() * (partial_H * state_m)
+        - partial_state_n.dag() * (partial_H * state_n)
+    )[0][0]
+    p2_omega_2 = (
+        state_m.dag() * (partial_H_squared * state_m)
+        - state_n.dag() * (partial_H_squared * state_n)
+    )[0][0]
 
-    return p2_omega
+    p2_omega = p2_omega_1 + p2_omega_2
+    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
+
+    return np.real(p2_omega)
 
 
 def partial_flux_dec(
@@ -257,8 +260,7 @@ def partial_flux_dec(
     grad_el: Element,
     states: Tuple[int, int]
 ):
-    """
-    The A is independent of all elements
+    """The A is independent of all elements
     """
     dec_rate_grad = 0
     for loop in cr.loops:
