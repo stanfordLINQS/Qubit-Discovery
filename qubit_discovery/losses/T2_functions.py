@@ -196,7 +196,7 @@ def get_B_idx(
             if el_JJ is el:
                 return B_idx
     elif type(el) is Inductor:
-         for edge, el_ind, B_idx in cr.elem_keys[Inductor]:
+        for edge, el_ind, B_idx in cr.elem_keys[Inductor]:
             if el_ind is el:
                 return B_idx
 
@@ -217,10 +217,12 @@ def partial_squared_H_phi(
     if type(grad_el) is Junction:
         return cr.B[B_idx, loop_idx] * cr._memory_ops['sin'][(grad_el, B_idx)]
     elif type(grad_el) is Inductor:
-        return (cr.B[B_idx, loop_idx]
-                / -sqf.numpy(grad_el.get_value()**2)
-                * unt.Phi0 / np.sqrt(unt.hbar) / 2 / np.pi
-                * cr._memory_ops["ind_hamil"][(grad_el, B_idx)])
+        return (
+            cr.B[B_idx, loop_idx]
+            / -sqf.numpy(grad_el.get_value()**2)
+            * unt.Phi0 / np.sqrt(unt.hbar) / 2 / np.pi
+            * cr._memory_ops["ind_hamil"][(grad_el, B_idx)]
+        )
 
 
 def partial_squared_omega_mn_phi(
