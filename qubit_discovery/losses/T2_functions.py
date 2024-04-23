@@ -23,9 +23,11 @@ def partial_H_ng(
 ):
     op = qt.Qobj()
     for j in range(cr.n):
-        op += (cr.cInvTrans[charge_idx, j] 
-               * cr._memory_ops["Q"][j] 
-               / np.sqrt(unt.hbar))
+        op += (
+            cr.cInvTrans[charge_idx, j]
+            * cr._memory_ops["Q"][j]
+            / np.sqrt(unt.hbar)
+        )
     return op
 
 
@@ -38,8 +40,10 @@ def partial_omega_ng(
     state1 = cr._evecs[states[0]]
     state2 = cr._evecs[states[1]]
     op = partial_H_ng(cr, charge_idx)
-    return sqf.abs(sqf.operator_inner_product(state2, op, state2) 
-                   - sqf.operator_inner_product(state1, op, state1))
+    return sqf.abs(
+        sqf.operator_inner_product(state2, op, state2)
+        - sqf.operator_inner_product(state1, op, state1)
+    )
 
 
 def partial_squared_H_ng(

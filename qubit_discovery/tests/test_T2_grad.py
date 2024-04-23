@@ -13,7 +13,7 @@ def build_trans_elements(EC, EJ, flux, flux_dist):
     loop1 = sq.Loop(flux)
     # define the circuit elements
     C = sq.Capacitor(EC, 'GHz', requires_grad=sq.get_optim_mode())
-    JJ = sq.Junction(EJ,'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
+    JJ = sq.Junction(EJ, 'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
 
     # define the circuit
     elements = {
@@ -28,8 +28,8 @@ def build_fl_elements(EC, EL, EJ, flux, flux_dist='junctions'):
     loop1 = sq.Loop(flux)
     # define the circuit elements
     C = sq.Capacitor(EC, 'GHz', requires_grad=sq.get_optim_mode())
-    L = sq.Inductor(EL,'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
-    JJ = sq.Junction(EJ,'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
+    L = sq.Inductor(EL, 'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
+    JJ = sq.Junction(EJ, 'GHz', loops=[loop1], requires_grad=sq.get_optim_mode())
 
     # define the circuit
     elements = {
@@ -52,11 +52,15 @@ def test_cc_grad() -> None:
         _ = circuit.diag(150)
 
     unit_factor = 1 / 2 / np.pi / 1e9
-    grad_numeric = (cr_delta.dec_rate('cc', states=(0, 1)) - cr.dec_rate('cc', states=(0, 1))) / delta * unit_factor
+    grad_numeric = (
+        cr_delta.dec_rate('cc', states=(0, 1))
+        - cr.dec_rate('cc', states=(0, 1))
+    ) / delta * unit_factor
+
     grad_analytic = partial_cc_dec(cr, cr.elements[(0, 1)][1], (0, 1))
 
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
-    assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
+    assert np.isclose(grad_numeric, grad_analytic, rtol=1e-2)
 
 
 def test_flux_grad_EJ() -> None:
@@ -72,11 +76,14 @@ def test_flux_grad_EJ() -> None:
         _ = circuit.diag(100)
 
     unit_factor = 1 / 2 / np.pi / 1e9
-    grad_numeric = (cr_delta.dec_rate('flux', states=(0, 1)) - cr.dec_rate('flux', states=(0, 1))) / delta * unit_factor
+    grad_numeric = (
+        cr_delta.dec_rate('flux', states=(0, 1))
+        - cr.dec_rate('flux', states=(0, 1))
+    ) / delta * unit_factor
     grad_analytic = partial_flux_dec(cr, cr.elements[(0, 1)][1], (0, 1))
 
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
-    assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
+    assert np.isclose(grad_numeric, grad_analytic, rtol=1e-2)
 
 
 def test_flux_grad_EL() -> None:
@@ -92,11 +99,14 @@ def test_flux_grad_EL() -> None:
         _ = circuit.diag(100)
 
     unit_factor = -(unt.Phi0/2/np.pi)**2/cr.elements[(0, 1)][0]._value**2/(2*np.pi*unt.hbar)/1e9
-    grad_numeric = (cr_delta.dec_rate('flux', states=(0, 1)) - cr.dec_rate('flux', states=(0, 1))) / delta * unit_factor
+    grad_numeric = (
+        cr_delta.dec_rate('flux', states=(0, 1))
+        - cr.dec_rate('flux', states=(0, 1))
+    ) / delta * unit_factor
     grad_analytic = partial_flux_dec(cr, cr.elements[(0, 1)][0], (0, 1))
 
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
-    assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
+    assert np.isclose(grad_numeric, grad_analytic, rtol=1e-2)
 
 
 def test_charge_grad() -> None:
@@ -108,12 +118,16 @@ def test_charge_grad() -> None:
     circuits = [cr, cr_delta]
     for circuit in circuits:
         circuit.set_trunc_nums([200])
-        circuit.set_charge_offset(1, 0.5 - 1e-1) # Needs to be offset from 0.5, I think
+        # Needs to be offset from 0.5, I think
+        circuit.set_charge_offset(1, 0.5 - 1e-1)
         _ = circuit.diag(100)
 
     unit_factor = unt.e**2/2/sq.Capacitor(EC, 'GHz')._value**2/(2*np.pi*unt.hbar) / 1e9
-    grad_numeric = (cr_delta.dec_rate('charge', states=(0, 1)) - cr.dec_rate('charge', states=(0, 1))) / delta * unit_factor
+    grad_numeric = (
+        cr_delta.dec_rate('charge', states=(0, 1))
+        - cr.dec_rate('charge', states=(0, 1))
+    ) / delta * unit_factor
     grad_analytic = partial_charge_dec(cr, cr.elements[(0, 1)][1], (0, 1))
 
     print('Numeric:', grad_numeric, 'Analytic:', grad_analytic)
-    assert(np.isclose(grad_numeric, grad_analytic, rtol=1e-2))
+    assert np.isclose(grad_numeric, grad_analytic, rtol=1e-2)
