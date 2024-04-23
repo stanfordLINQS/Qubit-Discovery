@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import qutip as qt
@@ -12,15 +12,122 @@ from SQcircuit.noise import ENV
 from SQcircuit import functions as sqf
 from SQcircuit import units as unt
 
-################################################################################
-# Charge Noise
-################################################################################
+###############################################################################
+# Decoherence rate helper functions
+###############################################################################
 
+def partial_squared_omega(
+        cr: Circuit,
+        grad_el: Element,
+        partial_H: qt.Qobj,
+        partial_H_squared: qt.Qobj,
+        states: Tuple[int, int]
+) -> float:
+    """ Calculates the second derivative of the difference between the `m`th 
+    and `n`th eigenfrequencies with respect to an arbitrary parameter `x` and
+    `grad_el`.
+
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the eigenfrequencies of
+        grad_el:
+            The element to take the gradient of the frequencies with respect to
+        partial_H:
+            The derivative of the circuit Hamiltonian with respect to the
+            arbitrary parameter.
+        partial_H_squared:
+            The second derivative of the circuit Hamiltonian with respect to 
+            the arbitrary paramter and `grad_el`.
+        states:
+            The numbers `(m, n)` of the eigenfrequencies to differentiate.
+    """
+
+    m, n = states
+    state_m = sqf.qutip(cr._evecs[m], dims=cr._get_state_dims())
+    partial_state_m = cr.get_partial_vec(grad_el, m)
+    state_n = sqf.qutip(cr._evecs[n], dims=cr._get_state_dims())
+    partial_state_n = cr.get_partial_vec(grad_el, n)
+
+    p2_omega_1 = 2 * np.real(
+        partial_state_m.dag() * (partial_H * state_m)
+        - partial_state_n.dag() * (partial_H * state_n)
+    )[0,0]
+    p2_omega_2 = (
+        state_m.dag() * (partial_H_squared * state_m)
+        - state_n.dag() * (partial_H_squared * state_n)
+    )[0,0]
+
+    p2_omega = p2_omega_1 + p2_omega_2
+    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
+
+    return np.real(p2_omega)
+
+
+def partial_dephasing_rate(
+        A,
+        partial_A,
+        partial_omega_mn,
+        partial_squared_omega_mn
+):
+    """
+    Calculate the derivative of the dephasing rate with noise amplitude `A`
+    that depends on `partial_omega_mn`.
+
+    Parameters
+    ----------
+        A:
+            The noise amplitude of the dephasing
+        partial_A:
+            The derivative of `A` with respect to an external parameter
+        partial_omega_mn:
+            The derivative of the difference between eigenfrequencies 
+            used to calculate the dephasing rate
+        partial_squared_omega_mn:
+            The derivative of `partial_omega_mn` with respect to an external
+            parameter
+    """
+    return (
+        np.sign(partial_omega_mn)
+        * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
+        * (partial_A * partial_omega_mn
+           + A * partial_squared_omega_mn)
+    )
+
+def get_B_idx(
+    cr: Circuit,
+    el: Union[Junction, Inductor]
+):
+    if isinstance(el, Junction):
+        for _, el_JJ, B_idx, _ in cr.elem_keys[Junction]:
+            if el_JJ is el:
+                return B_idx
+    elif isinstance(el, Inductor):
+        for _, el_ind, B_idx in cr.elem_keys[Inductor]:
+            if el_ind is el:
+                return B_idx
+
+    return None
+
+
+###############################################################################
+# Charge Noise
+###############################################################################
 
 def partial_H_ng(
     cr: Circuit,
     charge_idx: int
 ):
+    """ Calculates the  derivative of the Hamiltonian of `cr` with 
+    respect to the gate charge on the `charge_idx` charge mode.
+
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the Hamiltonian of
+        charge_idx:
+            The charge mode whose gate charge to differentiate with respect to
+    """
     op = qt.Qobj()
     for j in range(cr.n):
         op += (
@@ -36,14 +143,30 @@ def partial_omega_ng(
     charge_idx: int,
     states: Tuple[int, int]
 ):
+    """ Calculates the derivative of the difference between the `m`th
+    and `n`th eigenfrequencies of `cr` with respect to the gate charge of the
+    `charge_idx` charge mode.
 
-    state1 = cr._evecs[states[0]]
-    state2 = cr._evecs[states[1]]
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the eigenfrequencies of
+        charge_idx:
+            The charge mode whose gate charge to differentiate with respect to
+        states:
+            The numbers `(m, n)` of the eigenfrequencies to differentiate.
+    """
+    state1 = sqf.qutip(cr._evecs[states[0]], dims=cr._get_state_dims())
+    state2 = sqf.qutip(cr._evecs[states[1]], dims=cr._get_state_dims())
     op = partial_H_ng(cr, charge_idx)
-    return (
-        sqf.operator_inner_product(state2, op, state2)
-        - sqf.operator_inner_product(state1, op, state1)
-    )
+
+    partial_omega = (
+        state2.dag() * (op * state2) -
+        - state1.dag() * (op * state1)
+    )[0, 0]
+    assert np.imag(partial_omega)/np.real(partial_omega) < 1e-6
+
+    return np.real(partial_omega)
 
 
 def partial_squared_H_ng(
@@ -51,7 +174,19 @@ def partial_squared_H_ng(
     charge_idx: int,
     grad_el: Union[Capacitor, Inductor, Junction]
 ):
-    if type(grad_el) is not Capacitor:
+    """ Calculates the second derivative of the Hamiltonian of `cr` with 
+    respect to the gate charge on the `charge_idx` charge mode and `grad_el`
+
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the Hamiltonian of
+        charge_idx:
+            The charge mode whose gate charge to differentiate with respect to
+        grad_el:
+            The circuit element to differentiate with respect to
+    """
+    if isinstance(grad_el, Capacitor):
         return 0
 
     cInv = np.linalg.inv(sqf.numpy(cr.C))
@@ -69,28 +204,24 @@ def partial_squared_omega_mn_ng(
     grad_el: Union[Capacitor, Inductor, Junction],
     states: Tuple[int, int]
 ):
+    """ Calculates the second derivative of the difference between the `m`th 
+    and `n`th eigenfrequencies with respect to the gate charge on the
+    `charge_idx` mode and `grad_el`.
+
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the eigenfrequencies of
+        charge_idx:
+            The charge mode whose gate charge to differentiate with respect to
+        grad_el:
+            The circuit element to differentiate with respect to
+    """
     partial_H = partial_H_ng(cr, charge_idx)
     partial_H_squared = partial_squared_H_ng(cr, charge_idx, grad_el)
 
-    m, n = states
-    state_m = sqf.qutip(cr._evecs[m], dims=cr._get_state_dims())
-    partial_state_m = cr.get_partial_vec(grad_el, m)
-    state_n = sqf.qutip(cr._evecs[n], dims=cr._get_state_dims())
-    partial_state_n = cr.get_partial_vec(grad_el, n)
-
-    p2_omega_1 = 2 * np.real(
-        partial_state_m.dag() * (partial_H * state_m)
-        - partial_state_n.dag() * (partial_H * state_n)
-    )[0][0]
-    p2_omega_2 = (
-        state_m.dag() * (partial_H_squared * state_m)
-        - state_n.dag() * (partial_H_squared * state_n)
-    )[0][0]
-
-    p2_omega = p2_omega_1 + p2_omega_2
-    
-    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
-    return np.real(p2_omega)
+    return partial_squared_omega(cr, grad_el, partial_H,
+                                 partial_H_squared, states)
 
 
 def partial_charge_dec(
@@ -105,47 +236,54 @@ def partial_charge_dec(
     for i in range(cr.n):
         if cr._is_charge_mode(i):
             partial_omega_mn = partial_omega_ng(cr, i, states)
-
             partial_squared_omega_mn = partial_squared_omega_mn_ng(
                 cr=cr,
                 charge_idx=i,
                 grad_el=grad_el,
                 states=states
             )
-
             A = cr.charge_islands[i].A * 2 * unt.e
-            dec_rate_grad += (
-                np.sign(partial_omega_mn)
-                * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-                * A * partial_squared_omega_mn
-            )
+            partial_A = 0
+
+            dec_rate_grad += partial_dephasing_rate(A,
+                                                    partial_A,
+                                                    partial_omega_mn,
+                                                    partial_squared_omega_mn)
 
     return dec_rate_grad
 
-################################################################################
+###############################################################################
 # Critical Current Noise
-################################################################################
-
+###############################################################################
 
 def partial_squared_omega_mn_EJ(
     cr: Circuit,
     EJ_el: Junction,
-    grad_el: Element,
     B_idx: int,
+    grad_el: Union[Capacitor, Inductor, Junction],
     states: Tuple[int, int]
 ):
+    """ Calculates the second derivative of the difference between the `m`th 
+    and `n`th eigenfrequencies with respect to `EJ_el` and `grad_el`.
+
+    Parameters
+    ----------
+        cr:
+            The `Circuit` object to differentiate the eigenfrequencies of
+        EJ_el:
+            A Josephson junction to differentiate with respect to
+        B_idx:
+            A number
+        grad_el:
+            A circuit element to differentiate with respect to
+        states:
+            The numbers `(m, n)` of the eigenfrequencies to differentiate.
+    """
     partial_H = cr._get_partial_H(EJ_el, _B_idx = B_idx)
+    partial_H_squared = 0
 
-    m, n = states
-    state_m = sqf.qutip(cr._evecs[m], dims=cr._get_state_dims())
-    partial_state_m = cr.get_partial_vec(grad_el, m)
-    state_n = sqf.qutip(cr._evecs[n], dims=cr._get_state_dims())
-    partial_state_n = cr.get_partial_vec(grad_el, n)
-
-    return 2 * np.real(
-        partial_state_m.dag() * (partial_H * state_m)
-        - partial_state_n.dag() * (partial_H * state_n)
-    )[0][0]
+    return partial_squared_omega(cr, grad_el, partial_H,
+                                 partial_H_squared, states)
 
 
 def partial_cc_dec(
@@ -155,74 +293,54 @@ def partial_cc_dec(
 ):
     dec_rate_grad = 0
     for EJ_el, B_idx in cr._memory_ops['cos']:
-
-        partial_omega_mn = cr._get_partial_omega_mn(
+        partial_omega_mn = sqf.numpy(cr._get_partial_omega_mn(
             EJ_el,
             states=states,
             _B_idx=B_idx
-        )
-
+        ))
         partial_squared_omega_mn = partial_squared_omega_mn_EJ(
             cr,
             EJ_el,
-            grad_el,
             B_idx,
+            grad_el,
             states
         )
-
+        A = EJ_el.A * EJ_el.get_value()
         partial_A = EJ_el.A if grad_el is EJ_el else 0
-        dec_rate_grad += (
-            np.sign(partial_omega_mn)
-            * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-            * (
-                partial_A * partial_omega_mn
-                + EJ_el.A * EJ_el.get_value() * partial_squared_omega_mn
-            )
-        )
+
+        dec_rate_grad += partial_dephasing_rate(A,
+                                                partial_A,
+                                                partial_omega_mn,
+                                                partial_squared_omega_mn)
 
     return dec_rate_grad
 
-################################################################################
+###############################################################################
 # Flux Noise
-################################################################################
-
-
-def get_B_idx(
-    cr: Circuit,
-    el: Union[Junction, Inductor]
-):
-    if type(el) is Junction:
-        for edge, el_JJ, B_idx, W_idx in cr.elem_keys[Junction]:
-            if el_JJ is el:
-                return B_idx
-    elif type(el) is Inductor:
-        for edge, el_ind, B_idx in cr.elem_keys[Inductor]:
-            if el_ind is el:
-                return B_idx
-
-    return None
-
+###############################################################################
 
 def partial_squared_H_phi(
     cr: Circuit,
     loop: Loop,
     grad_el: Union[Capacitor, Inductor, Junction]
 ):
-    if type(grad_el) is Capacitor:
+    if isinstance(grad_el, Capacitor):
         return 0
 
     loop_idx = cr.loops.index(loop)
     B_idx = get_B_idx(cr, grad_el)
 
-    if type(grad_el) is Junction:
+    if isinstance(grad_el, Junction):
         return cr.B[B_idx, loop_idx] * cr._memory_ops['sin'][(grad_el, B_idx)]
-    elif type(grad_el) is Inductor:
+    elif isinstance(grad_el, Inductor):
         return (
             cr.B[B_idx, loop_idx]
             / -sqf.numpy(grad_el.get_value()**2)
             * unt.Phi0 / np.sqrt(unt.hbar) / 2 / np.pi
             * cr._memory_ops["ind_hamil"][(grad_el, B_idx)]
         )
+    else:
+        raise NotImplementedError
 
 
 def partial_squared_omega_mn_phi(
@@ -234,25 +352,8 @@ def partial_squared_omega_mn_phi(
     partial_H = cr._get_partial_H(loop)
     partial_H_squared = partial_squared_H_phi(cr, loop, grad_el)
 
-    m, n = states
-    state_m = sqf.qutip(cr._evecs[m], dims=cr._get_state_dims())
-    partial_state_m = cr.get_partial_vec(grad_el, m)
-    state_n = sqf.qutip(cr._evecs[n], dims=cr._get_state_dims())
-    partial_state_n = cr.get_partial_vec(grad_el, n)
-
-    p2_omega_1 = 2 * np.real(
-        partial_state_m.dag() * (partial_H * state_m)
-        - partial_state_n.dag() * (partial_H * state_n)
-    )[0][0]
-    p2_omega_2 = (
-        state_m.dag() * (partial_H_squared * state_m)
-        - state_n.dag() * (partial_H_squared * state_n)
-    )[0][0]
-
-    p2_omega = p2_omega_1 + p2_omega_2
-    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
-
-    return np.real(p2_omega)
+    return partial_squared_omega(cr, grad_el, partial_H,
+                                 partial_H_squared, states)
 
 
 def partial_flux_dec(
@@ -264,8 +365,7 @@ def partial_flux_dec(
     """
     dec_rate_grad = 0
     for loop in cr.loops:
-        partial_omega_mn = cr._get_partial_omega_mn(loop, states=states)
-
+        partial_omega_mn = sqf.numpy(cr._get_partial_omega_mn(loop, states=states))
         partial_squared_omega_mn = partial_squared_omega_mn_phi(
             cr,
             loop,
@@ -274,26 +374,40 @@ def partial_flux_dec(
         )
 
         A = loop.A
-        dec_rate_grad += (
-            np.sign(partial_omega_mn)
-            * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-            * A * partial_squared_omega_mn
-        )
+        partial_A = 0
 
+        dec_rate_grad += partial_dephasing_rate(A,
+                                                partial_A,
+                                                partial_omega_mn,
+                                                partial_squared_omega_mn)
     return dec_rate_grad
 
 
-################################################################################
+###############################################################################
 # Torch Nodes
-################################################################################
+###############################################################################
 
-def DecRateFlux(Function):
+def dec_rate_cc_torch(circuit: Circuit, states: Tuple[int, int]):
+    return DecRateCC.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]), 
+                           circuit, 
+                           states)
+
+def dec_rate_charge_torch(circuit: Circuit, states: Tuple[int, int]):
+    return DecRateCharge.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]), 
+                               circuit, 
+                               states)
+
+def dec_rate_flux_torch(circuit: Circuit, states: Tuple[int, int]):
+    return DecRateFlux.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]), 
+                             circuit, 
+                             states)
+
+class DecRateCC(Function):
     @staticmethod
     def forward(
-        ctx, 
         element_tensors: Tensor,
         circuit: 'Circuit',
-        n_eig: int
+        states: Tuple[int, int]
     ) -> Tensor:
         pass
 
@@ -302,14 +416,13 @@ def DecRateFlux(Function):
     def backward(ctx, grad_output) -> Tuple[Tensor]:
         pass
 
-def DecRateCharge(Function):
+
+class DecRateCharge(Function):
     @staticmethod
     def forward(
-        ctx, 
-        element_tensors: Tensor,
+        circuit_parameters: Tensor,
         circuit: 'Circuit',
-        state1: np.ndarray,
-        state2: np.ndarray
+        states: Tuple[int, int]
     ) -> Tensor:
         pass
 
@@ -318,16 +431,30 @@ def DecRateCharge(Function):
     def backward(ctx, grad_output) -> Tuple[Tensor]:
         pass
 
-def DecRateCC(Function):
+class DecRateFlux(Function):
     @staticmethod
     def forward(
-        ctx, 
-        element_tensors: Tensor,
-        circuit: 'Circuit'
+        circuit_parameters: Tensor,
+        circuit: 'Circuit',
+        states: Tuple[int, int]
     ) -> Tensor:
-        pass
+        return torch.as_tensor(circuit._dec_rate_flux_np(states))
+    
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        circuit_parameters, circuit, states = inputs
+
+        ctx.circuit = circuit.safecopy(save_eigs=True)
+        ctx.states  = states
 
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output) -> Tuple[Tensor]:
-        pass
+        output_grad = torch.zeros(len(ctx.circuit._parameters))
+
+        for idx, elem in enumerate(ctx.circuit._parameters.keys()):
+            output_grad[idx] = grad_output * partial_flux_dec(ctx.circuit,
+                                                              elem,
+                                                              ctx.states)
+        
+        return output_grad, None, None
