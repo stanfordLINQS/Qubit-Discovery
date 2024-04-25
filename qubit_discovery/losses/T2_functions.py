@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 import qutip as qt
@@ -12,16 +12,17 @@ from SQcircuit.noise import ENV
 from SQcircuit import functions as sqf
 from SQcircuit import units as unt
 
+
 ###############################################################################
 # Decoherence rate helper functions
 ###############################################################################
 
 def partial_squared_omega(
-        cr: Circuit,
-        grad_el: Element,
-        partial_H: qt.Qobj,
-        partial_H_squared: qt.Qobj,
-        states: Tuple[int, int]
+    cr: Circuit,
+    grad_el: Element,
+    partial_H: qt.Qobj,
+    partial_H_squared: qt.Qobj,
+    states: Tuple[int, int]
 ) -> float:
     """ Calculates the second derivative of the difference between the `m`th 
     and `n`th eigenfrequencies with respect to an arbitrary parameter `x` and
@@ -38,7 +39,7 @@ def partial_squared_omega(
             arbitrary parameter.
         partial_H_squared:
             The second derivative of the circuit Hamiltonian with respect to 
-            the arbitrary paramter and `grad_el`.
+            the arbitrary parameter and `grad_el`.
         states:
             The numbers `(m, n)` of the eigenfrequencies to differentiate.
     """
@@ -52,22 +53,23 @@ def partial_squared_omega(
     p2_omega_1 = 2 * np.real(
         partial_state_m.dag() * (partial_H * state_m)
         - partial_state_n.dag() * (partial_H * state_n)
-    )[0,0]
+    )[0, 0]
     p2_omega_2 = (
         state_m.dag() * (partial_H_squared * state_m)
         - state_n.dag() * (partial_H_squared * state_n)
-    )[0,0]
+    )[0, 0]
 
     p2_omega = p2_omega_1 + p2_omega_2
     assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
 
     return np.real(p2_omega)
 
+
 def partial_dephasing_rate(
-        A,
-        partial_A,
-        partial_omega_mn,
-        partial_squared_omega_mn
+    A,
+    partial_A,
+    partial_omega_mn,
+    partial_squared_omega_mn
 ):
     """
     Calculate the derivative of the dephasing rate with noise amplitude `A`
@@ -89,9 +91,9 @@ def partial_dephasing_rate(
     return (
         np.sign(partial_omega_mn)
         * np.sqrt(2 * np.abs(np.log(ENV["omega_low"] * ENV["t_exp"])))
-        * (partial_A * partial_omega_mn
-           + A * partial_squared_omega_mn)
+        * (partial_A * partial_omega_mn + A * partial_squared_omega_mn)
     )
+
 
 def get_B_idx(
     cr: Circuit,
@@ -136,6 +138,7 @@ def partial_H_ng(
         )
     return op
 
+
 def partial_squared_H_ng(
     cr: Circuit,
     charge_idx: int,
@@ -163,6 +166,7 @@ def partial_squared_H_ng(
     for j in range(cr.n):
         op += A[charge_idx, j] * cr._memory_ops["Q"][j] / np.sqrt(unt.hbar)
     return -op
+
 
 def partial_omega_ng(
     cr: Circuit,
@@ -194,6 +198,7 @@ def partial_omega_ng(
 
     return np.real(partial_omega_mn)
 
+
 def partial_squared_omega_mn_ng(
     cr: Circuit,
     charge_idx: int,
@@ -212,12 +217,19 @@ def partial_squared_omega_mn_ng(
             The charge mode whose gate charge to differentiate with respect to
         grad_el:
             The circuit element to differentiate with respect to
+        states:
+            The numbers `(m, n)` of the eigenfrequencies to differentiate.
     """
     partial_H = partial_H_ng(cr, charge_idx)
     partial_H_squared = partial_squared_H_ng(cr, charge_idx, grad_el)
 
-    return partial_squared_omega(cr, grad_el, partial_H,
-                                 partial_H_squared, states)
+    return partial_squared_omega(
+        cr,
+        grad_el,
+        partial_H,
+        partial_H_squared,
+        states
+    )
 
 
 def partial_charge_dec(
@@ -233,10 +245,10 @@ def partial_charge_dec(
     ----------
         cr:
             The `Circuit` object.
-        states:
-            A tuple `(m, n)` of states to consider charge decoherence between.
         grad_el:
             The circuit element to differentiate with respect to
+        states:
+            A tuple `(m, n)` of states to consider charge decoherence between.
     """
     dec_rate_grad = 0
     for i in range(cr.n):
@@ -251,16 +263,19 @@ def partial_charge_dec(
             A = cr.charge_islands[i].A * 2 * unt.e
             partial_A = 0
 
-            dec_rate_grad += partial_dephasing_rate(A,
-                                                    partial_A,
-                                                    partial_omega_mn,
-                                                    partial_squared_omega_mn)
+            dec_rate_grad += partial_dephasing_rate(
+                A,
+                partial_A,
+                partial_omega_mn,
+                partial_squared_omega_mn
+            )
 
     return dec_rate_grad
 
 ###############################################################################
 # Critical current noise
 ###############################################################################
+
 
 def partial_squared_omega_mn_EJ(
     cr: Circuit,
@@ -288,8 +303,13 @@ def partial_squared_omega_mn_EJ(
     partial_H = cr._get_partial_H(EJ_el, _B_idx = B_idx)
     partial_H_squared = 0
 
-    return partial_squared_omega(cr, grad_el, partial_H,
-                                 partial_H_squared, states)
+    return partial_squared_omega(
+        cr,
+        grad_el,
+        partial_H,
+        partial_H_squared,
+        states
+    )
 
 
 def partial_cc_dec(
@@ -326,12 +346,15 @@ def partial_cc_dec(
         A = sqf.numpy(EJ_el.A * EJ_el.get_value())
         partial_A = EJ_el.A if grad_el is EJ_el else 0
 
-        dec_rate_grad += partial_dephasing_rate(A,
-                                                partial_A,
-                                                partial_omega_mn,
-                                                partial_squared_omega_mn)
+        dec_rate_grad += partial_dephasing_rate(
+            A,
+            partial_A,
+            partial_omega_mn,
+            partial_squared_omega_mn
+        )
 
     return dec_rate_grad
+
 
 ###############################################################################
 # Flux noise
@@ -372,6 +395,7 @@ def partial_squared_H_phi(
     else:
         raise NotImplementedError
 
+
 def partial_squared_omega_mn_phi(
     cr: Circuit,
     loop: Loop,
@@ -395,8 +419,13 @@ def partial_squared_omega_mn_phi(
     partial_H = cr._get_partial_H(loop)
     partial_H_squared = partial_squared_H_phi(cr, loop, grad_el)
 
-    return partial_squared_omega(cr, grad_el, partial_H,
-                                 partial_H_squared, states)
+    return partial_squared_omega(
+        cr,
+        grad_el,
+        partial_H,
+        partial_H_squared,
+        states
+    )
 
 
 def partial_flux_dec(
@@ -418,7 +447,10 @@ def partial_flux_dec(
     """
     dec_rate_grad = 0
     for loop in cr.loops:
-        partial_omega_mn = sqf.numpy(cr._get_partial_omega_mn(loop, states=states))
+        partial_omega_mn = sqf.numpy(cr._get_partial_omega_mn(
+            loop,
+            states=states
+        ))
         partial_squared_omega_mn = partial_squared_omega_mn_phi(
             cr,
             loop,
@@ -429,10 +461,12 @@ def partial_flux_dec(
         A = loop.A
         partial_A = 0
 
-        dec_rate_grad += partial_dephasing_rate(A,
-                                                partial_A,
-                                                partial_omega_mn,
-                                                partial_squared_omega_mn)
+        dec_rate_grad += partial_dephasing_rate(
+            A,
+            partial_A,
+            partial_omega_mn,
+            partial_squared_omega_mn
+        )
     return dec_rate_grad
 
 
@@ -441,19 +475,28 @@ def partial_flux_dec(
 ###############################################################################
 
 def dec_rate_cc_torch(circuit: Circuit, states: Tuple[int, int]):
-    return DecRateCC.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
-                           circuit,
-                           states)
+    return DecRateCC.apply(
+        torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
+        circuit,
+        states
+    )
+
 
 def dec_rate_charge_torch(circuit: Circuit, states: Tuple[int, int]):
-    return DecRateCharge.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
-                               circuit,
-                               states)
+    return DecRateCharge.apply(
+        torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
+        circuit,
+        states
+    )
+
 
 def dec_rate_flux_torch(circuit: Circuit, states: Tuple[int, int]):
-    return DecRateFlux.apply(torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
-                             circuit,
-                             states)
+    return DecRateFlux.apply(
+        torch.stack(circuit.parameters) if circuit.parameters else torch.tensor([]),
+        circuit,
+        states
+    )
+
 
 class DecRateCC(Function):
     @staticmethod
@@ -462,6 +505,7 @@ class DecRateCC(Function):
         circuit: 'Circuit',
         states: Tuple[int, int]
     ) -> Tensor:
+
         return torch.as_tensor(circuit._dec_rate_cc_np(states))
 
     @staticmethod
@@ -469,19 +513,22 @@ class DecRateCC(Function):
         circuit_parameters, circuit, states = inputs
 
         ctx.circuit = circuit.safecopy(save_eigs=True)
-        ctx.states  = states
+        ctx.states = states
 
     @staticmethod
     @once_differentiable
-    def backward(ctx, grad_output) -> Tuple[Tensor]:
+    def backward(ctx, grad_output) -> Tuple[Tensor, None, None]:
         output_grad = torch.zeros(len(ctx.circuit._parameters))
 
         for idx, elem in enumerate(ctx.circuit._parameters.keys()):
-            output_grad[idx] = grad_output * partial_cc_dec(ctx.circuit,
-                                                            elem,
-                                                            ctx.states)
+            output_grad[idx] = grad_output * partial_cc_dec(
+                ctx.circuit,
+                elem,
+                ctx.states
+            )
 
         return output_grad, None, None
+
 
 class DecRateCharge(Function):
     @staticmethod
@@ -497,19 +544,22 @@ class DecRateCharge(Function):
         circuit_parameters, circuit, states = inputs
 
         ctx.circuit = circuit.safecopy(save_eigs=True)
-        ctx.states  = states
+        ctx.states = states
 
     @staticmethod
     @once_differentiable
-    def backward(ctx, grad_output) -> Tuple[Tensor]:
+    def backward(ctx, grad_output) -> Tuple[Tensor, None, None]:
         output_grad = torch.zeros(len(ctx.circuit._parameters))
 
         for idx, elem in enumerate(ctx.circuit._parameters.keys()):
-            output_grad[idx] = grad_output * partial_charge_dec(ctx.circuit,
-                                                                elem,
-                                                                ctx.states)
+            output_grad[idx] = grad_output * partial_charge_dec(
+                ctx.circuit,
+                elem,
+                ctx.states
+            )
 
         return output_grad, None, None
+
 
 class DecRateFlux(Function):
     @staticmethod
@@ -525,16 +575,18 @@ class DecRateFlux(Function):
         circuit_parameters, circuit, states = inputs
 
         ctx.circuit = circuit.safecopy(save_eigs=True)
-        ctx.states  = states
+        ctx.states = states
 
     @staticmethod
     @once_differentiable
-    def backward(ctx, grad_output) -> Tuple[Tensor]:
+    def backward(ctx, grad_output) -> Tuple[Tensor, None, None]:
         output_grad = torch.zeros(len(ctx.circuit._parameters))
 
         for idx, elem in enumerate(ctx.circuit._parameters.keys()):
-            output_grad[idx] = grad_output * partial_flux_dec(ctx.circuit,
-                                                              elem,
-                                                              ctx.states)
+            output_grad[idx] = grad_output * partial_flux_dec(
+                ctx.circuit,
+                elem,
+                ctx.states
+            )
 
         return output_grad, None, None
