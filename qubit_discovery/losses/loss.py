@@ -80,19 +80,38 @@ def t2_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
     return zero(), t2
 
 
+def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
-def t2_proxy_loss(
-    circuit: Circuit,
-    dec_type='total'
-) -> Tuple[SQValType, SQValType]:
-
-    t2_approx = decoherence_time(
+    t1 = decoherence_time(
         circuit=circuit,
-        t_type='t2_approx',
-        dec_type=dec_type
+        t_type='t2',
+        dec_type='total'
     )
 
-    return zero(), t2_approx
+    t2 = decoherence_time(
+        circuit=circuit,
+        t_type='t2',
+        dec_type='total'
+    )
+
+    t = t1*t2 / (t1+t2)
+
+    return zero(), t
+
+
+# def t2_proxy_loss(
+#     circuit: Circuit,
+#     dec_type='total'
+# ) -> Tuple[SQValType, SQValType]:
+#
+#     t2_approx = decoherence_time(
+#         circuit=circuit,
+#         t_type='t2_approx',
+#         dec_type=dec_type
+#     )
+#
+#     return zero(), t2_approx
+
 
 def element_sensitivity_loss(
     circuit: Circuit,
@@ -203,8 +222,9 @@ def charge_sensitivity_loss(
     return loss + EPSILON, sens
 
 
-def number_of_gates_loss(circuit: Circuit,
-                         use_T2=True) -> Tuple[SQValType, SQValType]:
+def number_of_gates_loss(
+    circuit: Circuit,
+) -> Tuple[SQValType, SQValType]:
     """Return the number of single qubit gate of the qubit as well as the loss
     associated with the metric."""
 
@@ -216,28 +236,17 @@ def number_of_gates_loss(circuit: Circuit,
         t_type='t1',
         dec_type='total'
     )
-    if use_T2:
-        # t2_exact = decoherence_time(
-        #     circuit=circuit,
-        #     t_type='t2',
-        #     dec_type='total'
-        # )
-        t2_approx = decoherence_time(
-            circuit=circuit,
-            t_type='t2_approx',
-            dec_type='total'
-        )
-        # number_of_gates_exact = gate_speed * t1 * t2_exact / (t1 + t2_exact)
-        number_of_gates = gate_speed * t1 * t2_approx / (t1 + t2_approx)
-    else:
-        number_of_gates = t1*gate_speed
-        # number_of_gates_exact = number_of_gates
+    t2 = decoherence_time(
+        circuit=circuit,
+        t_type='t2',
+        dec_type='total'
+    )
+
+    number_of_gates = gate_speed * t1 * t2 / (t1 + t2)
 
     if get_optim_mode():
-        # loss = -torch.log(number_of_gates)
         loss = 1 / number_of_gates * 1e3
     else:
-        # loss = -np.log(number_of_gates)
         loss = 1 / number_of_gates * 1e3
 
     return loss, number_of_gates
@@ -257,18 +266,15 @@ ALL_FUNCTIONS = {
     ############################################################################
     'anharmonicity': anharmonicity_loss,
     'gate_speed': gate_speed_loss,
+    't': t_loss,
     't1': t1_loss,
     't1_capacitive': lambda cr: t1_loss(cr, dec_type='capacitive'),
     't1_inductive': lambda cr: t1_loss(cr, dec_type='inductive'),
     't1_quasiparticle': lambda cr: t1_loss(cr, dec_type='quasiparticle'),
     't2': t2_loss,
-    't2_proxy': t2_proxy_loss,
     't2_charge': lambda cr: t2_loss(cr, dec_type='charge'),
-    't2_proxy_charge': lambda cr: t2_proxy_loss(cr, dec_type='charge'),
     't2_cc': lambda cr: t2_loss(cr, dec_type='cc'),
-    't2_proxy_cc': lambda cr: t2_proxy_loss(cr, dec_type='cc'),
     't2_flux': lambda cr: t2_loss(cr, dec_type='flux'),
-    't2_proxy_flux': lambda cr: t2_proxy_loss(cr, dec_type='flux'),
 }
 
 

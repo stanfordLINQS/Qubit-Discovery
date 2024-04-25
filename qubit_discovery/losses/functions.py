@@ -7,10 +7,18 @@ from typing import Optional, Tuple, Union
 import numpy as np
 import torch
 
-from SQcircuit import Circuit, Element, Junction, Loop
-from SQcircuit.settings import get_optim_mode
 import SQcircuit.functions as sqf
 import SQcircuit.units as unt
+
+from SQcircuit import Circuit, Element, Junction, Loop
+from SQcircuit.settings import get_optim_mode
+
+from qubit_discovery.losses.T2_functions import (
+    dec_rate_cc_torch,
+    dec_rate_charge_torch,
+    dec_rate_flux_torch
+)
+
 
 SQValType = Union[float, torch.Tensor]
 
@@ -186,10 +194,12 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
     return omega
 
 
-def partial_deriv_approx_flux(circuit: Circuit,
-                              loop: Loop,
-                              delta=1e-6, # 0.001
-                              symmetric=True) -> SQValType:
+def partial_deriv_approx_flux(
+    circuit: Circuit,
+    loop: Loop,
+    delta=0.001,
+    symmetric=True
+) -> SQValType:
     """ Calculates an approximation to the derivative of the first
     eigenfrequency of `circuit` with respect to the external flux through
     `loop`.
@@ -252,10 +262,10 @@ def flux_decoherence_approx(cr: Circuit) -> SQValType:
 
 
 def partial_deriv_approx_charge(
-        circuit: Circuit,
-        charge_mode: int,
-        delta=1e-6, # 0.01
-        symmetric=True,
+    circuit: Circuit,
+    charge_mode: int,
+    delta=0.01,
+    symmetric=True,
 ):
     """ Calculates an approximation to the derivative of the first
     eigenfrequency of `circuit` with respect to the gate charge of
@@ -356,7 +366,7 @@ def partial_deriv_approx_elem(
     circuit: Circuit,
     edge,
     el_idx: int,
-    delta=1e-6,  # 0.001
+    delta=0.001,
     symmetric=True
 ) -> SQValType:
     """ Calculates an approximation to the derivative of the first
@@ -450,6 +460,12 @@ T2_proxy_funcs = {
     'cc': cc_decoherence_approx,
 }
 
+T2_funcs = {
+    'flux': dec_rate_flux_torch,
+    'charge': dec_rate_charge_torch,
+    'cc': dec_rate_cc_torch,
+}
+
 
 def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
     """Return the decoherence time for a given circuit and its decoherence type.
@@ -493,8 +509,10 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
         raise ValueError("t_type must be either 't1' or 't2' or 't2_approx")
 
     for dec_type in dec_type_list:
-        if t_type in ('t1', 't2'):
+        if t_type == 't1':
             gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
+        elif t_type == 't2':
+            gamma = gamma + T2_funcs[dec_type](circuit, (0, 1))
         else:
             gamma = gamma + T2_proxy_funcs[dec_type](circuit)
 
