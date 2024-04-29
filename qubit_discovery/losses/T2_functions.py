@@ -60,7 +60,6 @@ def partial_squared_omega(
     )[0, 0]
 
     p2_omega = p2_omega_1 + p2_omega_2
-    # assert np.imag(p2_omega)/np.real(p2_omega) < 1e-2
 
     return np.real(p2_omega)
 
@@ -129,6 +128,8 @@ def partial_H_ng(
         charge_idx:
             The charge mode whose gate charge to differentiate with respect to
     """
+    assert cr._is_charge_mode(charge_idx)
+
     op = qt.Qobj()
     for j in range(cr.n):
         op += (
@@ -156,6 +157,8 @@ def partial_squared_H_ng(
         grad_el:
             The circuit element to differentiate with respect to
     """
+    assert cr._is_charge_mode(charge_idx)
+
     if not isinstance(grad_el, Capacitor):
         return 0
 
@@ -186,6 +189,8 @@ def partial_omega_ng(
         states:
             The numbers `(m, n)` of the eigenfrequencies to differentiate.
     """
+    assert cr._is_charge_mode(charge_idx)
+
     state_m = sqf.qutip(cr._evecs[states[0]], dims=cr._get_state_dims())
     state_n = sqf.qutip(cr._evecs[states[1]], dims=cr._get_state_dims())
     op = partial_H_ng(cr, charge_idx)
@@ -194,7 +199,6 @@ def partial_omega_ng(
         state_m.dag() * (op * state_m)
         - state_n.dag() * (op * state_n)
     )[0, 0]
-    # assert np.imag(partial_omega_mn)/np.real(partial_omega_mn) < 1e-2
 
     return np.real(partial_omega_mn)
 
@@ -220,6 +224,8 @@ def partial_squared_omega_mn_ng(
         states:
             The numbers `(m, n)` of the eigenfrequencies to differentiate.
     """
+    assert cr._is_charge_mode(charge_idx)
+
     partial_H = partial_H_ng(cr, charge_idx)
     partial_H_squared = partial_squared_H_ng(cr, charge_idx, grad_el)
 
