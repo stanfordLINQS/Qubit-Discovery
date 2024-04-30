@@ -99,20 +99,6 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     return zero(), t
 
 
-# def t2_proxy_loss(
-#     circuit: Circuit,
-#     dec_type='total'
-# ) -> Tuple[SQValType, SQValType]:
-#
-#     t2_approx = decoherence_time(
-#         circuit=circuit,
-#         t_type='t2_approx',
-#         dec_type=dec_type
-#     )
-#
-#     return zero(), t2_approx
-
-
 def element_sensitivity_loss(
     circuit: Circuit,
     n_samples=10,

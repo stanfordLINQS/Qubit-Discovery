@@ -1,16 +1,11 @@
 """Contains helper functions used in remainder of code."""
-
-from collections import OrderedDict
 from copy import copy
-from typing import Optional, Tuple, Union
+from typing import Union
 
 import numpy as np
 import torch
 
-import SQcircuit.functions as sqf
-import SQcircuit.units as unt
-
-from SQcircuit import Circuit, Element, Junction, Loop
+from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
 
 from qubit_discovery.losses.T2_functions import (
@@ -18,7 +13,6 @@ from qubit_discovery.losses.T2_functions import (
     dec_rate_charge_torch,
     dec_rate_flux_torch
 )
-
 
 SQValType = Union[float, torch.Tensor]
 
@@ -197,6 +191,7 @@ T2_funcs = {
     'charge': dec_rate_charge_torch,
     'cc': dec_rate_cc_torch,
 }
+
 
 def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
     """Return the decoherence time for a given circuit and its decoherence type.
