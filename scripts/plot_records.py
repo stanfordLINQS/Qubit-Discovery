@@ -46,7 +46,8 @@ OPTIONAL_KEYS = ["num_best"]
 
 PLOT_SCHEME = {
     'JJ': 'b', 'JL': 'darkorange',
-    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'
+    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
+    'JCJ': 'tab:blue'
 }
 
 # metric keys for plotting.
@@ -127,6 +128,8 @@ def plot_circuit_metrics(
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
         try:
+            print(f"plot_idx: {plot_idx}")
+            print(f"run[key]: {run[key]}")
             axs[i, j].plot(
                 run[key],
                 PLOT_SCHEME[circuit_code],
@@ -141,6 +144,7 @@ def plot_circuit_metrics(
             axs[i, j].set_yscale('log')
             axs[i, j].legend(loc="upper left")
         except KeyError:
+            print("keyerror")
             pass
 
 
