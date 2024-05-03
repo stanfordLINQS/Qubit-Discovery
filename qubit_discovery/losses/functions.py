@@ -128,9 +128,16 @@ def charge_sensitivity(
 def flux_sensitivity(
     circuit: Circuit,
     flux_point=0.5,
-    delta=0.01
+    delta=0.01,
+    epsilon=1e-14
 ) -> SQValType:
     """Return the flux sensitivity of the circuit around half flux quantum."""
+    if not circuit.loops:
+        if get_optim_mode():
+            return torch.as_tensor(epsilon) + 0 * circuit.efreqs[0]
+        else:
+            return epsilon
+
     f_0 = circuit.efreqs[1] - circuit.efreqs[0]
 
     # Copy circuit to create new container for perturbed eigenstates

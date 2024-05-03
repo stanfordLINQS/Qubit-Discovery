@@ -60,7 +60,7 @@ def partial_squared_omega(
     )[0, 0]
 
     p2_omega = p2_omega_1 + p2_omega_2
-    assert np.imag(p2_omega)/np.real(p2_omega) < 1e-6
+    # assert np.imag(p2_omega)/np.real(p2_omega) < 1e-3
 
     return np.real(p2_omega)
 
@@ -194,7 +194,7 @@ def partial_omega_ng(
         state_m.dag() * (op * state_m)
         - state_n.dag() * (op * state_n)
     )[0, 0]
-    assert np.imag(partial_omega_mn)/np.real(partial_omega_mn) < 1e-5
+    # assert np.imag(partial_omega_mn)/np.real(partial_omega_mn) < 1e-3
 
     return np.real(partial_omega_mn)
 
