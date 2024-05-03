@@ -20,18 +20,16 @@ Options:
 
 import random
 
+from docopt import docopt
 import numpy as np
 import torch
 
-from docopt import docopt
-
 import SQcircuit as sq
-
 from SQcircuit import Circuit
-
-from qubit_discovery.optimization.utils import create_sampler
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics
+from qubit_discovery.utils.sampler import CircuitSampler
+
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
 
@@ -115,11 +113,11 @@ def main() -> None:
         )
 
     if parameters['init_circuit'] == "":
-        sampler = create_sampler(
-            len(parameters['circuit_code']),
-            capacitor_range,
-            inductor_range,
-            junction_range
+        sampler = CircuitSampler(
+            num_elements=len(parameters['circuit_code']),
+            capacitor_range=capacitor_range,
+            inductor_range=inductor_range,
+            junction_range=junction_range
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
         circuit.loops[0].set_flux(0.5 - 1e-2)

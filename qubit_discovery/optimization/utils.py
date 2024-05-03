@@ -12,7 +12,6 @@ from typing import (
 import dill as pickle
 from SQcircuit import (
     Circuit,
-    CircuitSampler,
     Loop,
     Element,
     Inductor,
@@ -66,22 +65,6 @@ def clamp_gradient(element: Element, epsilon: float) -> None:
   max = max.double()
   element._value.grad = torch.minimum(max, element._value.grad)
   element._value.grad = torch.maximum(-max, element._value.grad)
-
-
-# Sampling utilities
-def create_sampler(
-    n: int,
-    capacitor_range,
-    inductor_range,
-    junction_range
-) -> CircuitSampler:
-    """Initializes circuit sampler object within specified parameter range."""
-    circuit_sampler = CircuitSampler(n)
-    circuit_sampler.capacitor_range = capacitor_range
-    circuit_sampler.inductor_range = inductor_range
-    circuit_sampler.junction_range = junction_range
-    return circuit_sampler
-
 
 def print_new_circuit_sampled_message(total_l=131) -> None:
     message = "NEW CIRCUIT SAMPLED"
