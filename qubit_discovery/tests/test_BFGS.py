@@ -21,17 +21,18 @@ def test_bfgs_run() -> None:
     """Test one step of BFGS algorithm."""
 
     target_params = torch.tensor(
-        [2.7302e-12, 1.6346e-07, 6.2832e+09],
+        [4.6898e-12, 1.6346e-07, 6.2832e+09],
         dtype=torch.float64
     )
 
     target_loss_record = {
-        'frequency_loss': [np.array(5.48357335)],
+        'frequency_loss': [np.array(1e-13)],
         'anharmonicity_loss': [np.array(1.42174492)],
-        'T1_loss': [np.array(42581151.89052253)],
-        'flux_sensitivity_loss': [np.array(1.e-14)],
-        'charge_sensitivity_loss': [np.array(0.)],
-        'total_loss': [np.array(42581158.79584081)],
+        't1_loss': [np.array(0)],
+        't2_loss': [np.array(0)],
+        'flux_sensitivity_loss': [np.array(1.e-13)],
+        'charge_sensitivity_loss': [np.array(1e-13)],
+        'total_loss': [np.array(1.42174492)],
     }
 
     def my_loss_function(cr: Circuit):
@@ -42,7 +43,8 @@ def test_bfgs_run() -> None:
                 "anharmonicity": 1.0,
                 "flux_sensitivity": 1.0,
                 "charge_sensitivity": 1.0,
-                "T1": 1.0,
+                "t1": 1.0,
+                "t2": 1.0
             },
             use_metrics=[]
         )
