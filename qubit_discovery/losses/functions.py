@@ -8,12 +8,6 @@ import torch
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
 
-from qubit_discovery.losses.T2_functions import (
-    dec_rate_cc_torch,
-    dec_rate_charge_torch,
-    dec_rate_flux_torch
-)
-
 SQValType = Union[float, torch.Tensor]
 
 # Helper functions
@@ -186,13 +180,6 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
 
     return omega
 
-T2_funcs = {
-    'flux': dec_rate_flux_torch,
-    'charge': dec_rate_charge_torch,
-    'cc': dec_rate_cc_torch,
-}
-
-
 def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
     """Return the decoherence time for a given circuit and its decoherence type.
 
@@ -221,7 +208,7 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
                 "'total'"
             )
             dec_type_list = [dec_type]
-    elif t_type == 't2' or t_type == 't2_approx':
+    elif t_type == 't2':
         all_t2_channels = ['charge', 'cc', 'flux']
         if dec_type == 'total':
             dec_type_list = all_t2_channels
@@ -232,12 +219,9 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
             )
             dec_type_list = [dec_type]
     else:
-        raise ValueError("t_type must be either 't1' or 't2' or 't2_approx")
+        raise ValueError("t_type must be either 't1' or 't2'")
 
     for dec_type in dec_type_list:
-        if t_type == 't1':
-            gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
-        elif t_type == 't2':
-            gamma = gamma + T2_funcs[dec_type](circuit, (0, 1))
+        gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
 
     return 1 / gamma
