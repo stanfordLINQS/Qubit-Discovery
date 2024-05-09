@@ -108,14 +108,14 @@ def element_sensitivity_loss(
     """"Returns an estimate of parameter sensitivity, as determined by variation
     of T1 value in Gaussian probability distribution about element values"""
     def set_elem_value(elem, val):
-        elem._value = val
+        elem.internal_value = val
 
     elements_to_update = defaultdict(list)
     for edge in circuit.elements:
-        for i, el in enumerate(circuit.elements[edge]):
-            if el in list(circuit._parameters):
+        for el_idx, el in enumerate(circuit.elements[edge]):
+            if el in circuit.parameters_dict.keys():
                 elements_to_update[edge].append(
-                    (i, list(circuit._parameters).index(el))
+                    (el_idx, list(circuit.parameters_dict).index(el))
                 )
 
     dist = torch.distributions.MultivariateNormal(
