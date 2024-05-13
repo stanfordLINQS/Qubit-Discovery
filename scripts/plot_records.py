@@ -47,7 +47,8 @@ OPTIONAL_KEYS = ["num_best"]
 PLOT_SCHEME = {
     'JJ': 'b', 'JL': 'darkorange',
     'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
-    'JCJ': 'tab:blue'
+    'JCJ': 'tab:blue', 'JCL': 'tab:orange',
+    'J': 'tab:cyan'
 }
 
 # metric keys for plotting.
@@ -128,8 +129,6 @@ def plot_circuit_metrics(
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
         try:
-            print(f"plot_idx: {plot_idx}")
-            print(f"run[key]: {run[key]}")
             axs[i, j].plot(
                 run[key],
                 PLOT_SCHEME[circuit_code],
