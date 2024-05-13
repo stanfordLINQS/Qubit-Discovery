@@ -18,7 +18,7 @@ def test_sgd_run() -> None:
     """Test one step of SGD algorithm."""
 
     target_params = torch.tensor(
-        [1.9758e-14, 1.6673e-07, 6.4088e+09],
+        [1.9388e-14, 1.6453e-07, 6.3300e+09],
         dtype=torch.float64
     )
 

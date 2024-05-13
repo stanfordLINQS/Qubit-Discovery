@@ -26,9 +26,9 @@ from .functions import (
 EPSILON = 1e-13
 SQValType = Union[float, torch.Tensor]
 
-################################################################################
+###############################################################################
 # Only metric loss functions
-################################################################################
+###############################################################################
 
 
 def anharmonicity_loss(
@@ -99,20 +99,6 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     return zero(), t
 
 
-# def t2_proxy_loss(
-#     circuit: Circuit,
-#     dec_type='total'
-# ) -> Tuple[SQValType, SQValType]:
-#
-#     t2_approx = decoherence_time(
-#         circuit=circuit,
-#         t_type='t2_approx',
-#         dec_type=dec_type
-#     )
-#
-#     return zero(), t2_approx
-
-
 def element_sensitivity_loss(
     circuit: Circuit,
     n_samples=10,
@@ -122,14 +108,14 @@ def element_sensitivity_loss(
     """"Returns an estimate of parameter sensitivity, as determined by variation
     of T1 value in Gaussian probability distribution about element values"""
     def set_elem_value(elem, val):
-        elem._value = val
+        elem.internal_value = val
 
     elements_to_update = defaultdict(list)
     for edge in circuit.elements:
-        for i, el in enumerate(circuit.elements[edge]):
-            if el in list(circuit._parameters):
+        for el_idx, el in enumerate(circuit.elements[edge]):
+            if el in circuit.parameters_dict.keys():
                 elements_to_update[edge].append(
-                    (i, list(circuit._parameters).index(el))
+                    (el_idx, list(circuit.parameters_dict).index(el))
                 )
 
     dist = torch.distributions.MultivariateNormal(
@@ -165,9 +151,9 @@ def gate_speed_loss(circuit: Circuit):
     return zero(), gate_speed
 
 
-################################################################################
+###############################################################################
 # In Optimization loss functions
-################################################################################
+###############################################################################
 
 def frequency_loss(
         circuit: Circuit,
@@ -253,18 +239,18 @@ def number_of_gates_loss(
     return loss, number_of_gates
 
 
-################################################################################
+###############################################################################
 # Incorporating all losses into one loss function
-################################################################################
+###############################################################################
 
 
 ALL_FUNCTIONS = {
-    ############################################################################
+    ###########################################################################
     'frequency': frequency_loss,
     'flux_sensitivity': flux_sensitivity_loss,
     'charge_sensitivity': charge_sensitivity_loss,
     'number_of_gates': number_of_gates_loss,
-    ############################################################################
+    ###########################################################################
     'anharmonicity': anharmonicity_loss,
     'gate_speed': gate_speed_loss,
     't': t_loss,

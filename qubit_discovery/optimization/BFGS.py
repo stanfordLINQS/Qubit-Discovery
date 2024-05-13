@@ -7,9 +7,6 @@ from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    set_grad_zero,
-    get_grad,
-    set_params,
     init_records,
     update_record,
     save_results,
@@ -85,7 +82,7 @@ def run_BFGS(
     )
 
     def objective_func(cr: Circuit, x: Tensor, n_eigs: int):
-        set_params(cr, x)
+        cr.parameters = x
         cr.diag(n_eigs)
         t_loss, _, _ = loss_metric_function(cr)
 
@@ -121,8 +118,8 @@ def run_BFGS(
 
         loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()
-        gradient = get_grad(circuit)
-        set_grad_zero(circuit)
+        gradient = circuit.parameters_grad
+        circuit.zero_parameters_grad()
 
         p = -torch.matmul(H, gradient)
 
@@ -144,8 +141,8 @@ def run_BFGS(
 
         loss_next = objective_func(circuit, params_next, num_eigenvalues)
         loss_next.backward()
-        next_gradient = get_grad(circuit)
-        set_grad_zero(circuit)
+        next_gradient = circuit.parameters_grad
+        circuit.zero_parameters_grad()
 
         loss_diff = loss_next - loss
         loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))

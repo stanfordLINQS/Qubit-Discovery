@@ -12,7 +12,6 @@ from typing import (
 import dill as pickle
 from SQcircuit import (
     Circuit,
-    CircuitSampler,
     Loop,
     Element,
     Inductor,
@@ -33,55 +32,11 @@ T = TypeVar('T')
 
 
 # Utilities for gradient updates
-def set_params(circuit: Circuit, params: torch.Tensor) -> None:
-    """
-    Set the parameters of a circuit to new values.
-    """
-    for i, element in enumerate(circuit._parameters.keys()):
-        element._value = params[i].clone().detach().requires_grad_(True)
-
-    circuit.update()
-
-
-def get_grad(circuit: Circuit) -> torch.Tensor:
-
-    grad_list = []
-
-    for val in circuit._parameters.values():
-        grad_list.append(val.grad)
-
-    if None in grad_list:
-        return grad_list
-
-    return torch.stack(grad_list).detach().clone()
-
-
-def set_grad_zero(circuit: Circuit) -> None:
-    for key in circuit._parameters.keys():
-        circuit._parameters[key].grad = None
-
-
-def clamp_gradient(element: Element, epsilon: float) -> None:
-  max = torch.squeeze(torch.Tensor([epsilon, ]))
-  max = max.double()
-  element._value.grad = torch.minimum(max, element._value.grad)
-  element._value.grad = torch.maximum(-max, element._value.grad)
-
-
-# Sampling utilities
-def create_sampler(
-    n: int,
-    capacitor_range,
-    inductor_range,
-    junction_range
-) -> CircuitSampler:
-    """Initializes circuit sampler object within specified parameter range."""
-    circuit_sampler = CircuitSampler(n)
-    circuit_sampler.capacitor_range = capacitor_range
-    circuit_sampler.inductor_range = inductor_range
-    circuit_sampler.junction_range = junction_range
-    return circuit_sampler
-
+def clamp_gradient(val: torch.Tensor, epsilon: float) -> None:
+    max = torch.squeeze(torch.Tensor([epsilon, ]))
+    max = max.double()
+    val.grad = torch.minimum(max, val.grad)
+    val.grad = torch.maximum(-max, val.grad)
 
 def print_new_circuit_sampled_message(total_l=131) -> None:
     message = "NEW CIRCUIT SAMPLED"
