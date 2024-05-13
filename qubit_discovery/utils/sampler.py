@@ -55,14 +55,17 @@ class CircuitSampler:
 
     def __init__(
             self,
-            num_elements: int
+            num_elements: int,
+            capacitor_range: list = [12e-15, 12e-9],
+            inductor_range: list = [12e-9, 12e-6],
+            junction_range: list = [1e9, 10e9]
     ) -> None:
         self.num_elements = num_elements
         self.topologies = list(_generate_topologies(num_elements))
         self.topologies.sort()
-        self.capacitor_range = [12e-15, 12e-9]
-        self.inductor_range = [12e-9, 12e-6]
-        self.junction_range = [1e9, 10e9]
+        self.capacitor_range = capacitor_range
+        self.inductor_range = inductor_range
+        self.junction_range = junction_range
         self.trunc_num = 40
 
     def sample_circuit(self) -> str:
