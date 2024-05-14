@@ -73,11 +73,11 @@ def charge_sensitivity(
     # For each mode, if charge mode exists then set gate charge to obtain
     # minimum frequency
     for charge_offset in charge_offsets:
-        for charge_island_idx in perturb_circ.charge_islands.keys():
-            charge_mode = charge_island_idx + 1
+        for charge_idx, charge_island in enumerate(perturb_circ.charge_islands.keys()):
+            charge_mode = charge_island + 1
             perturb_circ.set_charge_offset(
                 charge_mode,
-                charge_offset[charge_island_idx]
+                charge_offset[charge_idx]
             )
 
         perturb_circ.diag(len(circuit.efreqs))
