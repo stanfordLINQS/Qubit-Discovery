@@ -21,19 +21,19 @@ LossFunctionType = Callable[
 
 
 def run_BFGS(
-        circuit: Circuit,
-        circuit_code: str,
-        loss_metric_function: LossFunctionType,
-        name: str,
-        num_eigenvalues: int,
-        total_trunc_num: int,
-        save_loc: Optional[str] = None,
-        bounds: Optional = None,
-        lr: float = 1e3,
-        max_iter: int = 100,
-        tolerance: float = 1e-15,
-        verbose: bool = False,
-        save_intermediate_circuits: bool = True
+    circuit: Circuit,
+    circuit_code: str,
+    loss_metric_function: LossFunctionType,
+    name: str,
+    num_eigenvalues: int,
+    total_trunc_num: int,
+    save_loc: Optional[str] = None,
+    bounds: Optional = None,
+    lr: float = 1e3,
+    max_iter: int = 100,
+    tolerance: float = 1e-15,
+    verbose: bool = False,
+    save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
@@ -195,16 +195,16 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 
 def backtracking_line_search(
-        circuit: Circuit,
-        objective_func: Callable[[Circuit, Tensor, int], Tensor],
-        params: torch.tensor,  # params at starting point
-        gradient: torch.tensor,  # gradient at starting point
-        p: torch.tensor,  # search direction,
-        num_eigenvalues: int,
-        bounds=None,
-        lr=1.0,
-        c=1e-45,
-        rho=0.1
+    circuit: Circuit,
+    objective_func: Callable[[Circuit, Tensor, int], Tensor],
+    params: torch.tensor,  # params at starting point
+    gradient: torch.tensor,  # gradient at starting point
+    p: torch.tensor,  # search direction,
+    num_eigenvalues: int,
+    bounds=None,
+    lr=1.0,
+    c=1e-45,
+    rho=0.1
 ) -> float:
     """At end of line search, `circuit` will have its internal parameters set
     to ``params + alpha * p``.
