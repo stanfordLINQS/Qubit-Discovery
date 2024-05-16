@@ -193,6 +193,7 @@ def charge_sensitivity_loss(
     circuit: Circuit,
     code=1,
     a=0.02,
+    b=1,
 ) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
@@ -202,7 +203,7 @@ def charge_sensitivity_loss(
     if sens < a:
         loss = 0.0 * sens
     else:
-        loss = sens * (sens - a)
+        loss = b * (sens - a)
 
     reset_charge_modes(circuit)
     return loss + EPSILON, sens

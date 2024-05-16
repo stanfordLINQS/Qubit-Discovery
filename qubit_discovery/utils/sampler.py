@@ -73,25 +73,46 @@ class CircuitSampler:
         return sampled_topology
         # Build circuit, assign random values by sampling from range for each element
 
-    def sample_circuit_code(self, codename: str) -> Circuit:
+    def sample_circuit_code(self, codename: str, default_flux=0.5) -> Circuit:
         loop = Loop()
-        loop.set_flux(0.5)
+        loop.set_flux(default_flux)
         circuit_elements: Dict[Tuple[int, int], List[Element]] = defaultdict(list)
 
-        element: Union[Junction, Inductor]
+        element: Union[Junction, Inductor, Capacitor]
+
+        # Edge case: Single junction
+        if codename == 'J':
+            junction_value = loguniform.rvs(*self.junction_range, size=1)[0]
+            junction_value /= (2 * np.pi)
+            junction = Junction(junction_value, 'Hz', requires_grad=get_optim_mode(),
+                                   min_value=self.junction_range[0], max_value=self.junction_range[1])
+            cap_value = loguniform.rvs(*self.capacitor_range, size=1)[0]
+            capacitor = Capacitor(cap_value, 'F', requires_grad=get_optim_mode(),
+                                min_value=self.capacitor_range[0], max_value=self.capacitor_range[1])
+            circuit_elements[(0, 1)] = [junction, capacitor]
+            return Circuit(circuit_elements, flux_dist='junctions')
+
+        if 'C' in codename:
+            loops = []
+        else:
+            loops = [loop, ]
         # Add inductive elements to circuit
         for element_idx, element_code in enumerate(codename):
             if element_code == 'J':
                 # Add requires grad to element here?
                 junction_value = loguniform.rvs(*self.junction_range, size=1)[0]
                 junction_value /= (2 * np.pi)
-                element = Junction(junction_value, 'Hz', loops=[loop], requires_grad=get_optim_mode(),
+                element = Junction(junction_value, 'Hz', loops=loops, requires_grad=get_optim_mode(),
                                    min_value=self.junction_range[0], max_value=self.junction_range[1])
             elif element_code == 'L':
                 # TODO: Include default quality factor Q in inductor?
                 inductor_value = loguniform.rvs(*self.inductor_range, size=1)[0]
-                element = Inductor(inductor_value, 'H', loops=[loop], requires_grad=get_optim_mode(),
+                element = Inductor(inductor_value, 'H', loops=loops, requires_grad=get_optim_mode(),
                                    min_value=self.inductor_range[0], max_value=self.inductor_range[1])
+            elif element_code == 'C':
+                cap_value = loguniform.rvs(*self.capacitor_range, size=1)[0]
+                element = Capacitor(cap_value, 'F', requires_grad=get_optim_mode(),
+                                   min_value=self.capacitor_range[0], max_value=self.capacitor_range[1])
 
             min_idx = min(element_idx, (element_idx + 1) % len(codename))
             max_idx = max(element_idx, (element_idx + 1) % len(codename))

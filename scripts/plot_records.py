@@ -46,7 +46,9 @@ OPTIONAL_KEYS = ["num_best"]
 
 PLOT_SCHEME = {
     'JJ': 'b', 'JL': 'darkorange',
-    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'
+    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
+    'JCJ': 'tab:blue', 'JCL': 'tab:orange',
+    'J': 'tab:cyan'
 }
 
 # metric keys for plotting.
@@ -141,6 +143,7 @@ def plot_circuit_metrics(
             axs[i, j].set_yscale('log')
             axs[i, j].legend(loc="upper left")
         except KeyError:
+            print("keyerror")
             pass
 
 
