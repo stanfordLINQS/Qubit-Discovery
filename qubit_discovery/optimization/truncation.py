@@ -18,13 +18,13 @@ def get_reshaped_eigvec(
     the eigenvectors.
     """
 
-    assert len(circuit._efreqs) != 0, "circuit should be diagonalized first."
+    assert len(circuit.efreqs) != 0, "circuit should be diagonalized first."
 
     # Reshape eigenvector dimensions to correspond to individual modes
     if get_optim_mode():
-        eigenvector = np.array(circuit._evecs[eig_vec_idx].detach().numpy())
+        eigenvector = np.array(circuit.evecs[eig_vec_idx].detach().numpy())
     else:
-        eigenvector = circuit._evecs[eig_vec_idx].full()
+        eigenvector = circuit.evecs[eig_vec_idx].full()
     eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
 
     if len(circuit.m) == 1:
@@ -148,7 +148,7 @@ def trunc_num_heuristic(
     trunc numbers for rediagonalization that will maximize likelihood of
     convergence, defined under the `convergence_test` function.
     """
-    assert len(circuit._efreqs) != 0, "Circuit should be diagonalized first"
+    assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
     trunc_nums = circuit.m
 
@@ -267,7 +267,7 @@ def test_convergence(
     Returns a boolean of whether the convergence test passed, and a tuple
     of the average values of the last `t` components for each mode.
     """
-    assert len(circuit._efreqs) != 0, "Circuit should be diagonalized first"
+    assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
     if len(circuit.m) == 1:
         eigvec_mag, (mode_1_magnitudes, ) = get_reshaped_eigvec(

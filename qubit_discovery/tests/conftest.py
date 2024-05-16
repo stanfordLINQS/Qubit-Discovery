@@ -57,37 +57,6 @@ def get_fluxonium_random() -> Circuit:
 
     return circuit
 
-# def get_fluxonium_random() -> Circuit:
-#     """Returns a Fluxonium qubit for test purposes."""
-
-#     # Edge (0, 1)
-#     # Element 0: <class 'SQcircuit.elements.Junction'>
-#     # Value: 14.17 GHz
-#     # Element 1: <class 'SQcircuit.elements.Inductor'>
-#     # Value: 1.017e-08 H
-#     # Element 2: <class 'SQcircuit.elements.Capacitor'>
-#     # Value: 2.773e-13 F
-
-#     loop = sq.Loop(0.5)
-#     cap = sq.Capacitor(
-#         2.773e-13, 'F', requires_grad=sq.get_optim_mode()
-#     )
-#     ind = sq.Inductor(
-#         1.017e-08, 'H', loops=[loop], requires_grad=sq.get_optim_mode()
-#     )
-#     junc = sq.Junction(
-#         14.17, 'GHz', loops=[loop], requires_grad=sq.get_optim_mode()
-#     )
-
-#     circuit = sq.Circuit(
-#         elements={
-#             (0, 1): [cap, ind, junc]
-#         }
-#     )
-
-#     return circuit
-
-
 def get_cpb() -> Circuit:
     """Returns a Transmon qubit for test purposes."""
     

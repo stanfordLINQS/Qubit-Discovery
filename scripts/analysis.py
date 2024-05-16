@@ -70,7 +70,7 @@ def copy_circuit(circuit):
     for edge, elements in circuit.elements.items():
         new_elements = []
         for element in elements:
-            element_val = element._value.detach().numpy()
+            element_val = element.internal_value.detach().numpy()
             if type(element) is sq.elements.Capacitor:
                 new_element = sq.Capacitor(element_val, cap_unit, Q=1e6, requires_grad=optim_mode)
             elif type(element) is sq.elements.Inductor:

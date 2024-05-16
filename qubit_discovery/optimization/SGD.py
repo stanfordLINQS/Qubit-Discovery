@@ -105,14 +105,14 @@ def run_SGD(
             )
 
         with torch.no_grad():
-            for element in list(circuit._parameters.keys()):
-                norm_factor = element._value
-                element._value.grad *= norm_factor
+            for elem_value in circuit.parameters:
+                norm_factor = elem_value
+                elem_value.grad *= norm_factor
                 if gradient_clipping:
-                    clamp_gradient(element, gradient_clipping_threshold)
-                element._value.grad *= norm_factor
+                    clamp_gradient(elem_value, gradient_clipping_threshold)
+                elem_value.grad *= norm_factor
                 if learning_rate_scheduler:
-                    element._value.grad *= (scheduler_decay_rate ** iteration)
+                    elem_value.grad *= (scheduler_decay_rate ** iteration)
             print('\n')
 
         # Step (to truly step, need to update the circuit as well)

@@ -7,9 +7,6 @@ from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    set_grad_zero,
-    get_grad,
-    set_params,
     init_records,
     update_record,
     save_results,
@@ -24,19 +21,19 @@ LossFunctionType = Callable[
 
 
 def run_BFGS(
-        circuit: Circuit,
-        circuit_code: str,
-        loss_metric_function: LossFunctionType,
-        name: str,
-        num_eigenvalues: int,
-        total_trunc_num: int,
-        save_loc: Optional[str] = None,
-        bounds: Optional = None,
-        lr: float = 1e3,
-        max_iter: int = 100,
-        tolerance: float = 1e-15,
-        verbose: bool = False,
-        save_intermediate_circuits: bool = True
+    circuit: Circuit,
+    circuit_code: str,
+    loss_metric_function: LossFunctionType,
+    name: str,
+    num_eigenvalues: int,
+    total_trunc_num: int,
+    save_loc: Optional[str] = None,
+    bounds: Optional = None,
+    lr: float = 1e3,
+    max_iter: int = 100,
+    tolerance: float = 1e-15,
+    verbose: bool = False,
+    save_intermediate_circuits: bool = True
 ) -> Tuple[Tensor, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
@@ -85,7 +82,7 @@ def run_BFGS(
     )
 
     def objective_func(cr: Circuit, x: Tensor, n_eigs: int):
-        set_params(cr, x)
+        cr.parameters = x
         cr.diag(n_eigs)
         t_loss, _, _ = loss_metric_function(cr)
 
@@ -121,8 +118,8 @@ def run_BFGS(
 
         loss = objective_func(circuit, params, num_eigenvalues)
         loss.backward()
-        gradient = get_grad(circuit)
-        set_grad_zero(circuit)
+        gradient = circuit.parameters_grad
+        circuit.zero_parameters_grad()
 
         p = -torch.matmul(H, gradient)
 
@@ -144,8 +141,8 @@ def run_BFGS(
 
         loss_next = objective_func(circuit, params_next, num_eigenvalues)
         loss_next.backward()
-        next_gradient = get_grad(circuit)
-        set_grad_zero(circuit)
+        next_gradient = circuit.parameters_grad
+        circuit.zero_parameters_grad()
 
         loss_diff = loss_next - loss
         loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))
@@ -198,16 +195,16 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 
 def backtracking_line_search(
-        circuit: Circuit,
-        objective_func: Callable[[Circuit, Tensor, int], Tensor],
-        params: torch.tensor,  # params at starting point
-        gradient: torch.tensor,  # gradient at starting point
-        p: torch.tensor,  # search direction,
-        num_eigenvalues: int,
-        bounds=None,
-        lr=1.0,
-        c=1e-45,
-        rho=0.1
+    circuit: Circuit,
+    objective_func: Callable[[Circuit, Tensor, int], Tensor],
+    params: torch.tensor,  # params at starting point
+    gradient: torch.tensor,  # gradient at starting point
+    p: torch.tensor,  # search direction,
+    num_eigenvalues: int,
+    bounds=None,
+    lr=1.0,
+    c=1e-45,
+    rho=0.1
 ) -> float:
     """At end of line search, `circuit` will have its internal parameters set
     to ``params + alpha * p``.

@@ -46,7 +46,9 @@ OPTIONAL_KEYS = ["num_best"]
 
 PLOT_SCHEME = {
     'JJ': 'b', 'JL': 'darkorange',
-    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g'
+    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
+    'JCJ': 'tab:blue', 'JCL': 'tab:orange',
+    'J': 'tab:cyan'
 }
 
 # metric keys for plotting.
@@ -58,11 +60,11 @@ METRIC_KEYS = [
     't2_charge',                    # (1, 1) plot position
     't2_cc',                        # (1, 2) plot position
     't1',                           # (2, 0) plot position
-    'gate_speed',                   # (2, 1) plot position
-    'number_of_gates',              # (2, 2) plot position
-    't2',                           # (3, 0) plot position
-    't2_proxy',                     # (3, 1) plot position
-    'frequency',                    # (3, 2) plot position
+    't2',                           # (2, 1) plot position
+    'frequency',                    # (2, 2) plot position
+    't',                            # (3, 0) plot position
+    'gate_speed',                   # (3, 1) plot position
+    'number_of_gates',              # (3, 2) plot position
 ]
 
 # loss keys for plotting .
@@ -141,6 +143,7 @@ def plot_circuit_metrics(
             axs[i, j].set_yscale('log')
             axs[i, j].legend(loc="upper left")
         except KeyError:
+            print("keyerror")
             pass
 
 

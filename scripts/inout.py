@@ -101,6 +101,7 @@ YAML_KEYS = [
 UNITS = {
     'frequency': '[GHz]',
     'gate_speed': '[GHz]',
+    't': '[s]',
     't1': '[s]',
     't1_capacitive': '[s]',
     't1_inductive': '[s]',
