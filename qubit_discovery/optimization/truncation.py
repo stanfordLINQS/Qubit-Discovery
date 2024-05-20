@@ -12,10 +12,9 @@ from SQcircuit import get_optim_mode, Circuit
 def get_reshaped_eigvec(
     circuit: Circuit,
     eig_vec_idx: int,
-) -> Tuple[np.ndarray, Tuple[np.ndarray, ...]]:
+) -> Tuple[np.ndarray, List[np.ndarray, ...]]:
     """
-    Return the eigenvec, index1_eigenvec and index2_eigenvec part of
-    the eigenvectors.
+    Returns the eigenvec and maximum magnitudes per mode index of the eigenvectors.
     """
 
     assert len(circuit.efreqs) != 0, "circuit should be diagonalized first."
@@ -27,18 +26,16 @@ def get_reshaped_eigvec(
         eigenvector = circuit.evecs[eig_vec_idx].full()
     eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
 
-    if len(circuit.m) == 1:
-        eigvec_mag = np.abs(eigenvector) ** 2
-        return eigvec_mag, (eigvec_mag, )
-    elif len(circuit.m) == 2:
-        # Extract maximum magnitudes of eigenvector entries along each mode axis
-        mode_2_magnitudes = np.max(np.abs(eigenvector_reshaped) ** 2, axis=1)
-        offset_idx = np.argmax(mode_2_magnitudes)
-        mode_1_magnitudes = np.abs(eigenvector_reshaped[offset_idx, :]) ** 2
-        eigvec_mag = np.abs(eigenvector) ** 2
-        return eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes)
-    else:
-        raise NotImplementedError
+    eigvec_mag = np.abs(eigenvector) ** 2
+    mode_magnitudes = []
+    total_dim = np.shape(eigenvector)[0]
+    for mode_idx, mode_size in enumerate(circuit.m):
+      mode_eigvec = np.moveaxis(eigenvector_reshaped, mode_idx, 0)
+      mode_eigvec = np.reshape(mode_eigvec, (mode_size, total_dim // mode_size))
+      M = np.max(np.abs(mode_eigvec)**2, -1)
+      mode_magnitudes.append(M)
+
+    return eigvec_mag, mode_magnitudes
 
 
 def fit_mode(
@@ -255,7 +252,7 @@ def test_convergence(
     eig_vec_idx: int = 0,
     t: int = 10,
     threshold: float = 1e-5,
-) -> Tuple[bool, Tuple[float, ...]]:
+) -> Tuple[bool, List[float, ...]]:
     """
     Test convergence of a circuit with one or two modes (test for more modes
     not yet implemented).
@@ -264,43 +261,26 @@ def test_convergence(
     each mode individually of the `eig_vec_idx`th eigenvector are each on 
     average less than `threshold`.
 
-    Returns a boolean of whether the convergence test passed, and a tuple
+    Returns a boolean of whether the convergence test passed, and a list
     of the average values of the last `t` components for each mode.
     """
     assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
-    if len(circuit.m) == 1:
-        eigvec_mag, (mode_1_magnitudes, ) = get_reshaped_eigvec(
-            circuit,
-            eig_vec_idx
-        )
+    eigvec_mag, mode_magnitudes = get_reshaped_eigvec(
+        circuit,
+        eig_vec_idx
+    )
 
-        epsilon = np.average(mode_1_magnitudes[-t:])
-        
-        return epsilon < threshold, (epsilon, )
-
-    elif len(circuit.m) == 2:
-        eigvec_mag, (mode_1_magnitudes, mode_2_magnitudes) = get_reshaped_eigvec(
-            circuit,
-            eig_vec_idx,
-        )
-
-        y1, y2 = mode_1_magnitudes[-t:], mode_2_magnitudes[-t:]
-
-        assert_message = "Need at least 4 modes to check both parities"
-        assert len(y1) >= 4 and len(y2) >= 4, assert_message
-        if len(y1) <= t:
-            epsilon_1 = (y1[-1] + y1[-2]) / 2
+    y = [M[-t:] for M in mode_magnitudes]
+    assert_message = "Need at least 4 modes to check both parities"
+    assert all([len(yi) >= 4 for yi in y]), assert_message
+    epsilon = []
+    for yi in y:
+        if len(yi) <= t:
+            epsilon_i = (yi[-1] + yi[-2]) / 2
         else:
-            epsilon_1 = np.average(y1)
-        if len(y2) <= t:
-            epsilon_2 = (y2[-1] + y2[-2]) /2
-        else:
-            epsilon_2 = np.average(y2)
-
-        if epsilon_1 > threshold or epsilon_2 > threshold:
-            return False, (epsilon_1, epsilon_2)
-
-        return True, (epsilon_1, epsilon_2)
-    else:
-        raise NotImplementedError
+            epsilon_i = np.average(yi)
+        epsilon.append(epsilon_i)
+    if any([epsilon_i > threshold for epsilon_i in epsilon]):
+        return False, epsilon
+    return True, epsilon
