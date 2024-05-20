@@ -155,6 +155,7 @@ def main() -> None:
             loss_metric_function=my_loss_function,
             name=parameters['name'] + '_' + str(parameters['seed']),
             num_eigenvalues=parameters['num_eigenvalues'],
+            baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
             bounds=bounds,
             save_loc=directory.get_records_dir(),
