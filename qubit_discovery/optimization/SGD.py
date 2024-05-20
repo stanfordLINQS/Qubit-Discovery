@@ -25,7 +25,7 @@ learning_rate_scheduler = True
 scheduler_decay_rate = 0.99
 gradient_clipping_threshold = 2
 gc_norm_type = 'inf'
-learning_rate = 1e-2
+learning_rate = 1e-1
 
 
 def run_SGD(
@@ -53,7 +53,7 @@ def run_SGD(
     """
 
     loss_record, metric_record = None, None
-    # Initialise optimiser
+    # Initialize optimizer
     optimizer = torch.optim.SGD(
         circuit.parameters,
         nesterov=nesterov_momentum,
@@ -80,7 +80,14 @@ def run_SGD(
 
         # Calculate loss, backpropagation
         total_loss, loss_values, metric_values = loss_metric_function(circuit)
+
+        from datetime import datetime
+
+        a = datetime.now()
         total_loss.backward()
+        b = datetime.now()
+        c = b - a
+        print(f"backwards time: {c.total_seconds()}")
 
         # Store history
         if loss_record is None:
