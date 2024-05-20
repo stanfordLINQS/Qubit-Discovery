@@ -202,16 +202,16 @@ def not_param_in_bounds(params, bounds, circuit_element_types) -> bool:
 
 
 def backtracking_line_search(
-        circuit: Circuit,
-        objective_func: Callable[[Circuit, Tensor, int], Tensor],
-        params: torch.tensor,  # params at starting point
-        gradient: torch.tensor,  # gradient at starting point
-        p: torch.tensor,  # search direction,
-        num_eigenvalues: int,
-        bounds=None,
-        lr=1.0,
-        c=1e-45,
-        rho=0.1
+    circuit: Circuit,
+    objective_func: Callable[[Circuit, Tensor, int], Tensor],
+    params: torch.tensor,  # params at starting point
+    gradient: torch.tensor,  # gradient at starting point
+    p: torch.tensor,  # search direction,
+    num_eigenvalues: int,
+    bounds=None,
+    lr=1.0,
+    c=1e-45,
+    rho=0.1
 ) -> float:
     """At end of line search, `circuit` will have its internal parameters set
     to ``params + alpha * p``.
