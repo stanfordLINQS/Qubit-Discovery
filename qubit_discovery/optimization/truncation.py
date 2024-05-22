@@ -12,7 +12,7 @@ from SQcircuit import get_optim_mode, Circuit
 def get_reshaped_eigvec(
     circuit: Circuit,
     eig_vec_idx: int,
-) -> Tuple[np.ndarray, List[np.ndarray, ...]]:
+) -> Tuple[np.ndarray, List[np.ndarray]]:
     """
     Returns the eigenvec and maximum magnitudes per mode index of the eigenvectors.
     """
@@ -138,6 +138,7 @@ def trunc_num_heuristic(
     eig_vec_idx: int = 0,
     K: int=1000,
     min_trunc: int=4,
+    # charge_mode_cutoff: int=20,
     axes: Optional[Axes]=None
 ) -> List[int]:
     """
@@ -150,6 +151,7 @@ def trunc_num_heuristic(
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
     num_charge_modes = np.sum(circuit.omega == 0)
+    charge_mode_cutoff = trunc_num_average = K ** (1 / len(self.omega))
 
     if axes is not None:
         assert len(axes) == len(harmonic_modes),\
@@ -157,9 +159,9 @@ def trunc_num_heuristic(
 
     # Ensure each mode has at least `min_trunc` by allocating truncation
     # numbers as proportion of `min_trunc`
-    K = int(K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes)
+    K = int(K / charge_mode_cutoff ** num_charge_modes)
 
-    _, mode_magnitudes = get_reshaped_eigvec_new(
+    _, mode_magnitudes = get_reshaped_eigvec(
         circuit,
         eig_vec_idx,
     )
@@ -168,9 +170,10 @@ def trunc_num_heuristic(
 
     k = np.zeros_like(harmonic_modes, dtype=np.float64)
     for mode_idx, mode in enumerate(harmonic_modes):
+        axis=axes[mode_idx] if axes else None
         fit_results = fit_mode(harmonic_mode_magnitudes[mode_idx],
                                both_parities=True,
-                               axis=axes[mode_idx])
+                               axis=axis)
         ki, _, _ = get_slow_fit(fit_results)
         k[mode_idx] = ki
 
@@ -180,16 +183,17 @@ def trunc_num_heuristic(
     k[k < 0] = np.mean(k[k > 0])
 
     # Allocate relative trunc number ratio based on decay constant ratio
-    ratio = np.prod(k) / k
+    ratio = np.power(np.prod(k), 1 / len(k)) / k
 
     # Reweight [mi, ] such that mi/mj=kj/ki, *mi=K
     mode_results = np.power(K * ratio, 1 / len(harmonic_modes))
 
     # Edge case: If a trunc number is greater than K, set it to K
-    mode_results = np.minimum(mode_results, K)
+    mode_results = np.floor(np.minimum(mode_results, K))
+    mode_results[mode_results == 0] = 1
 
     # Assign harmonic modes
-    harmonic_mode_values = np.ceil(mode_results) * min_trunc
+    harmonic_mode_values = mode_results * min_trunc
     trunc_nums[circuit.omega != 0] = harmonic_mode_values
     # Assign charge modes
     trunc_nums[circuit.omega == 0] = charge_mode_cutoff
@@ -217,7 +221,7 @@ def assign_trunc_nums(
             List of truncation numbers for each mode of circuit
     """
     if len(circuit.m) == 1:
-        print("re-allocate truncation numbers (one mode)")
+        print("re-allocate truncation numbers (single mode)")
         circuit.set_trunc_nums([total_trunc_num, ])
         return [total_trunc_num, ]
 
@@ -229,8 +233,8 @@ def assign_trunc_nums(
         )
         return circuit.trunc_nums
 
-    elif len(circuit.m) == 2:
-        print("re-allocate truncation numbers (two modes)")
+    else:
+        print("re-allocate truncation numbers (2+ modes)")
         trunc_nums = trunc_num_heuristic(
             circuit,
             K=total_trunc_num,
@@ -239,8 +243,6 @@ def assign_trunc_nums(
         )
         circuit.set_trunc_nums(trunc_nums)
         return trunc_nums
-    else:
-        raise NotImplementedError
 
 
 def test_convergence(
@@ -248,13 +250,13 @@ def test_convergence(
     eig_vec_idx: int = 0,
     t: int = 10,
     threshold: float = 1e-5,
-) -> Tuple[bool, List[float, ...]]:
+) -> Tuple[bool, List[float]]:
     """
     Test convergence of a circuit with one or two modes (test for more modes
     not yet implemented).
 
-    Requires the last `t` (if available) elements corresponding to 
-    each mode individually of the `eig_vec_idx`th eigenvector are each on 
+    Requires the last `t` (if available) elements corresponding to
+    each mode individually of the `eig_vec_idx`th eigenvector are each on
     average less than `threshold`.
 
     Returns a boolean of whether the convergence test passed, and a list
