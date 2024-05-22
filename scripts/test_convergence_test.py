@@ -1,0 +1,224 @@
+"""
+Evaluate convergence test on randomly sampled (or fixed) circuit.
+
+Usage:
+  test_convergence_test.py <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
+  --init_circuit=<init_circuit>]
+  test_convergence_test.py -h | --help
+  test_convergence_test.py --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+
+  -c, --circuit_code=<circuit_code>         Circuit code
+  -s, --seed=<seed>                         Seed for random generators
+  -i, --init_circuit=<init_circuit>         Set initial circuit params
+"""
+
+import dill as pickle
+import os
+import random
+
+from docopt import docopt
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+import SQcircuit as sq
+from SQcircuit import Circuit
+from qubit_discovery.utils.sampler import CircuitSampler
+from qubit_discovery.optimization.truncation import assign_trunc_nums, test_convergence
+
+from plot_utils import load_final_circuit
+from inout import load_yaml_file, add_command_line_keys, Directory
+
+################################################################################
+# General Settings.
+################################################################################
+
+# Keys that should be in either command line or Yaml file.
+YAML_OR_COMMANDLINE_KEYS = [
+    "seed",
+    "circuit_code",
+    "init_circuit",
+]
+
+N_EIG_DIAG = 10
+N_EIG_FLUX_SPECTRA = 2
+PHI_VALUES = np.concatenate([np.linspace(0, 0.4, 15),
+                             np.linspace(0.4, 0.6, 31)[1:],
+                             np.linspace(0.6, 1, 15)[1:]])
+
+################################################################################
+# Helper functions.
+################################################################################
+
+
+def eval_list(ls: list) -> list:
+    """Evaluates elements of a list and returns as a list.
+    Warning: this can execute arbitrary code! Don't accept uninspected YAML
+    files from strangers.
+    """
+    return [eval(i) for i in ls]
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def calculate_flux_spectrum(circuit):
+    spectrum = np.zeros((N_EIG_FLUX_SPECTRA, len(PHI_VALUES)))
+
+    loop = circuit.loops[0]
+    for flux_idx, phi in enumerate(PHI_VALUES):
+        loop.set_flux(phi)
+        spectrum[:, flux_idx] = circuit.diag(n_eig=N_EIG_FLUX_SPECTRA)[0].detach().numpy()
+
+    return spectrum
+
+
+def plot_flux_spectrum(spectrum, axis):
+    for eigen_idx in range(N_EIG_FLUX_SPECTRA):
+        axis.plot(PHI_VALUES,
+                  (spectrum[eigen_idx, :] - spectrum[0, :]),
+                  marker='o',
+                  markersize=1.5)
+    axis.set_xlabel(r"$\Phi_{ext}/\Phi_0$")
+    axis.set_ylabel(r" $\omega_n / 2\pi$  (GHz)")
+
+
+def write_test_results(axis, text):
+    props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)  # bbox features
+    axis.text(1.03, 0.98, text.strip(),
+              transform=axis.transAxes,
+              fontsize=12,
+              verticalalignment='top',
+              bbox=props)
+
+def evaluate_trunc_number(circuit, trunc_nums, axis):
+    circuit.set_trunc_nums(trunc_nums)
+    circuit.diag(N_EIG_DIAG)
+    passed_test, test_values = test_convergence(circuit, eig_vec_idx=1)
+    spectrum = calculate_flux_spectrum(circuit)
+    plot_flux_spectrum(spectrum, axis)
+    output_text = f'Trunc numbers: {trunc_nums}\n'
+    output_text += f'Test passed: {passed_test}\n'
+    output_text += f'Test values (epsilon): {test_values}'
+    write_test_results(axis, output_text)
+
+################################################################################
+# Main.
+################################################################################
+
+
+def main() -> None:
+
+    ############################################################################
+    # Load the Yaml file and command line parameters.
+    ############################################################################
+
+    arguments = docopt(__doc__, version='Optimize 0.8')
+
+    parameters = load_yaml_file(arguments['<yaml_file>'])
+
+    parameters = add_command_line_keys(
+        parameters=parameters,
+        arguments=arguments,
+        keys=YAML_OR_COMMANDLINE_KEYS,
+    )
+
+    directory = Directory(parameters, arguments)
+    plot_output_dir = directory.get_plots_dir()
+    records_dir=directory.get_records_dir()
+
+
+    ############################################################################
+    # Initiate the optimization settings.
+    ############################################################################
+
+    sq.set_optim_mode(True)
+
+    capacitor_range = eval_list(parameters['capacitor_range'])
+    junction_range = eval_list(parameters['junction_range'])
+    inductor_range = eval_list(parameters['inductor_range'])
+
+    seed = parameters['seed']
+    set_seed(int(seed))
+    circuit_code = parameters['circuit_code']
+    name = parameters['name']
+
+    if parameters['init_circuit'] == "":
+        sampler = CircuitSampler(
+            num_elements=len(parameters['circuit_code']),
+            capacitor_range=capacitor_range,
+            inductor_range=inductor_range,
+            junction_range=junction_range
+        )
+        circuit = sampler.sample_circuit_code(parameters['circuit_code'])
+        if circuit.loops:
+            circuit.loops[0].set_flux(0.5 - 1e-2)
+        print("Circuit sampled!")
+    else:
+        circuit = load_final_circuit(parameters['init_circuit'])
+        circuit.update()
+        circuit._toggle_fullcopy = True
+        print("Circuit loaded!")
+
+    fig, axes = plt.subplots(3, 1, figsize=(9, 12))
+    fig.add_gridspec(nrows=3, height_ratios=[2, 1, 1])
+
+    ############################################################################
+    # Test baseline truncation numbers.
+    ############################################################################
+
+    baseline_trunc_nums = np.array(circuit.truncate_circuit(parameters['K'],
+                                                            heuristic=True))
+    baseline_trunc_nums[baseline_trunc_nums < 4] = 4
+    baseline_trunc_nums = list(baseline_trunc_nums)
+    print(f"baseline_trunc_nums: {baseline_trunc_nums}")
+    evaluate_trunc_number(circuit, baseline_trunc_nums, axes[1])
+
+    ############################################################################
+    # Test even distribution of truncation numbers.
+    ############################################################################
+
+    even_trunc_nums = circuit.truncate_circuit(parameters['K'],
+                                               heuristic=False)
+    print(f"even_trunc_nums: {even_trunc_nums}")
+    evaluate_trunc_number(circuit, even_trunc_nums, axes[0])
+
+    ############################################################################
+    # Test heuristic truncation numbers.
+    ############################################################################
+
+    heuristic_trunc_nums = assign_trunc_nums(circuit, parameters['K'])
+    print(f"heuristic_trunc_nums: {heuristic_trunc_nums}")
+    evaluate_trunc_number(circuit, heuristic_trunc_nums, axes[2])
+
+    ############################################################################
+    # Save circuit.
+    ############################################################################
+
+    save_suffix = f'{circuit_code}_{name}_{seed}'
+    print(f"save_suffix:{save_suffix}")
+    circuit_save_url = os.path.join(
+        records_dir,
+        f'circuit_record_{save_suffix}.pickle'
+    )
+    with open(circuit_save_url, 'wb') as f:
+        pickle.dump(circuit.picklecopy(), f)
+
+    ############################################################################
+    # Save figure.
+    ############################################################################
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_output_dir, f'flux_spectra_{save_suffix}.png'),
+                dpi=300,
+                bbox_inches="tight")
+
+if __name__ == "__main__":
+    main()
