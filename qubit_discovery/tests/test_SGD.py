@@ -1,4 +1,4 @@
-"""Test Module for BFGS algorithm."""
+"""Test Module for SGD algorithm."""
 
 import torch
 

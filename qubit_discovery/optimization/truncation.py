@@ -1,9 +1,12 @@
 """Contains helper functions for estimating optimal truncation numbers"""
 
 from typing import Tuple, List, Optional
+import itertools
+
+import scipy
+import scipy.signal
 
 import numpy as np
-import scipy, scipy.signal
 from matplotlib.axes import Axes
 
 from SQcircuit import get_optim_mode, Circuit
@@ -294,7 +297,7 @@ def test_convergence(
         else:
             epsilon_1 = np.average(y1)
         if len(y2) <= t:
-            epsilon_2 = (y2[-1] + y2[-2]) /2
+            epsilon_2 = (y2[-1] + y2[-2]) / 2
         else:
             epsilon_2 = np.average(y2)
 
@@ -304,3 +307,115 @@ def test_convergence(
         return True, (epsilon_1, epsilon_2)
     else:
         raise NotImplementedError
+
+
+def get_m_shrank(circuit: Circuit, t: int) -> List[int]:
+    """Return the shrank truncation number for each circuit modes.
+
+    Parameters
+    ----------
+        circuit:
+            Circuit object of SQcircuit.
+        t:
+            Integer specifying total number of indices that are not in the
+            shrank system.
+    """
+
+    sub_red = int(t ** (1 / len(circuit.m)))
+    min_sub_red = np.ceil(.2*np.array(circuit.m))
+    m_shrank_idx = [
+        i for i, m_i in enumerate(circuit.m) if sub_red < min_sub_red[i]
+    ]
+    if len(m_shrank_idx) != len(circuit.m):
+        pass
+
+
+
+
+def get_indices(m_shrank: List[int], m: List[int]) -> List[int]:
+    """Return all sub mode indices that are not in the shrank system.
+
+    Parameters
+    ----------
+        m_shrank:
+            List of integer representing the truncation
+            numbers for shrank system.
+        m:
+            List of integer representing the truncation numbers for the circuit
+            modes.
+    """
+
+    ranges = [range(m[i]) for i in range(len(m))]
+    all_combinations = itertools.product(*ranges)
+
+    # Filter out the indices that are in the shrank system.
+    sub_indices = list(filter(
+        lambda x: not all(x[i] < m_shrank[i] for i in range(len(m_shrank))),
+        all_combinations
+    ))
+
+    sub_indices_arr = np.array(sub_indices).T
+
+    indices = np.ravel_multi_index(sub_indices_arr, m)
+
+    return indices
+
+
+def filter_vec(vec: np.ndarray, indices: List[int]) -> np.ndarray:
+    """Filter out the specified indices of a vector by setting those
+    elements to zero.
+
+    Parameters
+    ----------
+        vec:
+            `np.ndarray` specifying the vector to be filtered.
+        indices:
+            List of integer representing the indices to be filtered.
+    """
+
+    vec_new = vec.copy()
+
+    vec_new[indices] = 0
+
+    return vec_new
+
+
+def check_convergence(
+    circuit: Circuit,
+    i: int,
+    t: int = 64,
+    threshold: float = 1e-3,
+) -> bool:
+    """checks if the convergence criteria for diagonalization has been met.
+
+    Parameters
+    ----------
+        circuit:
+            Diagonalized circuit to be checked for convergence.
+        i:
+            Integer specifying the index of the eigenvalue.
+        t:
+            Integer specifying total number of indices that are not in the
+            shrank system.
+        threshold:
+            float specifying the threshold for the convergence criteria.
+    """
+
+    # reduction for each subsystem
+    sub_red = int(t**(1/len(circuit.m)))
+    m_shrank = [m_i-sub_red for m_i in circuit.m]
+
+    indices = get_indices(m_shrank, circuit.m)
+
+    evec = (circuit.evecs[i]).full()
+
+    filtered_evec = filter_vec(evec, indices)
+
+    error = float((1 - evec.conj().T @ filtered_evec).real)
+
+    print(error)
+
+    if error < threshold:
+        return True
+
+    return False
