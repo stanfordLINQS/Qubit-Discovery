@@ -114,7 +114,6 @@ def test_circuit_sampling_from_code_3() -> None:
 
     elements = get_elements_from_code("JJ(J(LC)C)")
 
-    print(elements)
     elem1, elem2, elem3 = elements[(0, 1)]
     assert isinstance(elem1, sq.Junction)
     assert isinstance(elem2, sq.Junction)
