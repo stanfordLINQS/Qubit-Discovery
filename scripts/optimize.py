@@ -28,7 +28,7 @@ import SQcircuit as sq
 from SQcircuit import Circuit
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics
-from qubit_discovery.utils.sampler import CircuitSampler
+from qubit_discovery.optimization.sampler import CircuitSampler
 
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
