@@ -114,7 +114,6 @@ def main() -> None:
 
     if parameters['init_circuit'] == "":
         sampler = CircuitSampler(
-            num_elements=len(parameters['circuit_code']),
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
             junction_range=junction_range
