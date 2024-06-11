@@ -48,7 +48,7 @@ PLOT_SCHEME = {
     'JJ': 'b', 'JL': 'darkorange',
     'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
     'JCJ': 'tab:blue', 'JCL': 'tab:orange',
-    'J': 'tab:cyan'
+    'J': 'tab:cyan', 'JLJL': 'tab:red'
 }
 
 # metric keys for plotting.
@@ -128,6 +128,8 @@ def plot_circuit_metrics(
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
+        print(f"key: {key}")
+        print(f"run keys: {run.keys()}")
         try:
             axs[i, j].plot(
                 run[key],
@@ -246,6 +248,13 @@ def main() -> None:
                 circuit_code=circuit_code,
                 idx=id_num,
             ))
+
+            x = directory.get_record_file_dir(
+                record_type="loss",
+                circuit_code=circuit_code,
+                idx=id_num,
+            )
+            print(f"record file dir: {x}")
 
             metrics_record = load_record(directory.get_record_file_dir(
                 record_type="metrics",

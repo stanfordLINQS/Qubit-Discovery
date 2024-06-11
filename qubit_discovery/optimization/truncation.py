@@ -137,8 +137,8 @@ def trunc_num_heuristic(
     circuit: Circuit,
     eig_vec_idx: int = 0,
     K: int=1000,
-    min_trunc: int=4,
-    # charge_mode_cutoff: int=20,
+    min_trunc: int=1,
+    charge_mode_cutoff: int=15,
     axes: Optional[Axes]=None
 ) -> List[int]:
     """
@@ -151,32 +151,38 @@ def trunc_num_heuristic(
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
     num_charge_modes = np.sum(circuit.omega == 0)
-    charge_mode_cutoff = trunc_num_average = K ** (1 / len(self.omega))
+    # charge_mode_cutoff = trunc_num_average = np.ceil(K ** (1 / len(circuit.omega)))
+    # TODO: Assign charge mode more cleverly rather than hard-coding
 
     if axes is not None:
-        assert len(axes) == len(harmonic_modes),\
-            "Number of axes for fitting plots should match number of harmonic modes"
+        assert len(axes) >= len(circuit.omega),\
+            "Number of axes for fitting plots should match or exceed number of modes"
 
     # Ensure each mode has at least `min_trunc` by allocating truncation
     # numbers as proportion of `min_trunc`
-    K = int(K / charge_mode_cutoff ** num_charge_modes)
+    K = K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes
 
     _, mode_magnitudes = get_reshaped_eigvec(
         circuit,
         eig_vec_idx,
     )
-    harmonic_indices = np.nonzero(circuit.omega)[0]
-    harmonic_mode_magnitudes = [mode_magnitudes[int(harmonic_idx)] for harmonic_idx in harmonic_indices]
+    # harmonic_indices = np.nonzero(circuit.omega)[0]
+    # harmonic_mode_magnitudes = [mode_magnitudes[int(harmonic_idx)] for harmonic_idx in harmonic_indices]
 
     k = np.zeros_like(harmonic_modes, dtype=np.float64)
-    for mode_idx, mode in enumerate(harmonic_modes):
-        axis=axes[mode_idx] if axes else None
-        fit_results = fit_mode(harmonic_mode_magnitudes[mode_idx],
-                               both_parities=True,
-                               axis=axis)
-        ki, _, _ = get_slow_fit(fit_results)
-        k[mode_idx] = ki
+    d = np.zeros_like(harmonic_modes, dtype=np.float64)
 
+    for mode_idx, mode in enumerate(circuit.omega):
+        axis = axes[mode_idx] if axes is not None else None
+        if mode != 0:
+            fit_results = fit_mode(mode_magnitudes[mode_idx],
+                                   both_parities=True,
+                                   axis=axis)
+            ki, _, di = get_slow_fit(fit_results)
+            k[mode_idx] = ki
+            d[mode_idx] = di
+
+    print(f"k: {k}")
     if all([ki < 0 for ki in k]):
         k = [1 for _ in range(len(k))]
 
@@ -185,15 +191,26 @@ def trunc_num_heuristic(
     # Allocate relative trunc number ratio based on decay constant ratio
     ratio = np.power(np.prod(k), 1 / len(k)) / k
 
-    # Reweight [mi, ] such that mi/mj=kj/ki, *mi=K
+    # Weight [mi, ] such that mi/mj=kj/ki, *mi=K
     mode_results = np.power(K * ratio, 1 / len(harmonic_modes))
 
-    # Edge case: If a trunc number is greater than K, set it to K
-    mode_results = np.floor(np.minimum(mode_results, K))
-    mode_results[mode_results == 0] = 1
+    # Shift by relative peaks
+    mode_results += d
+    mode_results *= np.power(K / np.prod(mode_results), 1 / len(harmonic_modes))
 
-    # Assign harmonic modes
-    harmonic_mode_values = mode_results * min_trunc
+    # Edge case: If mode number less than 1, rescale to 1 and rescale other mode numbers
+    # to keep total product constant
+    small_mode_results = mode_results[mode_results < 1]
+    large_mode_results = mode_results[mode_results >= 1]
+    rescale_factor = np.power(np.prod(small_mode_results), 1 / len(large_mode_results))
+    mode_results[mode_results >= 1] *= rescale_factor
+    mode_results[mode_results < 1] = 1
+
+    # Edge case: If a trunc number is greater than K, set it to K
+    mode_results = np.minimum(mode_results, K)
+
+    # Round to nearest integer and assign harmonic modes
+    harmonic_mode_values = np.floor(mode_results * min_trunc)
     trunc_nums[circuit.omega != 0] = harmonic_mode_values
     # Assign charge modes
     trunc_nums[circuit.omega == 0] = charge_mode_cutoff
@@ -203,7 +220,9 @@ def trunc_num_heuristic(
 
 def assign_trunc_nums(
     circuit: Circuit,
-    total_trunc_num: int
+    total_trunc_num: int,
+    axes=None,
+    min_trunc=1
 ) -> List[int]:
     """
     Heuristically re-assign truncation numbers for a circuit with one
@@ -239,7 +258,8 @@ def assign_trunc_nums(
             circuit,
             K=total_trunc_num,
             eig_vec_idx=1,
-            axes=None
+            min_trunc=min_trunc,
+            axes=axes
         )
         circuit.set_trunc_nums(trunc_nums)
         return trunc_nums
@@ -279,6 +299,10 @@ def test_convergence(
         else:
             epsilon_i = np.average(yi)
         epsilon.append(epsilon_i)
-    if any([epsilon_i > threshold for epsilon_i in epsilon]):
-        return False, epsilon
+    for mode_idx, epsilon_i in enumerate(epsilon):
+        # Exclude charge modes (for now) as they are fixed for a given K
+        if circuit.omega[mode_idx] != 0 and epsilon_i > threshold:
+            return False, epsilon
+    # if any([epsilon_i > threshold for epsilon_i in epsilon]):
+    #     return False, epsilon
     return True, epsilon

@@ -243,9 +243,14 @@ class Directory:
         {optim_type}_{name}/
         """
 
+        if 'optim_type' in self.parameters:
+            experiment_name = f'{self.parameters["optim_type"]}_'
+        else:
+            experiment_name = ''
+        experiment_name += self.parameters['name']
         experiment_dir = os.path.join(
             self.get_main_dir(),
-            f"{self.parameters['optim_type']}_{self.parameters['name']}"
+            experiment_name
         )
 
         # create the folder if it's not excited.
@@ -316,14 +321,15 @@ class Directory:
         """
 
         record_name = (
-            f"{self.parameters['optim_type']}"
-            f"_{record_type}"
-            f"_record"
-            f"_{circuit_code}"
-            f"_{self.parameters['name']}"
-            f"_{idx}"
+            f"{self.parameters['optim_type']}_" if 'optim_type' in self.parameters else "",
+            f"{record_type}",
+            f"_record",
+            f"_{circuit_code}",
+            f"_{self.parameters['name']}",
+            f"_{idx}",
             f".pickle"
         )
+        record_name = ''.join([str(word) for word in record_name])
 
         return os.path.join(
             self.get_records_dir(),
@@ -343,8 +349,8 @@ class Directory:
         """
 
         summary_name = (
-            f"{self.parameters['optim_type']}"
-            f"_circuit_summary"
+            f"{self.parameters['optim_type']}_" if 'optim_type' in self.parameters else ""
+            f"circuit_summary"
             f"_{circuit_code}"
             f"_{self.parameters['name']}"
             f"_{idx}.txt"

@@ -11,7 +11,7 @@ Options:
   -h --help     Show this screen.
   --version     Show version.
 
-  -i, --ids=<ids>                           ids of the circuits to be summarized
+  -i, --ids=<ids>                           ids of the circuits to be summarizedoptim_type
   -c, --circuit_code=<circuit_code>         Circuit code
   -o, --optim_type=<optim_type>             Optimization method
 """
@@ -39,7 +39,6 @@ from inout import (
 YAML_OR_COMMANDLINE_KEYS = [
     "ids",
     "circuit_code",
-    "optim_type",
 ]
 
 ################################################################################
