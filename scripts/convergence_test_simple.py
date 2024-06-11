@@ -16,7 +16,6 @@ Options:
   -i, --init_circuit=<init_circuit>         Set initial circuit params
 """
 
-import dill as pickle
 import os
 import random
 
@@ -25,9 +24,10 @@ import numpy as np
 import torch
 
 import SQcircuit as sq
-from SQcircuit import Circuit
 from qubit_discovery.optimization.sampler import CircuitSampler
-from qubit_discovery.optimization.truncation import assign_trunc_nums, test_convergence, get_reshaped_eigvec
+from qubit_discovery.optimization.truncation import (
+    assign_trunc_nums, test_convergence
+)
 
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
@@ -137,29 +137,33 @@ def main() -> None:
             circuit._toggle_fullcopy = True
             print("Circuit loaded!")
 
-        ############################################################################
+        ########################################################################
         # Test even distribution of truncation numbers.
-        ############################################################################
+        ########################################################################
 
-        even_trunc_nums = circuit.truncate_circuit(parameters['K'],
-                                                   heuristic=False)
+        even_trunc_nums = circuit.truncate_circuit(
+            parameters['K'],
+            heuristic=False
+        )
         print(f"even_trunc_nums: {even_trunc_nums}")
         even_split_passed = evaluate_trunc_number(circuit, even_trunc_nums)
 
-        ############################################################################
+        ########################################################################
         # Test heuristic truncation numbers.
-        ############################################################################
+        ########################################################################
 
-        heuristic_trunc_nums = np.array(assign_trunc_nums(circuit,
-                                                          parameters['K'],
-                                                          min_trunc=4))
+        heuristic_trunc_nums = np.array(assign_trunc_nums(
+            circuit,
+            parameters['K'],
+            min_trunc=4
+        ))
         heuristic_trunc_nums = list(heuristic_trunc_nums)
         print(f"heuristic_trunc_nums: {heuristic_trunc_nums}")
         heuristic_passed = evaluate_trunc_number(circuit, heuristic_trunc_nums)
 
-        ############################################################################
+        ########################################################################
         # Save test summary.
-        ############################################################################
+        ########################################################################
 
         if even_split_passed and heuristic_passed:
             test_summary = "0"
@@ -177,9 +181,7 @@ def main() -> None:
         )
 
         print(f"summary_save_url: {summary_save_url}")
-        with open(
-                summary_save_url, 'w'
-        ) as f:
+        with open(summary_save_url, 'w') as f:
             f.write(test_summary)
         f.close()
 

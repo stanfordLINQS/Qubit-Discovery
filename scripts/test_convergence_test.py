@@ -2,7 +2,7 @@
 Evaluate convergence test on randomly sampled (or fixed) circuit.
 
 Usage:
-  test_convergence_test.py <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
+  test_convergence_test.py <yaml_file> [--seed=<seed> --circuit_code=<circuit_code>\
   --init_circuit=<init_circuit>]
   test_convergence_test.py -h | --help
   test_convergence_test.py --version
@@ -16,9 +16,9 @@ Options:
   -i, --init_circuit=<init_circuit>         Set initial circuit params
 """
 
-import dill as pickle
 import os
 import random
+import dill as pickle
 
 from docopt import docopt
 import matplotlib.pyplot as plt
@@ -26,10 +26,13 @@ import numpy as np
 import torch
 
 import SQcircuit as sq
-from SQcircuit import Circuit
-from qubit_discovery.utils.sampler import CircuitSampler
-from qubit_discovery.optimization.truncation import assign_trunc_nums, test_convergence, get_reshaped_eigvec
 
+from qubit_discovery.utils.sampler import CircuitSampler
+from qubit_discovery.optimization.truncation import (
+    assign_trunc_nums,
+    test_convergence,
+    get_reshaped_eigvec
+)
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
 
@@ -46,8 +49,10 @@ YAML_OR_COMMANDLINE_KEYS = [
 
 N_EIG_DIAG = 10
 N_EIG_FLUX_SPECTRA = 10
-PHI_VALUES = np.concatenate([np.linspace(0, 0.4, 30),
-                             np.linspace(0.4, 0.5, 31)[1:]])
+PHI_VALUES = np.concatenate([
+    np.linspace(0, 0.4, 30),
+    np.linspace(0.4, 0.5, 31)[1:]
+])
 DEFAULT_FLUX_POINT = 0.5 - 1e-2
 
 
@@ -93,12 +98,15 @@ def plot_flux_spectrum(spectrum, axis):
 
 
 def write_test_results(axis, text):
-    props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)  # bbox features
-    axis.text(1.03, 0.98, text.strip(),
-              transform=axis.transAxes,
-              fontsize=12,
-              verticalalignment='top',
-              bbox=props)
+    # bbox features
+    props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)
+    axis.text(
+        1.03, 0.98, text.strip(),
+        transform=axis.transAxes,
+        fontsize=12,
+        verticalalignment='top',
+        bbox=props
+    )
 
 
 def evaluate_trunc_number(circuit, trunc_nums, axis):
@@ -189,57 +197,74 @@ def main() -> None:
         fig, axes = plt.subplots(3, 3, figsize=(27, 14))
         # fig.add_gridspec(nrows=3, height_ratios=[2, 1, 1])
 
-        ############################################################################
+        ########################################################################
         # Test baseline truncation numbers.
-        ############################################################################
+        ########################################################################
 
-        baseline_trunc_nums = np.array(circuit.truncate_circuit(parameters['K'],
-                                                                heuristic=True))
+        baseline_trunc_nums = np.array(circuit.truncate_circuit(
+            parameters['K'],
+            heuristic=True)
+        )
         baseline_trunc_nums[baseline_trunc_nums < 4] = 4
         baseline_trunc_nums = list(baseline_trunc_nums)
         print(f"baseline_trunc_nums: {baseline_trunc_nums}")
         evaluate_trunc_number(circuit, baseline_trunc_nums, axes[1, 2])
 
-        ############################################################################
+        ########################################################################
         # Test even distribution of truncation numbers.
-        ############################################################################
+        ########################################################################
 
-        even_trunc_nums = circuit.truncate_circuit(parameters['K'],
-                                                   heuristic=False)
+        even_trunc_nums = circuit.truncate_circuit(
+            parameters['K'],
+            heuristic=False
+        )
         print(f"even_trunc_nums: {even_trunc_nums}")
-        even_split_passed = evaluate_trunc_number(circuit, even_trunc_nums, axes[0, 2])
+        even_split_passed = evaluate_trunc_number(
+            circuit, even_trunc_nums, axes[0, 2]
+        )
 
         # Plot mode magnitudes used in heuristic test (up to three modes)
         _, mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
         for mode_magnitude_idx in range(min(3, len(mode_magnitudes))):
-            plot_mode_magnitudes(mode_magnitudes[mode_magnitude_idx],
-                                 axes[mode_magnitude_idx, 0])
+            plot_mode_magnitudes(
+                mode_magnitudes[mode_magnitude_idx],
+                axes[mode_magnitude_idx, 0]
+            )
 
-        ############################################################################
+        ########################################################################
         # Test heuristic truncation numbers.
-        ############################################################################
+        ########################################################################
 
-        heuristic_trunc_nums = np.array(assign_trunc_nums(circuit,
-                                                          parameters['K'],
-                                                          axes=axes[:, 0],
-                                                          min_trunc=4))
+        heuristic_trunc_nums = np.array(assign_trunc_nums(
+            circuit,
+            parameters['K'],
+            axes=axes[:, 0],
+            min_trunc=4)
+        )
         heuristic_trunc_nums = list(heuristic_trunc_nums)
         print(f"heuristic_trunc_nums: {heuristic_trunc_nums}")
-        heuristic_passed = evaluate_trunc_number(circuit, heuristic_trunc_nums, axes[2, 2])
+        heuristic_passed = evaluate_trunc_number(
+            circuit, heuristic_trunc_nums, axes[2, 2]
+        )
 
         # Plot mode magnitudes used in heuristic test (up to three modes)
         _, mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
         for mode_magnitude_idx in range(min(3, len(mode_magnitudes))):
-            print(f"mode magnitudes: {mode_magnitudes[mode_magnitude_idx].shape}")
+            print(
+                f"mode magnitudes: {mode_magnitudes[mode_magnitude_idx].shape}"
+            )
 
-            plot_mode_magnitudes(mode_magnitudes[mode_magnitude_idx],
-                                 axes[mode_magnitude_idx, 1])
+            plot_mode_magnitudes(
+                mode_magnitudes[mode_magnitude_idx],
+                axes[mode_magnitude_idx, 1]
+            )
 
-            ############################################################################
+            ####################################################################
             # Add metadata to plot.
-            ############################################################################
+            ####################################################################
 
-            props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)  # bbox features
+            props = dict(boxstyle='round', facecolor='yellow', alpha=0.1)
+            # bbox features
             plt.text(1.03, 0, f"Circuit code: {circuit_code}",
                      fontsize=12,
                      horizontalalignment='left',
@@ -247,9 +272,9 @@ def main() -> None:
                      transform=axes[-1, -1].transAxes,
                      bbox=props)
 
-        ############################################################################
+        ########################################################################
         # Save circuit.
-        ############################################################################
+        ########################################################################
 
         save_suffix = f'{circuit_code}_{name}_{seed}'
         print(f"save_suffix:{save_suffix}")
@@ -260,9 +285,9 @@ def main() -> None:
         with open(circuit_save_url, 'wb') as f:
             pickle.dump(circuit.picklecopy(), f)
 
-        ############################################################################
+        ########################################################################
         # Save test summary.
-        ############################################################################
+        ########################################################################
 
         if even_split_passed and heuristic_passed:
             test_summary = "0"
@@ -284,14 +309,16 @@ def main() -> None:
             f.write(test_summary)
         f.close()
 
-        ############################################################################
+        ########################################################################
         # Save figure.
-        ############################################################################
+        ########################################################################
 
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_output_dir, f'flux_spectra_{save_suffix}.png'),
-                    dpi=300,
-                    bbox_inches="tight")
+        plt.savefig(
+            os.path.join(plot_output_dir, f'flux_spectra_{save_suffix}.png'),
+            dpi=300,
+            bbox_inches="tight"
+        )
 
 
 if __name__ == "__main__":
