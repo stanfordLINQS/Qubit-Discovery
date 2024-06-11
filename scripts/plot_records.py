@@ -2,7 +2,7 @@
 Plot optimization results.
 
 Usage:
-  plot_records.py <yaml_file>  [--num_runs=<num_runs> \
+  plot_records.py <yaml_file> [--num_runs=<num_runs> \
 --circuit_code=<circuit_code> --optim_type=<optim_type> --num_best=<num_best>]
   plot_records.py -h | --help
   plot_records.py --version
@@ -67,7 +67,7 @@ METRIC_KEYS = [
     'number_of_gates',              # (3, 2) plot position
 ]
 
-# loss keys for plotting .
+# loss keys for plotting.
 LOSS_KEYS = [
     'flux_sensitivity_loss',        # (0, 0) plot position
     'charge_sensitivity_loss',      # (0, 1) plot position
@@ -128,8 +128,6 @@ def plot_circuit_metrics(
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
-        print(f"key: {key}")
-        print(f"run keys: {run.keys()}")
         try:
             axs[i, j].plot(
                 run[key],
@@ -248,17 +246,6 @@ def main() -> None:
                 circuit_code=circuit_code,
                 idx=id_num,
             ))
-
-            if loss_record is None:
-                print(f"The file with id_num: {id_num} is corrupted.")
-                continue
-
-            x = directory.get_record_file_dir(
-                record_type="loss",
-                circuit_code=circuit_code,
-                idx=id_num,
-            )
-            print(f"record file dir: {x}")
 
             metrics_record = load_record(directory.get_record_file_dir(
                 record_type="metrics",
