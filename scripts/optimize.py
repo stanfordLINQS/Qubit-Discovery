@@ -28,7 +28,7 @@ import SQcircuit as sq
 from SQcircuit import Circuit
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics
-from qubit_discovery.utils.sampler import CircuitSampler
+from qubit_discovery.optimization.sampler import CircuitSampler
 
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
@@ -114,7 +114,6 @@ def main() -> None:
 
     if parameters['init_circuit'] == "":
         sampler = CircuitSampler(
-            num_elements=len(parameters['circuit_code']),
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
             junction_range=junction_range
@@ -155,6 +154,7 @@ def main() -> None:
             loss_metric_function=my_loss_function,
             name=parameters['name'] + '_' + str(parameters['seed']),
             num_eigenvalues=parameters['num_eigenvalues'],
+            baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
             bounds=bounds,
             save_loc=directory.get_records_dir(),

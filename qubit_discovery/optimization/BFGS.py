@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union, List
 
 import torch
 from torch import Tensor
@@ -26,6 +26,7 @@ def run_BFGS(
     loss_metric_function: LossFunctionType,
     name: str,
     num_eigenvalues: int,
+    baseline_trunc_nums: List[int],
     total_trunc_num: int,
     save_loc: Optional[str] = None,
     bounds: Optional = None,
@@ -51,6 +52,8 @@ def run_BFGS(
             Name identifying this run (e.g. seed, etc.)
         num_eigenvalues:
             Number of eigenvalues to calculate when diagonalizing.
+        baseline_trunc_nums:
+            Number of trunc nums to allocate for heuristic function.
         total_trunc_num:
             Maximum total truncation number to allocate.
         save_loc:
@@ -91,6 +94,10 @@ def run_BFGS(
     for iteration in range(max_iter):
         print(f"Iteration {iteration}")
 
+        # Test if circuit has at least one harmonic mode
+        if sum(circuit.omega != 0) > 0:
+            circuit.set_trunc_nums(baseline_trunc_nums)
+            circuit.diag(num_eigenvalues)
         assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
         converged, _ = test_convergence(circuit, eig_vec_idx=1)
