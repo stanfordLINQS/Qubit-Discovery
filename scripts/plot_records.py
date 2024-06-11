@@ -249,6 +249,10 @@ def main() -> None:
                 idx=id_num,
             ))
 
+            if loss_record is None:
+                print(f"The file with id_num: {id_num} is corrupted.")
+                continue
+
             x = directory.get_record_file_dir(
                 record_type="loss",
                 circuit_code=circuit_code,

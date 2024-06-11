@@ -11,7 +11,8 @@ def load_record(url: str) -> Any:
         with open(url, 'rb') as f:
             record = pickle.load(f)
         return record
-    except FileNotFoundError:
+    except Exception as e:
+        # print(f"Failed to load {file_path}: {e}")
         return None
 
 
