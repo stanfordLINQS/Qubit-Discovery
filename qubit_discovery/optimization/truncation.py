@@ -184,7 +184,7 @@ def trunc_num_heuristic(
 
     print(f"k: {k}")
     if all([ki < 0 for ki in k]):
-        k = [1 for _ in range(len(k))]
+        k = np.array([1 for _ in range(len(k))])
 
     k[k < 0] = np.mean(k[k > 0])
 
