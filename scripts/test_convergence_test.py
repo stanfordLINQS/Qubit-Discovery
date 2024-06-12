@@ -27,7 +27,7 @@ import torch
 
 import SQcircuit as sq
 
-from qubit_discovery.utils.sampler import CircuitSampler
+from qubit_discovery.optimization.sampler import CircuitSampler
 from qubit_discovery.optimization.truncation import (
     assign_trunc_nums,
     test_convergence,
@@ -179,7 +179,6 @@ def main() -> None:
 
         if parameters['init_circuit'] == "":
             sampler = CircuitSampler(
-                num_elements=len(parameters['circuit_code']),
                 capacitor_range=capacitor_range,
                 inductor_range=inductor_range,
                 junction_range=junction_range
@@ -203,8 +202,8 @@ def main() -> None:
 
         baseline_trunc_nums = np.array(circuit.truncate_circuit(
             parameters['K'],
-            heuristic=True)
-        )
+            heuristic=True
+        ))
         baseline_trunc_nums[baseline_trunc_nums < 4] = 4
         baseline_trunc_nums = list(baseline_trunc_nums)
         print(f"baseline_trunc_nums: {baseline_trunc_nums}")
