@@ -38,24 +38,16 @@ def calculate_anharmonicity(circuit: Circuit) -> SQValType:
 
 def charge_sensitivity(
     circuit: Circuit,
-    code=1,
-    epsilon=1e-14,
+    n_samples: int = 6,
+    epsilon: float = 1e-14,
 ) -> SQValType:
     """Returns the charge sensitivity of the circuit for all charge islands.
     Designed to account for entire charge spectrum, to account for charge drift
     (as opposed to e.g. flux sensitivity, which considers perturbations around
     flux operation point)."""
 
-    # This assumes two charge modes. TODO: Generalize to n charge modes.
-    # Note: This will scale exponentially for circuits with more charge modes.
-    if code == 1 or code == 2:
-        charge_offsets = [(0, 0), (0.25, 0.25), (0.5, 0.5)]
-    elif code == 3 or code == 4:
-        charge_offsets = [
-            (0, 0), (0, 0.25), (0, 0.5), (0.25, 0.5),
-            (0.5, 0.5), (0.5, 0.25), (0.5, 0), (0.25, 0)
-        ]
-    omega_values = []
+    charge_offsets = np.linspace(0.0, 0.5, n_samples)
+    efreq_values = []
 
     # Edge case: For circuit with no charge modes, assign zero sensitivity
     if np.all(circuit.omega != 0):
@@ -65,52 +57,43 @@ def charge_sensitivity(
             return epsilon
 
     # Assume all charge modes set to 0 initially
-    c_0 = circuit.efreqs[1] - circuit.efreqs[0]
-    omega_values.append(c_0)
+    freq_q = circuit.efreqs[1] - circuit.efreqs[0]
+    efreq_values.append(freq_q)
 
     # Copy circuit to create new container for perturbed eigenstates
     perturb_circ = copy(circuit)
-    # For each mode, if charge mode exists then set gate charge to obtain
+    # For each mode, if charge mode exists, then set gate charge to obtain
     # minimum frequency
+
     for charge_offset in charge_offsets:
-        for charge_idx, charge_island in enumerate(perturb_circ.charge_islands.keys()):
-            charge_mode = charge_island + 1
+        # we have already added this to the efreqs_values
+        if charge_offset == 0.0:
+            continue
+
+        for charge_island_idx in perturb_circ.charge_islands.keys():
             perturb_circ.set_charge_offset(
-                charge_mode,
-                charge_offset[charge_idx]
+                charge_island_idx+1,
+                charge_offset,
             )
 
         perturb_circ.diag(len(circuit.efreqs))
-        c_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
-        omega_values.append(c_delta)
+        freq_q = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
+        efreq_values.append(freq_q)
 
-    # Reset charge modes to 0; this is necessary because peturb_circ and
+    # Reset charge modes to 0; this is necessary because perturb_circ and
     # circ are basically the same
     for charge_island_idx in circuit.charge_islands.keys():
-        charge_mode = charge_island_idx + 1
-        # Reset charge modes in test circuit
-        perturb_circ.set_charge_offset(charge_mode, 0.)
+        perturb_circ.set_charge_offset(charge_island_idx + 1, 0.)
 
     if get_optim_mode():
-        if code == 1 or code == 3:
-            c_max = torch.max(torch.stack(omega_values))
-            c_min = torch.min(torch.stack(omega_values))
-            return c_max - c_min
+        c_max = torch.max(torch.stack(efreq_values))
+        c_min = torch.min(torch.stack(efreq_values))
+        return 2 * (c_max - c_min) / (c_max + c_min)
 
-        if code == 2 or code == 4:
-            c_avg = torch.mean(torch.stack(omega_values))
-            c_var = torch.var(torch.stack(omega_values) - c_avg)
-            return c_var
     else:
-        if code == 1 or code == 3:
-            c_max = np.max(np.stack(omega_values))
-            c_min = np.min(np.stack(omega_values))
-            return c_max - c_min
-
-        if code == 2 or code == 4:
-            c_avg = np.mean(np.stack(omega_values))
-            c_var = np.var(np.stack(omega_values) - c_avg)
-            return c_var
+        c_max = np.max(np.stack(efreq_values))
+        c_min = np.min(np.stack(efreq_values))
+        return 2 * (c_max - c_min) / (c_max + c_min)
 
 
 def flux_sensitivity(

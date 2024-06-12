@@ -191,13 +191,12 @@ def flux_sensitivity_loss(
 
 def charge_sensitivity_loss(
     circuit: Circuit,
-    code=1,
     a=0.02,
     b=1,
 ) -> Tuple[SQValType, SQValType]:
     """Assigns a hinge loss to charge sensitivity of circuit."""
 
-    sens = charge_sensitivity(circuit, code)
+    sens = charge_sensitivity(circuit)
 
     # Hinge loss transform
     if sens < a:
