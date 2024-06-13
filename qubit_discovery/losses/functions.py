@@ -38,7 +38,7 @@ def calculate_anharmonicity(circuit: Circuit) -> SQValType:
 
 def charge_sensitivity(
     circuit: Circuit,
-    n_samples: int = 6,
+    n_samples: int = 4,
     epsilon: float = 1e-14,
 ) -> SQValType:
     """Returns the charge sensitivity of the circuit for all charge islands.
