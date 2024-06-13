@@ -44,12 +44,8 @@ YAML_OR_COMMANDLINE_KEYS = [
 # optional keys.
 OPTIONAL_KEYS = ["num_best"]
 
-PLOT_SCHEME = {
-    'JJ': 'b', 'JL': 'darkorange',
-    'JJJ': 'tab:purple', 'JJL': 'c', 'JLL': 'g',
-    'JCJ': 'tab:blue', 'JCL': 'tab:orange',
-    'J': 'tab:cyan', 'JLJL': 'tab:red'
-}
+PLOT_SCHEME = defaultdict(lambda: '#81221B')
+PLOT_SCHEME['JL'] = 'darkorange'
 
 # metric keys for plotting.
 METRIC_KEYS = [
@@ -128,23 +124,20 @@ def plot_circuit_metrics(
     for plot_idx in range(len(record_keys)):
         key = record_keys[plot_idx]
         i, j = plot_idx // 3, plot_idx % 3
-        try:
-            axs[i, j].plot(
-                run[key],
-                PLOT_SCHEME[circuit_code],
-                label=circuit_code if best else None,
-                alpha=None if best else 0.3,
-                linestyle=None if best else '--',
-            )
-            axs[i, j].set_title(
-                capitalize_metric(key) + f" {get_units()[key]}"
-            )
-            # if key not in ['number_of_gates_loss', 'total_loss']:
-            axs[i, j].set_yscale('log')
-            axs[i, j].legend(loc="upper left")
-        except KeyError:
-            print("keyerror")
-            pass
+
+        axs[i, j].plot(
+            run[key],
+            color=PLOT_SCHEME[circuit_code],
+            label=circuit_code if best else None,
+            alpha=None if best else 0.3,
+            linestyle=None if best else '--',
+        )
+        axs[i, j].set_title(
+            capitalize_metric(key) + f" {get_units()[key]}"
+        )
+        axs[i, j].set_yscale('log')
+        axs[i, j].legend(loc="upper left")
+
 
 
 def plot_results(
