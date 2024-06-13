@@ -139,7 +139,6 @@ def plot_circuit_metrics(
         axs[i, j].legend(loc="upper left")
 
 
-
 def plot_results(
     record,
     plot_folder_directory,
