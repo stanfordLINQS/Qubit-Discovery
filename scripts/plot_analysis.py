@@ -24,13 +24,11 @@ import numpy as np
 import SQcircuit as sq
 
 import analysis as an
-from plot_utils import add_file_args, load_final_circuit, load_initial_circuit, set_plotting_defaults
+from plot_utils import load_final_circuit, set_plotting_defaults
 from inout import (
     load_yaml_file,
     add_command_line_keys,
     Directory,
-    get_metrics_dist,
-    get_units,
 )
 
 ################################################################################
