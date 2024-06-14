@@ -38,6 +38,7 @@ def clamp_gradient(val: torch.Tensor, epsilon: float) -> None:
     val.grad = torch.minimum(max, val.grad)
     val.grad = torch.maximum(-max, val.grad)
 
+
 def print_new_circuit_sampled_message(total_l=131) -> None:
     message = "NEW CIRCUIT SAMPLED"
     print(total_l * "*")
@@ -54,6 +55,20 @@ def print_new_circuit_sampled_message(total_l=131) -> None:
 RecordType = Dict[
     str, Union[str, List[torch.Tensor], List[Circuit]]
 ]
+
+
+def print_loss_records(loss_record) -> None:
+
+    print(
+        f"frequency_loss: "
+        f"{loss_record['frequency_loss'][-1]}",
+        f"flux_sensitivity_loss: "
+        f"{loss_record['flux_sensitivity_loss'][-1]}",
+        f"charge_sensitivity_loss: "
+        f"{loss_record['charge_sensitivity_loss'][-1]}",
+        f"number_of_gates_loss: "
+        f"{loss_record['number_of_gates_loss'][-1]}"
+    )
 
 
 @torch.no_grad()

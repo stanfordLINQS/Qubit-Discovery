@@ -7,6 +7,7 @@ from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
+    print_loss_records,
     init_records,
     update_record,
     save_results,
@@ -30,7 +31,7 @@ def run_BFGS(
     total_trunc_num: int,
     save_loc: Optional[str] = None,
     bounds: Optional = None,
-    lr: float = 1e3,
+    lr: float = 1e20,
     max_iter: int = 100,
     tolerance: float = 1e-15,
     verbose: bool = False,
@@ -163,6 +164,8 @@ def run_BFGS(
                     f"alpha={alpha}"
                 )
 
+                print_loss_records(loss_record)
+
         if loss_diff_ratio < tolerance:
             break
 
@@ -213,12 +216,13 @@ def backtracking_line_search(
     c=1e-45,
     rho=0.1
 ) -> float:
-    """At end of line search, `circuit` will have its internal parameters set
-    to ``params + alpha * p``.
+    """At the end of line search, `circuit` will have its internal parameters
+    set to ``params + alpha * p``.
     """
     alpha = lr
     circuit_elements = circuit.get_all_circuit_elements()
     circuit_element_types = [type(element) for element in circuit_elements]
+
 
     if bounds is not None:
         while (not_param_in_bounds(
@@ -226,7 +230,18 @@ def backtracking_line_search(
                 bounds,
                 circuit_element_types
         )):
+            # print(f"alpha: {alpha}")
+            # print(f"params + alpha * p: {params + alpha * p}")
+
             alpha *= rho
+    print(130 * "=")
+    print(alpha)
+    for i in range(len(params)):
+        print(70*"-")
+        print(f"params {i}: {params[i].detach().numpy()}")
+        print(f"p {i}: {p[i].detach().numpy()}")
+        print(f"params + alpha * p {i}: {(params + alpha * p)[i].detach().numpy()}")
+    print(70 * "=")
 
     baseline_loss = objective_func(circuit, params, num_eigenvalues)
     while (
