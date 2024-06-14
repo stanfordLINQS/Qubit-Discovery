@@ -163,6 +163,7 @@ def fastest_gate_speed(circuit: Circuit) -> SQValType:
 
     return omega
 
+
 def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
     """Return the decoherence time for a given circuit and its decoherence type.
 

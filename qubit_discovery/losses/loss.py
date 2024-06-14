@@ -231,9 +231,9 @@ def number_of_gates_loss(
     number_of_gates = gate_speed * 2 * t1 * t2 / (2 * t1 + t2)
 
     if get_optim_mode():
-        loss = 1 / number_of_gates * 1e3
+        loss = 1 / number_of_gates
     else:
-        loss = 1 / number_of_gates * 1e3
+        loss = 1 / number_of_gates
 
     return loss, number_of_gates
 
