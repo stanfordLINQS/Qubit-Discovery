@@ -2,10 +2,10 @@
 Evaluate convergence test on randomly sampled (or fixed) circuit.
 
 Usage:
-  test_convergence_test.py <yaml_file> [--seed=<seed> --K=<K> \
+  convergence_test.py <yaml_file> [--seed=<seed> --K=<K> \
 --circuit_code=<circuit_code> --init_circuit=<init_circuit>]
-  test_convergence_test.py -h | --help
-  test_convergence_test.py --version
+  convergence_test.py -h | --help
+  convergence_test.py --version
 
 Options:
   -h --help     Show this screen.
