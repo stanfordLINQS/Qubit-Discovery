@@ -82,14 +82,12 @@ def get_circuit_params_from_alpha_params(
 def get_gradients(loss: Tensor, circuit: Circuit, bounds) -> Tensor:
     loss.backward()
     partial_loss_partial_elem = circuit.parameters_grad
-    print(f"partial_loss_partial_elem.dtype: {partial_loss_partial_elem.dtype}")
     circuit.zero_parameters_grad()
 
     alpha_params = get_alpha_params_from_circuit_params(circuit, bounds)
     alpha_params.backward(torch.tensor(len(alpha_params) * [1.0]))
     partial_alpha_partial_elem = circuit.parameters_grad
     circuit.zero_parameters_grad()
-    print(f"partial_alpha_partial_elem.dtype: {partial_alpha_partial_elem.dtype}")
 
     gradient = (partial_loss_partial_elem / partial_alpha_partial_elem)
 
@@ -106,7 +104,7 @@ def run_BFGS(
     total_trunc_num: int,
     save_loc: Optional[str] = None,
     bounds: Optional = None,
-    lr: float = 1.0,
+    lr: float = 100,
     max_iter: int = 100,
     tolerance: float = 1e-15,
     verbose: bool = False,
@@ -148,22 +146,7 @@ def run_BFGS(
             Whether to save the circuit at each iteration.
     """
 
-    alpha_params = get_alpha_params_from_circuit_params(circuit, bounds)
-    alpha_params.backward(torch.tensor(len(alpha_params) * [1.0]))
-
-    circuit_params = get_circuit_params_from_alpha_params(
-        alpha_params, circuit, bounds
-    )
-
-    print(f"circuit_params: {torch.stack(circuit.parameters)}")
-    print(f"alpha_params: {alpha_params}")
-    print(f"reconstructed_circuit_params: {circuit_params}")
-    print(f"alpha_params.grad: {circuit.parameters_grad}")
-
-    print(130 * "=")
-
-    # params = torch.stack(circuit.parameters).clone()
-    params = get_alpha_params_from_circuit_params(circuit, bounds).clone()
+    params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone()
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
@@ -177,12 +160,12 @@ def run_BFGS(
     )
 
     def objective_func(cr: Circuit, x: Tensor):
-        print("Objective function called.")
-        print(f"alpha_params: {x}")
+        # print("Objective function called.")
         circ_params = get_circuit_params_from_alpha_params(
             x, cr, bounds
         )
-        print(f"circ_params: {circ_params}")
+        # print(f"alpha_params: {x}")
+        # print(f"circ_params: {circ_params}")
         cr.parameters = circ_params
         cr.diag(num_eigenvalues)
         t_loss, _, _ = loss_metric_function(cr)
@@ -226,7 +209,7 @@ def run_BFGS(
         # gradient = circuit.parameters_grad
         # circuit.zero_parameters_grad()
         gradient = get_gradients(loss, circuit, bounds)
-        print(f"gradient: {gradient}")
+        # print(f"gradient: {gradient}")
 
         p = -torch.matmul(H, gradient)
 
@@ -311,16 +294,16 @@ def backtracking_line_search(
     p: torch.tensor,  # search direction,
     bounds=None,
     lr=0.01,
-    c=1e-45,
-    rho=0.8
+    c=1e-4,
+    rho=0.5
 ) -> float:
     """At the end of line search, `circuit` will have its internal parameters
     set to ``params + alpha * p``.
     """
     print(50*"=" + "Line search called." + 50*"=")
     alpha = lr
-    params_type = circuit.get_params_type()
 
+    # params_type = circuit.get_params_type()
     # if bounds is not None:
     #     while (not_param_in_bounds(
     #             params + alpha * p,
@@ -343,11 +326,16 @@ def backtracking_line_search(
 
     baseline_loss = objective_func(circuit, params)
     print(f"p: {p}, alpha: {alpha}")
+    counter = 0
     while (
             objective_func(circuit, params + alpha * p)
             > baseline_loss + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
+        counter += 1
+        if rho**counter < 1e-5:
+            print("The line search broke")
+            break
 
-    print(50 * "=" + "The end." + 50 * "=")
+    print(60 * "=" + "The end." + 60 * "=")
     return alpha
