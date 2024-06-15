@@ -333,7 +333,7 @@ def backtracking_line_search(
     ):
         alpha *= rho
         counter += 1
-        if rho**counter < 1e-5:
+        if rho**counter < 1e-8:
             print("The line search broke")
             break
 
