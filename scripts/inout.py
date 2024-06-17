@@ -344,9 +344,13 @@ class Directory:
             idx:
                 An Integer specifying the index of the circuit in the records.
         """
+        optim_type = ""
+        if 'optim_type' in self.parameters:
+            optim_type = f"{self.parameters['optim_type']}_"
+        elif 'optim_type' in self.arguments:
+            optim_type = f"{self.arguments['optim_type']}_"
 
-        summary_name = (
-            f"{self.parameters['optim_type']}_" if 'optim_type' in self.parameters else ""
+        summary_name = optim_type + (
             f"circuit_summary"
             f"_{circuit_code}"
             f"_{self.parameters['name']}"
