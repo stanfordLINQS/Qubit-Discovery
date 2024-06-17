@@ -138,7 +138,7 @@ def trunc_num_heuristic(
     eig_vec_idx: int = 0,
     K: int=1000,
     min_trunc: int=1,
-    charge_mode_cutoff: int=15,
+    charge_mode_cutoff: int=12,
     axes: Optional[Axes]=None
 ) -> List[int]:
     """
