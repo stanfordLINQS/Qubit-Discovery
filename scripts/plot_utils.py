@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import dill as pickle
@@ -6,6 +7,11 @@ from SQcircuit import Circuit
 
 
 def load_record(url: str) -> Any:
+
+    if not os.path.exists(url):
+        print(f"The file '{url}' is not existed.")
+        return None
+
     try:
         with open(url, 'rb') as f:
             record = pickle.load(f)
