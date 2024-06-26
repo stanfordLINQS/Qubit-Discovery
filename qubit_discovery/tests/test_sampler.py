@@ -138,3 +138,25 @@ def test_circuit_sampling_from_code_3() -> None:
 
     elem, = elements[(0, 3)]
     assert isinstance(elem, sq.Capacitor)
+
+
+def test_circuit_sampling_from_code_4() -> None:
+
+    sq.set_optim_mode(True)
+
+    elements = get_elements_from_code("flux_qubit")
+
+    junc_1, cap_1 = elements[(0, 1)]
+    junc_2, cap_2 = elements[(1, 2)]
+    junc_3, cap_3 = elements[(2, 0)]
+
+    assert junc_1 == junc_2
+    assert cap_1 == cap_2
+    assert junc_2 != junc_3
+    assert cap_2 != cap_3
+
+    circuit = sq.Circuit(elements, flux_dist="junctions")
+
+    assert len(circuit.parameters) == 4
+
+    sq.set_optim_mode(False)

@@ -84,7 +84,7 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
     t1 = decoherence_time(
         circuit=circuit,
-        t_type='t2',
+        t_type='t1',
         dec_type='total'
     )
 
