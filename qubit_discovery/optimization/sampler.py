@@ -61,6 +61,10 @@ class CircuitSampler:
         self.junction_range = junction_range
         self.loop = sq.Loop(0.5)
 
+        self.special_circuit_codes =[
+            "flux_qubit",
+        ]
+
     def get_elem(
         self,
         elem_str: str,
@@ -116,6 +120,28 @@ class CircuitSampler:
             raise ValueError("elem_str should be either 'J', 'L', or 'C' ")
 
         return elem
+
+    def sample_special_circuit(self, circuit_code):
+
+        if circuit_code == "flux_qubit":
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = junc_1
+            junc_3 = self.get_elem('J', main_loop=True)
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = cap_1
+            cap_3 = self.get_elem('C', main_loop=False)
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 0): [junc_3, cap_3]
+            }
+
+        else:
+            raise ValueError("The circuit code is not supported!")
+
+        return sq.Circuit(elements, flux_dist='junctions')
 
     def add_elem_to_elements(
         self,
@@ -216,6 +242,9 @@ class CircuitSampler:
             circuit_code:
                 A string specifying the circuit code.
         """
+
+        if circuit_code in self.special_circuit_codes:
+            return self.sample_special_circuit(circuit_code)
 
         current_node = 0
         hold_nodes = []
