@@ -9,7 +9,7 @@ from SQcircuit import Circuit
 def load_record(url: str) -> Any:
 
     if not os.path.exists(url):
-        print(f"The file '{url}' is not existed.")
+        print(f"The file '{url}' does not exist.")
         return None
 
     try:
