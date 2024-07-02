@@ -160,3 +160,22 @@ def test_circuit_sampling_from_code_4() -> None:
     assert len(circuit.parameters) == 4
 
     sq.set_optim_mode(False)
+
+
+def test_circuit_sampling_from_code_5() -> None:
+
+    sq.set_optim_mode(True)
+
+    elements = get_elements_from_code("transmon")
+
+    junc_1, junc_2, cap = elements[(0, 1)]
+
+    assert junc_1 == junc_2
+
+    circuit = sq.Circuit(elements, flux_dist="junctions")
+
+    circuit.description()
+
+    assert len(circuit.parameters) == 2
+
+    sq.set_optim_mode(False)

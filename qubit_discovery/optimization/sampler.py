@@ -61,7 +61,8 @@ class CircuitSampler:
         self.junction_range = junction_range
         self.loop = sq.Loop(0.5)
 
-        self.special_circuit_codes =[
+        self.special_circuit_codes = [
+            "transmon",
             "flux_qubit",
         ]
 
@@ -123,7 +124,15 @@ class CircuitSampler:
 
     def sample_special_circuit(self, circuit_code):
 
-        if circuit_code == "flux_qubit":
+        if circuit_code == "transmon":
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = junc_1
+
+            cap = self.get_elem('C', main_loop=False)
+
+            elements = {(0, 1): [junc_1, junc_2, cap]}
+
+        elif circuit_code == "flux_qubit":
             junc_1 = self.get_elem('J', main_loop=True)
             junc_2 = junc_1
             junc_3 = self.get_elem('J', main_loop=True)
