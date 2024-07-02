@@ -1,27 +1,22 @@
 """Contains helper functions used in remainder of code."""
 from copy import copy
-from typing import Union
+from typing import Tuple
 
 import numpy as np
 import torch
-
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
+from SQcircuit.units import get_unit_freq
 
-SQValType = Union[float, torch.Tensor]
+from .utils import (
+    construct_perturbed_elements,
+    zero,
+    SQValType
+)
 
 # Helper functions
 # NOTE: Ensure all functions treat the input `circuit` as const, at least
 # in effect.
-
-
-def zero() -> SQValType:
-
-    if get_optim_mode():
-        return torch.tensor(0.0)
-
-    return 0.0
-
 
 def first_resonant_frequency(circuit: Circuit) -> SQValType:
     """Calculates resonant frequency of first excited eigenstate in circuit."""
@@ -124,6 +119,37 @@ def flux_sensitivity(
     return S
 
 
+def element_sensitivity(
+    circuit: Circuit,
+    n_samples=25,
+    error=0.01
+) -> Tuple[SQValType, SQValType]:
+    """"Returns an estimate of parameter sensitivity, as determined by variation
+    of gate # in Gaussian probability distribution about internal element values.
+    
+    Only works with optim_mode = True (assumes all element values are Tensors)
+    """
+    dist = torch.distributions.MultivariateNormal(
+        torch.stack(circuit.parameters),
+        torch.diag((error * torch.stack(circuit.parameters)) ** 2)
+    )
+    # re-parameterization trick
+    new_params = dist.rsample((n_samples, ))
+    vals = torch.zeros((n_samples,))
+
+    for i in range(n_samples):
+        elements_sampled = construct_perturbed_elements(circuit,
+                                                        new_params[i,:])
+        cr_sampled = Circuit(elements_sampled)
+        cr_sampled.set_trunc_nums(circuit.trunc_nums)
+        cr_sampled.diag(len(circuit.efreqs))
+        vals[i] = number_of_gates(cr_sampled)
+
+    sensitivity = torch.std(vals) / torch.mean(vals)
+
+    return sensitivity
+
+
 def reset_charge_modes(circuit: Circuit) -> None:
     """Sets gate charge of all charge degrees of freedom to zero."""
     default_n_g = 0.0
@@ -209,3 +235,31 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
         gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
 
     return 1 / gamma
+
+def total_dec_time(circuit: Circuit) -> SQValType:
+    """
+    Return the T2 (total decohence) time
+    """
+    t1 = decoherence_time(
+        circuit=circuit,
+        t_type='t1',
+        dec_type='total'
+    )
+
+    t2 = decoherence_time(
+        circuit=circuit,
+        t_type='t2',
+        dec_type='total'
+    )
+
+    return 2*t1*t2 / (2*t1+t2)
+
+def number_of_gates(circuit: Circuit) -> SQValType:
+    """Return the number of single qubit gate"""
+
+    # don't forget the units!
+    gate_speed = fastest_gate_speed(circuit) * get_unit_freq()
+
+    t = total_dec_time(circuit)
+
+    return gate_speed * t

@@ -6,10 +6,11 @@ import torch
 import SQcircuit as sq
 
 from qubit_discovery.losses.functions import (
+    element_sensitivity,
     fastest_gate_speed,
 )
 from qubit_discovery.tests.conftest import (
-    get_fluxonium, 
+    get_fluxonium,
 )
 
 
@@ -43,3 +44,13 @@ def test_fastest_gate_speed() -> None:
             torch.isclose(omega, target_omega, rtol=1e-2)
         else:
             np.isclose(omega, target_omega.item(), rtol=1e-2)
+
+def test_element_sensitivity() -> None:
+    target_sensitivity = torch.tensor(0.0178)
+
+    sq.set_optim_mode(True)
+    cr = get_fluxonium()
+    cr.set_trunc_nums([120])
+    cr.diag(20)
+    sens = element_sensitivity(cr)
+    assert torch.isclose(sens, target_sensitivity, rtol=0.5)

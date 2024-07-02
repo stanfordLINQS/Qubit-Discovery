@@ -8,17 +8,22 @@ import torch
 
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
-from SQcircuit.units import get_unit_freq
 
 from .functions import (
     calculate_anharmonicity,
     charge_sensitivity,
     flux_sensitivity,
+    element_sensitivity,
     first_resonant_frequency,
     reset_charge_modes,
     zero,
     decoherence_time,
+    total_dec_time,
     fastest_gate_speed,
+    number_of_gates
+)
+from .utils import (
+    hinge_loss
 )
 
 # when the loss are close to zero, but we want to reserve the zero value for
@@ -81,20 +86,7 @@ def t2_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
 
 
 def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-
-    t1 = decoherence_time(
-        circuit=circuit,
-        t_type='t1',
-        dec_type='total'
-    )
-
-    t2 = decoherence_time(
-        circuit=circuit,
-        t_type='t2',
-        dec_type='total'
-    )
-
-    t = 2*t1*t2 / (2*t1+t2)
+    t = total_dec_time(circuit)
 
     return zero(), t
 
@@ -102,46 +94,12 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 def element_sensitivity_loss(
     circuit: Circuit,
     n_samples=10,
-    p_error=1,
-    n_eig=10
+    error=0.01,
 ) -> Tuple[SQValType, SQValType]:
-    """"Returns an estimate of parameter sensitivity, as determined by variation
-    of T1 value in Gaussian probability distribution about element values"""
-    def set_elem_value(elem, val):
-        elem.internal_value = val
+    
+    sens = element_sensitivity(circuit, n_samples, error)
 
-    elements_to_update = defaultdict(list)
-    for edge in circuit.elements:
-        for el_idx, el in enumerate(circuit.elements[edge]):
-            if el in circuit.parameters_dict.keys():
-                elements_to_update[edge].append(
-                    (el_idx, list(circuit.parameters_dict).index(el))
-                )
-
-    dist = torch.distributions.MultivariateNormal(
-        torch.stack(circuit.parameters),
-        torch.diag(((p_error * torch.stack(circuit.parameters)) / 100) ** 2)
-    )
-    # re-parameterization trick
-    new_params = dist.rsample((n_samples, ))
-    vals = torch.zeros((n_samples,))
-    for i in range(n_samples):
-        # assumes all leaf tensors in .elements
-        elements_sampled = deepcopy(circuit.elements)
-        for edge in elements_to_update:
-            for el_idx, param_idx in elements_to_update[edge]:
-                set_elem_value(
-                    elements_sampled[edge][el_idx],
-                    new_params[i, param_idx]
-                )
-
-        cr_sampled = Circuit(elements_sampled)
-        cr_sampled.set_trunc_nums(circuit.trunc_nums)
-        cr_sampled.diag(n_eig)
-        _, vals[i] = t1_loss(cr_sampled)
-    sensitivity = torch.std(vals) / torch.mean(vals)
-
-    return zero(), sensitivity
+    return zero(), sens
 
 
 def gate_speed_loss(circuit: Circuit):
@@ -180,13 +138,7 @@ def flux_sensitivity_loss(
 
     sens = flux_sensitivity(circuit)
 
-    # Apply hinge loss
-    if sens < a:
-        loss = 0.0 * sens
-    else:
-        loss = b * (sens - a)
-
-    return loss + EPSILON, sens
+    return hinge_loss(sens, a, b) + EPSILON, sens
 
 
 def charge_sensitivity_loss(
@@ -198,14 +150,8 @@ def charge_sensitivity_loss(
 
     sens = charge_sensitivity(circuit)
 
-    # Hinge loss transform
-    if sens < a:
-        loss = 0.0 * sens
-    else:
-        loss = b * (sens - a)
-
     reset_charge_modes(circuit)
-    return loss + EPSILON, sens
+    return hinge_loss(sens, a, b) + EPSILON, sens
 
 
 def number_of_gates_loss(
@@ -214,28 +160,11 @@ def number_of_gates_loss(
     """Return the number of single qubit gate of the qubit as well as the loss
     associated with the metric."""
 
-    # we should not forget the units
-    gate_speed = fastest_gate_speed(circuit) * get_unit_freq()
+    N = number_of_gates(circuit)
 
-    t1 = decoherence_time(
-        circuit=circuit,
-        t_type='t1',
-        dec_type='total'
-    )
-    t2 = decoherence_time(
-        circuit=circuit,
-        t_type='t2',
-        dec_type='total'
-    )
+    loss = 1 / N
 
-    number_of_gates = gate_speed * 2 * t1 * t2 / (2 * t1 + t2)
-
-    if get_optim_mode():
-        loss = 1 / number_of_gates
-    else:
-        loss = 1 / number_of_gates
-
-    return loss, number_of_gates
+    return loss, N
 
 
 ###############################################################################
@@ -251,6 +180,7 @@ ALL_FUNCTIONS = {
     'number_of_gates': number_of_gates_loss,
     ###########################################################################
     'anharmonicity': anharmonicity_loss,
+    'element_sensitivity': element_sensitivity_loss,
     'gate_speed': gate_speed_loss,
     't': t_loss,
     't1': t1_loss,
