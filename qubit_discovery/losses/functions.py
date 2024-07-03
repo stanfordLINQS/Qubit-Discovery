@@ -101,15 +101,15 @@ def flux_sensitivity(
     # Copy circuit to create new container for perturbed eigenstates
     perturb_circ = copy(circuit)
     loop = perturb_circ.loops[0]
-    org_flux = loop.value() / (2 * np.pi)  # should be `flux_point`
+    org_flux = loop.internal_value
 
     # Change the flux and get the eigen-frequencies
-    loop.set_flux(org_flux + delta)
+    loop.internal_value = org_flux + delta * 2 * np.pi
     perturb_circ.diag(len(circuit.efreqs))
     f_delta = perturb_circ.efreqs[1] - perturb_circ.efreqs[0]
 
     # Return loop back to original flux
-    loop.set_flux(org_flux)
+    loop.internal_value = org_flux
 
     if get_optim_mode():
         S = torch.abs((f_delta - f_0) / f_0)
