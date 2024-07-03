@@ -3,6 +3,7 @@ from typing import Callable, Dict, Optional, Tuple, Union, List
 import torch
 from torch import Tensor
 
+import SQcircuit as sq
 from SQcircuit import Circuit
 
 from .truncation import assign_trunc_nums, test_convergence
@@ -23,14 +24,25 @@ LossFunctionType = Callable[
 
 def get_alpha_param_from_circuit_param(
     circuit_param: Tensor,
-    u_bound: Tensor,
-    l_bound: Tensor
+    bounds: dict,
+    elem_type=None
 ) -> Tensor:
 
-    var = (torch.log(u_bound) - torch.log(l_bound))/2
-    mean = (torch.log(u_bound) + torch.log(l_bound))/2
+    u_bound, l_bound = bounds[elem_type]
 
-    return torch.acos((torch.log(circuit_param) - mean) / var)
+    if elem_type == sq.Loop:
+
+        var = (u_bound - l_bound) / 2
+        mean = (u_bound + l_bound) / 2
+
+        return torch.acos((circuit_param - mean) / var)
+
+    else:
+
+        var = (torch.log(u_bound) - torch.log(l_bound))/2
+        mean = (torch.log(u_bound) + torch.log(l_bound))/2
+
+        return torch.acos((torch.log(circuit_param) - mean) / var)
 
 
 def get_alpha_params_from_circuit_params(circuit: Circuit, bounds) -> Tensor:
@@ -38,26 +50,34 @@ def get_alpha_params_from_circuit_params(circuit: Circuit, bounds) -> Tensor:
     alpha_params = torch.zeros(torch.stack(circuit.parameters).shape)
 
     for param_idx, circuit_param in enumerate(circuit.parameters):
-        circuit_element_type = circuit.get_params_type()[param_idx]
-        lower_bound, upper_bound = bounds[circuit_element_type]
+
         alpha_params[param_idx] = get_alpha_param_from_circuit_param(
             circuit_param,
-            upper_bound,
-            lower_bound
+            bounds,
+            circuit.get_params_type()[param_idx]
         )
     return alpha_params
 
 
 def get_circuit_param_from_alpha_param(
     alpha_param: Tensor,
-    u_bound: Tensor,
-    l_bound: Tensor
+    bounds: dict,
+    elem_type=None,
 ) -> Tensor:
 
-    var = (torch.log(u_bound) - torch.log(l_bound))/2
-    mean = (torch.log(u_bound) + torch.log(l_bound))/2
+    u_bound, l_bound = bounds[elem_type]
 
-    return torch.exp(mean + var * torch.cos(alpha_param))
+    if elem_type == sq.Loop:
+        var = (u_bound - l_bound) / 2
+        mean = (u_bound + l_bound) / 2
+
+        return mean + var * torch.cos(alpha_param)
+
+    else:
+        var = (torch.log(u_bound) - torch.log(l_bound))/2
+        mean = (torch.log(u_bound) + torch.log(l_bound))/2
+
+        return torch.exp(mean + var * torch.cos(alpha_param))
 
 
 def get_circuit_params_from_alpha_params(
@@ -69,12 +89,11 @@ def get_circuit_params_from_alpha_params(
     circuit_params = torch.zeros(alpha_params.shape)
 
     for param_idx, alpha_param in enumerate(alpha_params):
-        circuit_element_type = circuit.get_params_type()[param_idx]
-        lower_bound, upper_bound = bounds[circuit_element_type]
+
         circuit_params[param_idx] = get_circuit_param_from_alpha_param(
             alpha_param,
-            upper_bound,
-            lower_bound
+            bounds,
+            circuit.get_params_type()[param_idx]
         )
     return circuit_params
 
@@ -82,11 +101,13 @@ def get_circuit_params_from_alpha_params(
 def get_gradients(loss: Tensor, circuit: Circuit, bounds) -> Tensor:
     loss.backward()
     partial_loss_partial_elem = circuit.parameters_grad
+    # print(f"partial_loss_partial_elem: {partial_loss_partial_elem}")
     circuit.zero_parameters_grad()
 
     alpha_params = get_alpha_params_from_circuit_params(circuit, bounds)
     alpha_params.backward(torch.tensor(len(alpha_params) * [1.0]))
     partial_alpha_partial_elem = circuit.parameters_grad
+    # print(f"partial_alpha_partial_elem: {partial_alpha_partial_elem}")
     circuit.zero_parameters_grad()
 
     gradient = (partial_loss_partial_elem / partial_alpha_partial_elem)
@@ -160,12 +181,9 @@ def run_BFGS(
     )
 
     def objective_func(cr: Circuit, x: Tensor):
-        # print("Objective function called.")
         circ_params = get_circuit_params_from_alpha_params(
             x, cr, bounds
         )
-        # print(f"alpha_params: {x}")
-        # print(f"circ_params: {circ_params}")
         cr.parameters = circ_params
         cr.diag(num_eigenvalues)
         t_loss, _, _ = loss_metric_function(cr)
@@ -192,6 +210,20 @@ def run_BFGS(
         update_record(circuit, metric_record, metric_values)
         update_record(circuit, loss_record, loss_values)
 
+        circ_params = get_circuit_params_from_alpha_params(
+            params, circuit, bounds
+        )
+        print(
+            "Optimization Progress:\n",
+            90 * "-" + "\n",
+            f"params: {params.detach().numpy()}\n",
+            f"circuit params: {circ_params.detach().numpy()}\n",
+            f"i:{iteration}",
+            f"loss: {loss.detach().numpy()}",
+        )
+        print_loss_records(loss_record)
+        print(90 * "-")
+
         if save_loc:
             save_results(
                 loss_record,
@@ -205,11 +237,7 @@ def run_BFGS(
             )
 
         loss = objective_func(circuit, params)
-        # loss.backward()
-        # gradient = circuit.parameters_grad
-        # circuit.zero_parameters_grad()
         gradient = get_gradients(loss, circuit, bounds)
-        # print(f"gradient: {gradient}")
 
         p = -torch.matmul(H, gradient)
 
@@ -229,9 +257,6 @@ def run_BFGS(
         ).clone().detach().requires_grad_(True)
 
         loss_next = objective_func(circuit, params_next)
-        # loss_next.backward()
-        # next_gradient = circuit.parameters_grad
-        # circuit.zero_parameters_grad()
         next_gradient = get_gradients(loss_next, circuit, bounds)
 
         loss_diff = loss_next - loss
@@ -273,19 +298,6 @@ def run_BFGS(
     return params, loss_record
 
 
-# def not_param_in_bounds(params, bounds, params_type) -> bool:
-#     """
-#     Check whether a given set of parameters are within bounds.
-#     """
-#     for param_idx, param in enumerate(params):
-#         circuit_element_type = params_type[param_idx]
-#         lower_bound, upper_bound = bounds[circuit_element_type]
-#         if param < lower_bound or param > upper_bound:
-#             return True
-#
-#     return False
-
-
 def backtracking_line_search(
     circuit: Circuit,
     objective_func: Callable[[Circuit, Tensor], Tensor],
@@ -303,28 +315,8 @@ def backtracking_line_search(
     print(50*"=" + "Line search called." + 50*"=")
     alpha = lr
 
-    # params_type = circuit.get_params_type()
-    # if bounds is not None:
-    #     while (not_param_in_bounds(
-    #             params + alpha * p,
-    #             bounds,
-    #             params_type
-    #     )):
-    #         # print(f"alpha: {alpha}")
-    #         # print(f"params + alpha * p: {params + alpha * p}")
-    #
-    #         alpha *= rho
-    # print(130 * "=")
-    # print(alpha)
-    # for i in range(len(params)):
-    #     print(70*"-")
-    #     print(f"element_type {i}: {params_type[i]}")
-    #     print(f"params {i}: {params[i].detach().numpy()}")
-    #     print(f"p {i}: {p[i].detach().numpy()}")
-    #     print(f"params + alpha * p {i}: {(params + alpha * p)[i].detach().numpy()}")
-    # print(130 * "=")
-
     baseline_loss = objective_func(circuit, params)
+    print(f"params:{params}")
     print(f"p: {p}, alpha: {alpha}")
     counter = 0
     while (

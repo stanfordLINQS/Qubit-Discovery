@@ -103,6 +103,13 @@ def main() -> None:
         sq.Capacitor: torch.tensor(capacitor_range)
     }
 
+    if "flux_range" in parameters.keys():
+        flux_range = eval_list(parameters['flux_range'])
+        bounds[sq.Loop] = torch.tensor(flux_range)
+
+    else:
+        flux_range = None
+
     set_seed(int(parameters['seed']))
 
     def my_loss_function(cr: Circuit):
@@ -116,11 +123,11 @@ def main() -> None:
         sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
-            junction_range=junction_range
+            junction_range=junction_range,
+            flux_range=flux_range
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-        if circuit.loops:
-            circuit.loops[0].set_flux(0.5 - 1e-2)
+        print(circuit.loops[0].value()/np.pi/2)
         print("Circuit sampled!")
     else:
         circuit = load_final_circuit(parameters['init_circuit'])

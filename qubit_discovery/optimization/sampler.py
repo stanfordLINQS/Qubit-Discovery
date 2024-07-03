@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import List, Union
+from typing import List, Union, Optional
 
-from scipy.stats import loguniform
+from scipy.stats import uniform, loguniform
 import numpy as np
 
 import SQcircuit as sq
@@ -47,19 +47,31 @@ class CircuitSampler:
             A list specifying the lower bound and upper bound for the inductors.
         junction_range:
             A list specifying the lower bound and upper bound for the junctions.
+        loop_in_optim:
+            A boolean specifying whether to use the loop in optimization or not.
     """
 
     def __init__(
-            self,
-            capacitor_range: List[float],
-            inductor_range: List[float],
-            junction_range: List[float],
+        self,
+        capacitor_range: List[float],
+        inductor_range: List[float],
+        junction_range: List[float],
+        flux_range: Optional[List[float]] = None
     ) -> None:
 
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
         self.junction_range = junction_range
-        self.loop = sq.Loop(0.5)
+
+        if flux_range is None:
+            self.loop = sq.Loop(0.5 - 1e-2)
+        else:
+            flux_value = uniform.rvs(*flux_range, size=1)[0]
+            flux_value = flux_value / (2 * np.pi)
+            self.loop = sq.Loop(
+                flux_value,
+                requires_grad=sq.get_optim_mode()
+            )
 
         self.special_circuit_codes = [
             "transmon",

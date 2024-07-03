@@ -81,7 +81,8 @@ def main():
         cr.diag(parameters["num_eigenvalues"])
 
         metrics_in_optim, metrics_not_in_optim = get_metrics_dict(parameters)
-        metrics_not_in_optim.append('element_sensitivity') # add in element sensitivity for summary file
+        # add in element sensitivity for summary file
+        metrics_not_in_optim.append('element_sensitivity')
 
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
