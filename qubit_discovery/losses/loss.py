@@ -93,10 +93,10 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
 
 def element_sensitivity_loss(
     circuit: Circuit,
-    n_samples=10,
+    n_samples=100,
     error=0.01,
 ) -> Tuple[SQValType, SQValType]:
-    
+
     sens = element_sensitivity(circuit, n_samples, error)
 
     return zero(), sens
