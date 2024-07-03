@@ -27,7 +27,7 @@ from inout import (
     load_yaml_file,
     add_command_line_keys,
     Directory,
-    get_metrics_dist,
+    get_metrics_dict,
     get_units,
 )
 
@@ -80,7 +80,8 @@ def main():
         cr.update()  # rebuild op memory
         cr.diag(parameters["num_eigenvalues"])
 
-        metrics_in_optim, metrics_not_in_optim = get_metrics_dist(parameters)
+        metrics_in_optim, metrics_not_in_optim = get_metrics_dict(parameters)
+        metrics_not_in_optim.append('element_sensitivity') # add in element sensitivity for summary file
 
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
