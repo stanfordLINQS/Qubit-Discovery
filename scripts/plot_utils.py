@@ -22,25 +22,6 @@ def load_record(url: str) -> Any:
         return None
 
 
-def add_file_args(parser):
-    parser.add_argument(
-        '-c', '--codes', type=str, required=True,
-        help="Circuit codes to plot, each with <num_runs>"
-    )
-    parser.add_argument(
-        '-o', '--optimization_type', type=str, required=True,
-        help="Optimization type to plot"
-    )
-    parser.add_argument(
-        '-n', '--name', required=True,
-        help="Name of run, either explict or passed in via YAML."
-    )
-    parser.add_argument(
-        '-s', '--save_circuits', action='store_true',
-        help="Unimplemented"
-    )  # TODO: implement
-
-
 def load_initial_circuit(circuit_record: str) -> Circuit:
     with open(circuit_record, 'rb') as f:
         first_circ = pickle.load(f)
