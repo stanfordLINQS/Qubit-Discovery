@@ -137,7 +137,9 @@ def element_sensitivity(
     new_params = dist.rsample((n_samples, ))
     vals = torch.zeros((n_samples,))
 
+    print("Calculating element sensitivity...")
     for i in range(n_samples):
+        print(f"{i+1}/{n_samples}")
         elements_sampled = construct_perturbed_elements(circuit,
                                                         new_params[i,:])
         cr_sampled = Circuit(elements_sampled)
