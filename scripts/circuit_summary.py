@@ -2,8 +2,8 @@
 Get the summary of the circuit metrics and loss valuations.
 
 Usage:
-  circuit_summary.py <yaml_file>  [--ids=<ids> \
-    --circuit_code=<circuit_code> --optim_type=<optim_type>]
+  circuit_summary.py <yaml_file> [--ids=<ids> --circuit_code=<circuit_code>\
+  --optim_type=<optim_type>]
   circuit_summary.py  -h | --help
   circuit_summary.py  --version
 
@@ -11,7 +11,7 @@ Options:
   -h --help     Show this screen.
   --version     Show version.
 
-  -i, --ids=<ids>                           ids of the circuits to be summarizedoptim_type
+  -i, --ids=<ids>                           ids of the circuits to be summarized optim_type
   -c, --circuit_code=<circuit_code>         Circuit code
   -o, --optim_type=<optim_type>             Optimization method
 """
