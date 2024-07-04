@@ -9,7 +9,7 @@ Usage:
   plot_analysis.py --version
 
 Options:
-  -h --help Show this screen.
+  -h --help     Show this screen.
   --version     Show version.
 
   -i, --ids=<ids>                           ids of the circuits to be summarized
