@@ -1,28 +1,31 @@
 """
-Get the summary of the circuit metrics and loss valuations.
+Get a summary of the circuit metrics and loss valuations from saved circuit
+files after optimizations, and output as a text file.
 
 Usage:
-  circuit_summary.py <yaml_file> [--ids=<ids> --circuit_code=<circuit_code>\
-  --optim_type=<optim_type>]
+  circuit_summary.py <yaml_file> [--ids=<ids>] [--circuit_code=<circuit_code>]
+                     [--optim_type=<optim_type>]
   circuit_summary.py  -h | --help
   circuit_summary.py  --version
 
+Arguments:
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
-  -i, --ids=<ids>                           ids of the circuits to be summarized optim_type
-  -c, --circuit_code=<circuit_code>         Circuit code
-  -o, --optim_type=<optim_type>             Optimization method
+  -i, --ids=<ids>                           Comma-delimited list of circuits to
+                                            summarize.
+  -c, --circuit_code=<circuit_code>         Circuit code.
+  -o, --optim_type=<optim_type>             Optimization method used.
 """
 
 from docopt import docopt
-
+from qubit_discovery.losses.loss import calculate_loss_metrics
 import SQcircuit as sq
 
 import analysis as an
-from plot_utils import load_final_circuit
-from qubit_discovery.losses.loss import calculate_loss_metrics
 from inout import (
     load_yaml_file,
     add_command_line_keys,
@@ -30,6 +33,7 @@ from inout import (
     get_metrics_dict,
     get_units,
 )
+from plot_utils import load_final_circuit
 
 ################################################################################
 # General Settings.

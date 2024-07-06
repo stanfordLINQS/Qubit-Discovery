@@ -2,13 +2,16 @@
 Evaluate convergence test on randomly sampled (or fixed) circuit.
 
 Usage:
-  test_convergence_test.py <yaml_file> [--seed=<seed> --circuit_code=<circuit_code>\
-  --init_circuit=<init_circuit>]
+  test_convergence_test.py <yaml_file> [--seed=<seed] [--circuit_code=<circuit_code>]
+                           [--init_circuit=<init_circuit>]
   test_convergence_test.py -h | --help
   test_convergence_test.py --version
 
+Arguments
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
   -c, --circuit_code=<circuit_code>         Circuit code
