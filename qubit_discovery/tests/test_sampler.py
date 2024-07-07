@@ -179,3 +179,45 @@ def test_circuit_sampling_from_code_5() -> None:
     assert len(circuit.parameters) == 2
 
     sq.set_optim_mode(False)
+
+
+def test_circuit_sampling_from_code_6() -> None:
+
+    sq.set_optim_mode(True)
+
+    elements = get_elements_from_code("JJJJ_1")
+
+    junc_2, cap_2 = elements[(1, 2)]
+    junc_3, cap_3 = elements[(2, 3)]
+
+    assert junc_2 == junc_3
+    assert cap_2 == cap_3
+
+    circuit = sq.Circuit(elements, flux_dist="junctions")
+
+    circuit.description()
+
+    assert len(circuit.parameters) == 4
+
+    sq.set_optim_mode(False)
+
+
+def test_circuit_sampling_from_code_7() -> None:
+
+    sq.set_optim_mode(True)
+
+    elements = get_elements_from_code("JJJJ_2")
+
+    junc_1, cap_1 = elements[(0, 1)]
+    junc_3, cap_3 = elements[(2, 3)]
+
+    assert junc_1 == junc_3
+    assert cap_1 == cap_3
+
+    circuit = sq.Circuit(elements, flux_dist="junctions")
+
+    circuit.description()
+
+    assert len(circuit.parameters) == 4
+
+    sq.set_optim_mode(False)
