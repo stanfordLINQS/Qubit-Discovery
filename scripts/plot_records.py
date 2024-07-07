@@ -2,13 +2,16 @@
 Plot optimization results.
 
 Usage:
-  plot_records.py <yaml_file> [--num_runs=<num_runs> \
---circuit_code=<circuit_code> --optim_type=<optim_type> --num_best=<num_best>]
+  plot_records.py <yaml_file> [--num_runs=<num_runs>] [--circuit_code=<circuit_code>] 
+                  [--optim_type=<optim_type>] [--num_best=<num_best>]
   plot_records.py -h | --help
   plot_records.py --version
 
+Arguments
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
   -n, --num_runs=<num_runs>                 Number of runs to consider

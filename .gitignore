@@ -6,6 +6,5 @@ __pycache__/
 *.sbatch
 *.egg-info
 
-*.yaml
+scripts/*.yaml
 !defaults.yaml
-!alex.yaml

@@ -3,13 +3,16 @@ Plot flux/charge spectra and computational subspace phase plots for a given set
 of circuits.
 
 Usage:
-  plot_analysis.py <yaml_file> [--ids=<ids> --circuit_code=<circuit_code>\
-  --optim_type=<optim_type>]
+  plot_analysis.py <yaml_file> [--ids=<ids>] [--circuit_code=<circuit_code>]
+                   [--optim_type=<optim_type>]
   plot_analysis.py -h | --help
   plot_analysis.py --version
 
+Arguments
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
   -i, --ids=<ids>                           ids of the circuits to be summarized

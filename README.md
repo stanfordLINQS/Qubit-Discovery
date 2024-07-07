@@ -3,7 +3,7 @@
 <img src = pics/README_logo.png width= 500px" />
 </p>
 
-# Qubit Discovery
+# Qubit-Discovery
 [**Introduction**](#Introduction)
 |[**Tutorial**](#Tutorial)
 |[**Installation**](#Installation)
@@ -12,48 +12,42 @@
 
 ## Introduction
 
-Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting qubits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python library. It provides a Python package `qubit_discovery` implementing loss functions and optimization algorithms, and a set of example scripts using them. 
+Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting qubits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python package. It provides a Python package `qubit_discovery` implementing loss functions and optimization algorithms, and a set of scripts using it in a reproducible workflow for multiple optimization runs.
 
 With these tools, superconducting qubits can be optimized over the values of their elements for metrics such as decoherence time, anharmonicity, qubit frequency, or other user-defined targets.
 
 A description of the theory and example usage is provided in the following paper:
-> TBD
+> TODO
 
-## Tutorial
+## Usage
 
 ### `qubit_discovery`
 
-The `qubit_discovery` module provides two submodules:
-- `qubit_discovery.optimization` has two optimization algorithms (SGD and BFGS), a sampler to randomly sample qubits, and a set of utilities to choose truncation numbers.
-- `qubit_discovery.losses` has a set of functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilties to build loss functions out of these metrics.
+The `qubit_discovery` module provides the basic ingredients for running optimization with `SQcircuit`. The `losses` submodule implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` submodule implements optimization algorithms (SGD and BFGS), utilities to set truncation numbers, and a qubit sampler.
 
-An example notebook demonstrating the usage on a single transmon can be found in `examples/tutorial.ipynb`.
+See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features:
+- [`QD_overview.ipynb`](tutorials/QD_overview.ipynb) gives a basic overview of the core functionality.
+- [`QD_advanced-features.ipynb`](tutorials/QD_advanced-features.ipynb) shows the advanced features and customization possible.
+- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) shows how the package can be used to optimize the $T_2$ time of a transmon.
 
 ### Scripts
 
-The `scripts` directory provides a set of programs which can be used in a pipeline for parallel optimization of a superconducting circuit.
-1. Run the `optimize.py` script many times in parallel to optimize from different initialization points.
-2. Collate the results of the different runs with `plot_records.py`.
-3. Output the details of the best-performing circuits using `circuit_summary.py`.
+The `scripts` directory provides a set of programs which can be used to automate multiple optimization runs via the following workflow:
+1. Run [`optimize.py`](scripts/optimize.py) in parallel with different seeds, which correspond to distinct intialization points.
+2. Collate the results of the different runs using [`plot_records.py`](scripts/plot_records.py).
+3. Output the details of the best-performing circuits with [`circuit_summary.py`](scripts/circuit_summary.py) and [`plot_analysis.py`](scripts/plot_analysis.py).
 
-Each program takes in a common YAML file with the metadata about the optimization (circuit topology, allowed element ranges, …). An example is provided in `scripts/example_metadata.yaml`.
+For a detailed description of the workflow, see [`parallel_optimization.md`](tutorials/parallel_optimization.md).
 
 ## Installation
 
-To install the `qubit_discovery` package, both Conda and PyPI are supported:
+To install the `qubit_discovery` package, download from  PyPI:
 ```
 pip install qubit_discovery
-```
-```
-conda install -c conda-forge qubit_discovery
 ```
 
 To use the provided scripts, after installing the `qubit_discovery` package clone the `Qubit-Discovery` repository and run with Python >=3.9. 
 
-## Examples
-
-Example notebooks demonstrating the use of the `qubit_discovery` package can be found in the `examples/` directory.
-
 ## Contribution
 
-
+## License
