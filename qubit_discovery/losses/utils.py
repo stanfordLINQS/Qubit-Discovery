@@ -7,6 +7,7 @@ import torch
 
 SQValType = Union[float, torch.Tensor]
 
+
 def construct_perturbed_elements(
         circuit: Circuit,
         new_values: torch.Tensor,
@@ -16,7 +17,9 @@ def construct_perturbed_elements(
     for loop in circuit.loops:
         if loop in circuit.parameters:
             new_loop = copy(loop)
-            new_loop.internal_value = new_values[circuit.parameters_elems.index(loop)]
+            new_loop.internal_value = new_values[
+                circuit.parameters_elems.index(loop)
+            ]
         else:
             replacement_loops[loop] = loop
 
@@ -27,7 +30,9 @@ def construct_perturbed_elements(
 
             # Update value, if necessary
             if el in circuit.parameters_elems:
-                new_el.internal_value = new_values[circuit.parameters_elems.index(el)]
+                new_el.internal_value = new_values[
+                    circuit.parameters_elems.index(el)
+                ]
 
             # Update loop values, if necessary
             if hasattr(el, 'loops'):
