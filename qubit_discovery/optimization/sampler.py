@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import List, Union
+from typing import List, Union, Optional
 
-from scipy.stats import loguniform
+from scipy.stats import uniform, loguniform
 import numpy as np
 
 import SQcircuit as sq
@@ -47,19 +47,38 @@ class CircuitSampler:
             A list specifying the lower bound and upper bound for the inductors.
         junction_range:
             A list specifying the lower bound and upper bound for the junctions.
+        loop_in_optim:
+            A boolean specifying whether to use the loop in optimization or not.
     """
 
     def __init__(
-            self,
-            capacitor_range: List[float],
-            inductor_range: List[float],
-            junction_range: List[float],
+        self,
+        capacitor_range: List[float],
+        inductor_range: List[float],
+        junction_range: List[float],
+        flux_range: Optional[List[float]] = None
     ) -> None:
 
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
         self.junction_range = junction_range
-        self.loop = sq.Loop(0.5)
+
+        if flux_range is None:
+            self.loop = sq.Loop(0.5 - 1e-2)
+        else:
+            flux_value = uniform.rvs(*flux_range, size=1)[0]
+            flux_value = flux_value / (2 * np.pi)
+            self.loop = sq.Loop(
+                flux_value,
+                requires_grad=sq.get_optim_mode()
+            )
+
+        self.special_circuit_codes = [
+            "transmon",
+            "flux_qubit",
+            "JJJJ_1",
+            "JJJJ_2"
+        ]
 
     def get_elem(
         self,
@@ -116,6 +135,74 @@ class CircuitSampler:
             raise ValueError("elem_str should be either 'J', 'L', or 'C' ")
 
         return elem
+
+    def sample_special_circuit(self, circuit_code):
+
+        if circuit_code == "transmon":
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = junc_1
+
+            cap = self.get_elem('C', main_loop=False)
+
+            elements = {(0, 1): [junc_1, junc_2, cap]}
+
+        elif circuit_code == "flux_qubit":
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = junc_1
+            junc_3 = self.get_elem('J', main_loop=True)
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = cap_1
+            cap_3 = self.get_elem('C', main_loop=False)
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 0): [junc_3, cap_3]
+            }
+
+        elif circuit_code == "JJJJ_1":
+
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = self.get_elem('J', main_loop=True)
+            junc_3 = junc_2
+            junc_4 = junc_3
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = self.get_elem('C', main_loop=False)
+            cap_3 = cap_2
+            cap_4 = cap_3
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 3): [junc_3, cap_3],
+                (3, 0): [junc_4, cap_4]
+            }
+
+        elif circuit_code == "JJJJ_2":
+
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = self.get_elem('J', main_loop=True)
+            junc_3 = junc_1
+            junc_4 = junc_2
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = self.get_elem('C', main_loop=False)
+            cap_3 = cap_1
+            cap_4 = cap_2
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 3): [junc_3, cap_3],
+                (3, 0): [junc_4, cap_4]
+            }
+
+        else:
+            raise ValueError("The circuit code is not supported!")
+
+        return sq.Circuit(elements, flux_dist='junctions')
 
     def add_elem_to_elements(
         self,
@@ -216,6 +303,9 @@ class CircuitSampler:
             circuit_code:
                 A string specifying the circuit code.
         """
+
+        if circuit_code in self.special_circuit_codes:
+            return self.sample_special_circuit(circuit_code)
 
         current_node = 0
         hold_nodes = []

@@ -2,9 +2,9 @@
 __pycache__/
 .mypy_cache/
 .DS_Store
+.pytest_cache
 *.sbatch
 *.egg-info
 
-*.yaml
+scripts/*.yaml
 !defaults.yaml
-!alex.yaml

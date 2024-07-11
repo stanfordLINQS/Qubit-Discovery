@@ -9,7 +9,7 @@ from SQcircuit import Circuit
 def load_record(url: str) -> Any:
 
     if not os.path.exists(url):
-        print(f"The file '{url}' is not existed.")
+        print(f"The file '{url}' does not exist.")
         return None
 
     try:
@@ -20,25 +20,6 @@ def load_record(url: str) -> Any:
     except EOFError:
         print(f"Warning: The file '{url}' is empty or corrupted.")
         return None
-
-
-def add_file_args(parser):
-    parser.add_argument(
-        '-c', '--codes', type=str, required=True,
-        help="Circuit codes to plot, each with <num_runs>"
-    )
-    parser.add_argument(
-        '-o', '--optimization_type', type=str, required=True,
-        help="Optimization type to plot"
-    )
-    parser.add_argument(
-        '-n', '--name', required=True,
-        help="Name of run, either explict or passed in via YAML."
-    )
-    parser.add_argument(
-        '-s', '--save_circuits', action='store_true',
-        help="Unimplemented"
-    )  # TODO: implement
 
 
 def load_initial_circuit(circuit_record: str) -> Circuit:

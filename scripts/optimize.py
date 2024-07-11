@@ -1,34 +1,38 @@
 """
-Optimize.
+Optimize a single circuit.
 
 Usage:
-  optimize.py <yaml_file>  [--seed=<seed> --circuit_code=<circuit_code>\
-  --optim_type=<optim_type> --init_circuit=<init_circuit> --save-intermediate]
+  optimize.py <yaml_file> [--seed=<seed>] [--circuit_code=<circuit_code>]
+              [--optim_type=<optim_type>] [--init_circuit=<init_circuit>]
+              [--save-intermediate]
   optimize.py -h | --help
   optimize.py --version
 
+Arguments
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
-  -c, --circuit_code=<circuit_code>         Circuit code
-  -s, --seed=<seed>                         Seed for random generators
-  -o, --optim_type=<optim_type>             Optimization method
-  -i, --init_circuit=<init_circuit>         Set initial circuit params
-  --save-intermediate                       Save intermediate circuits
+  -c, --circuit_code=<circuit_code>         Code for circuit topology.
+  -s, --seed=<seed>                         Seed (integer) for random generators.
+  -o, --optim_type=<optim_type>             Optimization method to use.
+  -i, --init_circuit=<init_circuit>         Set intial circuit to <init_circuit>.
+  --save-intermediate                       Save intermediate circuits during
+                                            optimization to file.
 """
 
 import random
 
 from docopt import docopt
 import numpy as np
-import torch
-
-import SQcircuit as sq
-from SQcircuit import Circuit
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses.loss import calculate_loss_metrics
 from qubit_discovery.optimization.sampler import CircuitSampler
+import SQcircuit as sq
+from SQcircuit import Circuit
+import torch
 
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
@@ -103,6 +107,13 @@ def main() -> None:
         sq.Capacitor: torch.tensor(capacitor_range)
     }
 
+    if "flux_range" in parameters.keys():
+        flux_range = eval_list(parameters['flux_range'])
+        bounds[sq.Loop] = torch.tensor(flux_range)
+
+    else:
+        flux_range = None
+
     set_seed(int(parameters['seed']))
 
     def my_loss_function(cr: Circuit):
@@ -116,11 +127,11 @@ def main() -> None:
         sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
-            junction_range=junction_range
+            junction_range=junction_range,
+            flux_range=flux_range
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-        if circuit.loops:
-            circuit.loops[0].set_flux(0.5 - 1e-2)
+        print(circuit.loops[0].value()/np.pi/2)
         print("Circuit sampled!")
     else:
         circuit = load_final_circuit(parameters['init_circuit'])
@@ -131,7 +142,7 @@ def main() -> None:
     baseline_trunc_num = circuit.truncate_circuit(parameters['K'])
 
     ############################################################################
-    # Running the optimizations.
+    # Run the optimizations.
     ############################################################################
 
     if parameters['optim_type'] == "SGD":

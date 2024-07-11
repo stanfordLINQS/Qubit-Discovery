@@ -121,7 +121,7 @@ UNITS = defaultdict(lambda: "", UNITS)
 ################################################################################
 
 
-def get_metrics_dist(config: dict) -> Tuple[List[str], List[str]]:
+def get_metrics_dict(config: dict) -> Tuple[List[str], List[str]]:
     """Return a list of the metrics that were not used in optimization and the
     metrics that were used in optimization.
 

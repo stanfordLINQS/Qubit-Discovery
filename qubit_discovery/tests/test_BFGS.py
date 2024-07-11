@@ -52,6 +52,7 @@ def test_bfgs_run() -> None:
     sq.set_optim_mode(True)
 
     total_trunc_num: int = 120
+    baseline_trunc_num = total_trunc_num
 
     circuit = get_fluxonium()
     circuit.set_trunc_nums([total_trunc_num])
@@ -63,6 +64,7 @@ def test_bfgs_run() -> None:
         name="BFGS_test",
         num_eigenvalues=10,
         total_trunc_num=total_trunc_num,
+        baseline_trunc_nums=[baseline_trunc_num],
         bounds=get_bounds(),
         lr=1.0,
         max_iter=1,

@@ -7,8 +7,11 @@ Usage:
   convergence_test_low_res.py -h | --help
   convergence_test_low_res.py --version
 
+Arguments
+  <yaml_file>   YAML file containing details about the optimization.
+
 Options:
-  -h --help     Show this screen.
+  -h, --help     Show this screen.
   --version     Show version.
 
   -c, --circuit_code=<circuit_code>         Circuit code
