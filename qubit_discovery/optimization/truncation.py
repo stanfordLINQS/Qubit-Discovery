@@ -175,9 +175,12 @@ def trunc_num_heuristic(
         EJ_eff /= 1e9
         sigma = (EJ_eff / (8 * EC_eff)) ** (1 / 4)
         charge_truncation = num_standard_deviations * sigma
-        charge_truncation = int(min(charge_truncation, charge_mode_cutoff))
+        print(f"charge_truncation: {charge_truncation}")
+        print(f"sigma: {sigma}")
+        charge_truncation = min(charge_truncation, charge_mode_cutoff)
+        print(f"charge_truncation: {charge_truncation}")
 
-        trunc_nums[circuit.omega == 0] = charge_truncation
+        trunc_nums[circuit.omega == 0] = int(charge_truncation)
         K = K / min_trunc ** len(harmonic_modes) / charge_truncation
 
     else:
