@@ -116,7 +116,7 @@ def fit_mode(
 
 def get_slow_fit(
     fit_results, 
-    ignore_threshold=1e-5
+    ignore_threshold=5e-3
 ) -> Tuple[float, float, float]:
 
     if len(fit_results) == 1:
