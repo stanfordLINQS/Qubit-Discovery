@@ -131,6 +131,7 @@ def evaluate_trunc_number(circuit, trunc_nums, axis):
 
 
 def plot_mode_magnitudes(mode_magnitudes, axis):
+    mode_magnitudes = np.array(mode_magnitudes)
     axis.plot(mode_magnitudes,
               marker='o',
               linestyle='dotted',
@@ -160,7 +161,6 @@ def main() -> None:
     )
 
     parameters["optim_type"] = "convergence"
-    parameters["name"] = "K_" + str(parameters['K'])
 
     directory = Directory(parameters, arguments)
     plot_output_dir = directory.get_plots_dir()
@@ -242,7 +242,6 @@ def main() -> None:
         min_trunc=4)
     )
     heuristic_trunc_nums = list(heuristic_trunc_nums)
-    print(f"heuristic_trunc_nums: {heuristic_trunc_nums}")
     heuristic_passed = evaluate_trunc_number(
         circuit, heuristic_trunc_nums, axes[2, 2]
     )
