@@ -161,7 +161,7 @@ def trunc_num_heuristic(
             "Number of axes for fitting plots should match or exceed number of modes"
 
     # Assign charge modes
-    if num_charge_modes == 1:
+    '''if num_charge_modes == 1:
         num_standard_deviations = 3
         charge_mode_idx = circuit.n - 1
         EC_eff = (unt.e ** 2) / (2 * np.pi * unt.hbar) / 1e9 * circuit.cInvTrans[charge_mode_idx, charge_mode_idx]
@@ -177,11 +177,11 @@ def trunc_num_heuristic(
         trunc_nums[circuit.omega == 0] = int(charge_truncation)
         K = K / min_trunc ** len(harmonic_modes) / charge_truncation
 
-    else:
-        trunc_nums[circuit.omega == 0] = charge_mode_cutoff
-        # Ensure each mode has at least `min_trunc` by allocating truncation
-        # numbers as proportion of `min_trunc`
-        K = K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes
+    else:'''
+    trunc_nums[circuit.omega == 0] = charge_mode_cutoff
+    # Ensure each mode has at least `min_trunc` by allocating truncation
+    # numbers as proportion of `min_trunc`
+    K = K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes
 
 
 
