@@ -56,11 +56,11 @@ def set_plotting_defaults(single_color=False):
     plt.rcParams["xtick.major.width"] = 1.2
     plt.rcParams["ytick.major.size"] = 5
     plt.rcParams["ytick.major.width"] = 1.2
-    plt.rcParams["axes.titlesize"] = 18
-    plt.rcParams["font.size"] = 18
+    plt.rcParams["axes.titlesize"] = 24
+    plt.rcParams["font.size"] = 24
     plt.rcParams['xtick.labelsize'] = 15
     plt.rcParams['ytick.labelsize'] = 15
-    color_list = ['#8D1514', '#007662', '#333131', '#D1C295', '#FD7C34']
+    color_list = ['#8D1514', '#007662', '#333131', '#D1C295', '#FD7C34', '#6B3B6D']
     if single_color:
         color_list = ['#8D1514', ]
     plt.rcParams['axes.prop_cycle'] = plt.cycler(color=color_list)
