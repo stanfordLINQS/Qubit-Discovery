@@ -151,8 +151,6 @@ def trunc_num_heuristic(
     """
     assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
-    print("trunc num func")
-
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
     num_charge_modes = np.sum(circuit.omega == 0)
@@ -164,7 +162,6 @@ def trunc_num_heuristic(
 
     # Assign charge modes
     if num_charge_modes == 1:
-        print("single charge mode")
         num_standard_deviations = 3
         charge_mode_idx = circuit.n - 1
         EC_eff = (unt.e ** 2) / (2 * np.pi * unt.hbar) / 1e9 * circuit.cInvTrans[charge_mode_idx, charge_mode_idx]
@@ -175,10 +172,7 @@ def trunc_num_heuristic(
         EJ_eff /= 1e9
         sigma = (EJ_eff / (8 * EC_eff)) ** (1 / 4)
         charge_truncation = num_standard_deviations * sigma
-        print(f"charge_truncation: {charge_truncation}")
-        print(f"sigma: {sigma}")
         charge_truncation = min(charge_truncation, charge_mode_cutoff)
-        print(f"charge_truncation: {charge_truncation}")
 
         trunc_nums[circuit.omega == 0] = int(charge_truncation)
         K = K / min_trunc ** len(harmonic_modes) / charge_truncation
@@ -265,7 +259,6 @@ def assign_trunc_nums(
         trunc_nums:
             List of truncation numbers for each mode of circuit
     """
-    print("assign trunc nums func")
     if len(circuit.m) == 1:
         print("re-allocate truncation numbers (single mode)")
         circuit.set_trunc_nums([total_trunc_num, ])
