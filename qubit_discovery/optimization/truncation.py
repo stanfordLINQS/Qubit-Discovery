@@ -217,7 +217,7 @@ def trunc_num_heuristic(
     ratio = np.power(np.prod(k), 1 / len(k)) / k
 
     # Weight [mi, ] such that mi/mj=kj/ki, *mi=K
-    mode_results = np.power(K * ratio, 1 / len(harmonic_modes))
+    mode_results = np.power(K, 1 / len(harmonic_modes)) * ratio
 
     # Shift by relative peaks
     mode_results += d
