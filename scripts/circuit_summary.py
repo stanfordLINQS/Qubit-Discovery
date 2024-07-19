@@ -43,6 +43,7 @@ from plot_utils import load_final_circuit
 SUMMARY_REQUIRED_KEYS = [
     "ids",
     "circuit_code",
+    "optim_type",
 ]
 
 ################################################################################

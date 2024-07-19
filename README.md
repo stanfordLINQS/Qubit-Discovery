@@ -12,7 +12,7 @@
 
 ## Introduction
 
-Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting qubits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python package. It provides a Python package `qubit_discovery` implementing loss functions and optimization algorithms, and a set of scripts using it in a reproducible workflow for multiple optimization runs.
+Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting qubits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python package. It provides a Python package `qubit_discovery` implementing loss functions and optimization algorithms, and a set of scripts using it in a reproducible workflow for parallelized optimization runs.
 
 With these tools, superconducting qubits can be optimized over the values of their elements for metrics such as decoherence time, anharmonicity, qubit frequency, or other user-defined targets.
 
@@ -33,11 +33,11 @@ See the notebooks in the [`tutorials`](tutorials/) directory for instructions on
 ### Scripts
 
 The `scripts` directory provides a set of programs which can be used to automate multiple optimization runs via the following workflow:
-1. Run [`optimize.py`](scripts/optimize.py) in parallel with different seeds, which correspond to distinct intialization points.
+1. Execute [`optimize.py`](scripts/optimize.py) in parallel with different seeds, which correspond to distinct intialization points.
 2. Collate the results of the different runs using [`plot_records.py`](scripts/plot_records.py).
 3. Output the details of the best-performing circuits with [`circuit_summary.py`](scripts/circuit_summary.py) and [`plot_analysis.py`](scripts/plot_analysis.py).
 
-For a detailed description of the workflow, see [`parallel_optimization.md`](tutorials/parallel_optimization.md).
+For a detailed description of this workflow, see [`parallel_optimization.md`](tutorials/parallel_optimization.md).
 
 ## Installation
 

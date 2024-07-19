@@ -1,0 +1,28 @@
+name: "tutorial_optimization_fluxonium"
+circuit_code: JL
+seed: 1
+K: 120
+optim_type: BFGS
+epochs: 100
+num_eigenvalues: 10
+capacitor_range: [1e-15, 12e-12]
+inductor_range: [1e-15, 5e-6]
+junction_range: [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]
+use_losses:
+  frequency: 1.0
+  flux_sensitivity: 1.0
+  charge_sensitivity: 1.0
+  number_of_gates: 1.0
+use_metrics: 
+  - "anharmonicity"
+  - "t1"
+  - "t1_capacitive"
+  - "t1_inductive"
+  - "t1_quasiparticle"
+  - "t2"
+  - "t2_flux"
+  - "t2_charge"
+  - "t2_cc"
+  - "gate_speed"
+  - "t"
+save_intermediate: False

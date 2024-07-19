@@ -43,7 +43,7 @@ from inout import (
 YAML_OR_COMMANDLINE_KEYS = [
     "ids",
     "circuit_code",
-    "optim_type",
+    "optim_type"
 ]
 
 
