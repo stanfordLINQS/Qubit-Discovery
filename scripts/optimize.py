@@ -8,7 +8,7 @@ Usage:
   optimize.py -h | --help
   optimize.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -21,6 +21,9 @@ Options:
   -i, --init_circuit=<init_circuit>         Set intial circuit to <init_circuit>.
   --save-intermediate                       Save intermediate circuits during
                                             optimization to file.
+
+Notes: Optional arguments to optimize.py must either be provided on the
+command line or in <yaml_file>.
 """
 
 import random
@@ -42,12 +45,15 @@ from inout import load_yaml_file, add_command_line_keys, Directory
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
-    "seed",
-    "circuit_code",
-    "optim_type",
-    "save-intermediate",
-    "init_circuit",
+OPTIMIZE_REQUIRED_KEYS = [
+    'seed',
+    'circuit_code',
+    'optim_type',
+    'save-intermediate',
+]
+
+OPTIMIZE_OPTIONAL_KEYS = [
+    'init_circuit'
 ]
 
 ################################################################################
@@ -86,7 +92,8 @@ def main() -> None:
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
+        keys=OPTIMIZE_REQUIRED_KEYS,
+        optional_keys=OPTIMIZE_OPTIONAL_KEYS
     )
 
     directory = Directory(parameters, arguments)
@@ -123,7 +130,7 @@ def main() -> None:
             use_metrics=parameters["use_metrics"],
         )
 
-    if parameters['init_circuit'] == "":
+    if parameters['init_circuit'] is None or parameters['init_circuit'] == "":
         sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
@@ -131,12 +138,11 @@ def main() -> None:
             flux_range=flux_range
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-        print(circuit.loops[0].value()/np.pi/2)
+        print(circuit.loops[0].value() / 2 / np.pi)
         print("Circuit sampled!")
     else:
         circuit = load_final_circuit(parameters['init_circuit'])
         circuit.update()
-        circuit._toggle_fullcopy = True
         print("Circuit loaded!")
 
     baseline_trunc_num = circuit.truncate_circuit(parameters['K'])

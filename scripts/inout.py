@@ -71,11 +71,12 @@ The working tree for the outputs of scripts will look like:
 Ensure that you have the correct file structure for proper operation
 of the scripts and modules within this project.
 """
-import os
-import yaml
 
-from typing import List, Tuple, Dict
 from collections import defaultdict
+import os
+from typing import List, Tuple, Dict
+
+import yaml
 
 from qubit_discovery.losses.loss import get_all_metrics
 
@@ -174,21 +175,21 @@ def add_command_line_keys(
     keys: List[str],
     optional_keys: List[str] = None,
 ) -> dict:
-    """Add command line argument keys to the parameters which is loaded from
-    yaml file.
+    """Add command line argument keys to the parameters which are loaded from
+    YAML file.
 
     Parameters
     ----------
         parameters:
-            A dictionary containing the parameters of the yaml file.
+            A dictionary containing the parameters of the YAML file.
         arguments:
             A dictionary containing the arguments of the command line.
         keys:
-            A list of string keys that must be either specified in the yaml
+            A list of string keys that must be either specified in the YAML
             file or command line options.
         optional_keys:
             A list of string keys that are optional and can be not specified in
-            both the yaml file and the command line options.
+            both the YAML file and the command line options.
     """
 
     if optional_keys is None:

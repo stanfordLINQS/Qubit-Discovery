@@ -7,7 +7,7 @@ Usage:
   plot_records.py -h | --help
   plot_records.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -39,13 +39,13 @@ from inout import (
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
+RECORDS_REQUIRED_KEYS = [
     "num_runs",
     "circuit_code",
     "optim_type",
 ]
 # optional keys.
-OPTIONAL_KEYS = ["num_best"]
+RECORDS_OPTIONAL_KEYS = ["num_best"]
 
 PLOT_SCHEME = defaultdict(lambda: '#81221B')
 PLOT_SCHEME['JL'] = 'darkorange'
@@ -213,8 +213,8 @@ def main() -> None:
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
-        optional_keys=OPTIONAL_KEYS,
+        keys=RECORDS_REQUIRED_KEYS,
+        optional_keys=RECORDS_OPTIONAL_KEYS,
     )
 
     if parameters['num_best'] is not None:

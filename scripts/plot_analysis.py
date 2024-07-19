@@ -8,7 +8,7 @@ Usage:
   plot_analysis.py -h | --help
   plot_analysis.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:

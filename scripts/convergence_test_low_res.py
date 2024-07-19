@@ -2,12 +2,12 @@
 Evaluate convergence test on randomly sampled (or fixed) circuit.
 
 Usage:
-  convergence_test_low_res.py <yaml_file> [--seed=<seed> --K=<K> \
---circuit_code=<circuit_code> --init_circuit=<init_circuit>]
+  convergence_test_low_res.py <yaml_file> [--seed=<seed>] [--K=<K>]
+                              [--circuit_code=<circuit_code>] [--init_circuit=<init_circuit>]
   convergence_test_low_res.py -h | --help
   convergence_test_low_res.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -44,11 +44,14 @@ from inout import load_yaml_file, add_command_line_keys, Directory
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
-    "seed",
-    "K",
-    "circuit_code",
-    "init_circuit",
+CONVERGENCE_REQUIRED_KEYS = [
+    'seed',
+    'K',
+    'circuit_code',
+]
+
+CONVERGENCE_OPTIONAL_KEYS = [
+    'init_circuit'
 ]
 
 N_EIG_DIAG = 10
@@ -156,7 +159,8 @@ def main() -> None:
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
+        keys=CONVERGENCE_REQUIRED_KEYS,
+        optional_keys=CONVERGENCE_OPTIONAL_KEYS
     )
 
     parameters["optim_type"] = "convergence"
@@ -178,7 +182,7 @@ def main() -> None:
 
     set_seed(int(parameters['seed']))
 
-    if parameters['init_circuit'] == "":
+    if parameters['init_circuit'] is None or parameters['init_circuit']== "":
         sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
