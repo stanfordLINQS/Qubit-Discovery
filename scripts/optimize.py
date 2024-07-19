@@ -12,7 +12,7 @@ Arguments
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
-  -h, --help     Show this screen.
+  -h, --help    Show this screen.
   --version     Show version.
 
   -c, --circuit_code=<circuit_code>         Code for circuit topology.

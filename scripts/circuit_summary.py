@@ -12,7 +12,7 @@ Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
-  -h, --help     Show this screen.
+  -h, --help    Show this screen.
   --version     Show version.
 
   -i, --ids=<ids>                           Comma-delimited list of circuits to

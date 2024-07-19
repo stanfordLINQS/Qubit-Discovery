@@ -11,7 +11,7 @@ Arguments
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
-  -h, --help     Show this screen.
+  -h, --help    Show this screen.
   --version     Show version.
 
   -n, --num_runs=<num_runs>                 Number of runs to consider

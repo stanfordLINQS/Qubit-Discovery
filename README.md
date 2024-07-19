@@ -1,14 +1,14 @@
 <br />
 <p align="center">
-<img src = pics/README_logo.png width= 500px" />
+<img src = pics/README_logo.png width= 250px" />
 </p>
 
 # Qubit-Discovery
-[**Introduction**](#Introduction)
-|[**Tutorial**](#Tutorial)
-|[**Installation**](#Installation)
-|[**Examples**](#Examples)
-|[**Contribution**](#Contribution)
+[**Introduction**](##Introduction)
+| [**Usage**](##Usage)
+| [**Installation**](##Installation)
+| [**Contribution**](##Contribution)
+| [**License**](##License)
 
 ## Introduction
 
@@ -28,7 +28,7 @@ The `qubit_discovery` module provides the basic ingredients for running optimiza
 See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features:
 - [`QD_overview.ipynb`](tutorials/QD_overview.ipynb) gives a basic overview of the core functionality.
 - [`QD_advanced-features.ipynb`](tutorials/QD_advanced-features.ipynb) shows the advanced features and customization possible.
-- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) shows how the package can be used to optimize the $T_2$ time of a transmon.
+- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) shows how the package can be used to optimize the $T_2$ time and qubit frequency of a transmon.
 
 ### Scripts
 
