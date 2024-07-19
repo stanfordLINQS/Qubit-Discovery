@@ -7,6 +7,9 @@ import scipy, scipy.signal
 from matplotlib.axes import Axes
 
 from SQcircuit import get_optim_mode, Circuit
+import SQcircuit.functions as sqf
+import SQcircuit.units as unt
+from SQcircuit import Junction
 
 
 def get_reshaped_eigvec(
@@ -113,7 +116,7 @@ def fit_mode(
 
 def get_slow_fit(
     fit_results, 
-    ignore_threshold=1e-5
+    ignore_threshold=5e-3
 ) -> Tuple[float, float, float]:
 
     if len(fit_results) == 1:
@@ -152,15 +155,35 @@ def trunc_num_heuristic(
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
     num_charge_modes = np.sum(circuit.omega == 0)
     # charge_mode_cutoff = trunc_num_average = np.ceil(K ** (1 / len(circuit.omega)))
-    # TODO: Assign charge mode more cleverly rather than hard-coding
 
     if axes is not None:
         assert len(axes) >= len(circuit.omega),\
             "Number of axes for fitting plots should match or exceed number of modes"
 
+    # Assign charge modes
+    '''if num_charge_modes == 1:
+        num_standard_deviations = 3
+        charge_mode_idx = circuit.n - 1
+        EC_eff = (unt.e ** 2) / (2 * np.pi * unt.hbar) / 1e9 * circuit.cInvTrans[charge_mode_idx, charge_mode_idx]
+        EJ_eff = 0
+        for _, el, B_idx, W_idx in circuit.elem_keys[Junction]:
+            EJ = np.squeeze(sqf.numpy(el.get_value())) / 2 / np.pi
+            EJ_eff += EJ * (circuit.wTrans[W_idx, charge_mode_idx]) ** 2
+        EJ_eff /= 1e9
+        sigma = (EJ_eff / (8 * EC_eff)) ** (1 / 4)
+        charge_truncation = num_standard_deviations * sigma
+        charge_truncation = min(charge_truncation, charge_mode_cutoff)
+
+        trunc_nums[circuit.omega == 0] = int(charge_truncation)
+        K = K / min_trunc ** len(harmonic_modes) / charge_truncation
+
+    else:'''
+    trunc_nums[circuit.omega == 0] = charge_mode_cutoff
     # Ensure each mode has at least `min_trunc` by allocating truncation
     # numbers as proportion of `min_trunc`
     K = K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes
+
+
 
     _, mode_magnitudes = get_reshaped_eigvec(
         circuit,
@@ -182,7 +205,6 @@ def trunc_num_heuristic(
             k[mode_idx] = ki
             d[mode_idx] = di
 
-    print(f"k: {k}")
     if all([ki < 0 for ki in k]):
         k = np.array([1 for _ in range(len(k))])
 
@@ -192,7 +214,7 @@ def trunc_num_heuristic(
     ratio = np.power(np.prod(k), 1 / len(k)) / k
 
     # Weight [mi, ] such that mi/mj=kj/ki, *mi=K
-    mode_results = np.power(K * ratio, 1 / len(harmonic_modes))
+    mode_results = np.power(K, 1 / len(harmonic_modes)) * ratio
 
     # Shift by relative peaks
     mode_results += d
@@ -210,10 +232,8 @@ def trunc_num_heuristic(
     mode_results = np.minimum(mode_results, K)
 
     # Round to nearest integer and assign harmonic modes
-    harmonic_mode_values = np.floor(mode_results * min_trunc)
+    harmonic_mode_values = np.floor(np.real(mode_results * min_trunc))
     trunc_nums[circuit.omega != 0] = harmonic_mode_values
-    # Assign charge modes
-    trunc_nums[circuit.omega == 0] = charge_mode_cutoff
 
     return list(trunc_nums)
 

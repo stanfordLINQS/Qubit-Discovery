@@ -18,6 +18,7 @@ from .utils import (
 # NOTE: Ensure all functions treat the input `circuit` as const, at least
 # in effect.
 
+
 def first_resonant_frequency(circuit: Circuit) -> SQValType:
     """Calculates resonant frequency of first excited eigenstate in circuit."""
     omega = circuit.efreqs[1] - circuit.efreqs[0]
@@ -164,9 +165,9 @@ def reset_charge_modes(circuit: Circuit) -> None:
 
 
 def fastest_gate_speed(circuit: Circuit) -> SQValType:
-    """Calculates the upper bound for the speed of the single qubit gate of the
-    qubit. The upper bound is:
-    min{f_i0 - f_10, |f_i0 - 2f_10|};  for i>1
+    """Calculates the upper bound for the speed of the single qubit gate.
+    The upper bound is:
+    min{f_i0 - f_10, |f_i0 - 2f_10|}; for i>1
 
     Parameters
     ----------
@@ -238,6 +239,7 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
 
     return 1 / gamma
 
+
 def total_dec_time(circuit: Circuit) -> SQValType:
     """
     Return the T2 (total decohence) time
@@ -255,6 +257,7 @@ def total_dec_time(circuit: Circuit) -> SQValType:
     )
 
     return 2*t1*t2 / (2*t1+t2)
+
 
 def number_of_gates(circuit: Circuit) -> SQValType:
     """Return the number of single qubit gate"""

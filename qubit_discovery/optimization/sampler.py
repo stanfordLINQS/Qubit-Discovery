@@ -76,6 +76,8 @@ class CircuitSampler:
         self.special_circuit_codes = [
             "transmon",
             "flux_qubit",
+            "JJJJ_1",
+            "JJJJ_2"
         ]
 
     def get_elem(
@@ -157,6 +159,44 @@ class CircuitSampler:
                 (0, 1): [junc_1, cap_1],
                 (1, 2): [junc_2, cap_2],
                 (2, 0): [junc_3, cap_3]
+            }
+
+        elif circuit_code == "JJJJ_1":
+
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = self.get_elem('J', main_loop=True)
+            junc_3 = junc_2
+            junc_4 = junc_3
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = self.get_elem('C', main_loop=False)
+            cap_3 = cap_2
+            cap_4 = cap_3
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 3): [junc_3, cap_3],
+                (3, 0): [junc_4, cap_4]
+            }
+
+        elif circuit_code == "JJJJ_2":
+
+            junc_1 = self.get_elem('J', main_loop=True)
+            junc_2 = self.get_elem('J', main_loop=True)
+            junc_3 = junc_1
+            junc_4 = junc_2
+
+            cap_1 = self.get_elem('C', main_loop=False)
+            cap_2 = self.get_elem('C', main_loop=False)
+            cap_3 = cap_1
+            cap_4 = cap_2
+
+            elements = {
+                (0, 1): [junc_1, cap_1],
+                (1, 2): [junc_2, cap_2],
+                (2, 3): [junc_3, cap_3],
+                (3, 0): [junc_4, cap_4]
             }
 
         else:
