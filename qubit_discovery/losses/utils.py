@@ -1,8 +1,8 @@
 from collections import defaultdict
 from copy import copy
-from typing import Union
+from typing import Dict, List, Tuple, Union
 
-from SQcircuit import Circuit, get_optim_mode
+from SQcircuit import Circuit, Element, get_optim_mode
 import torch
 
 SQValType = Union[float, torch.Tensor]
@@ -11,7 +11,26 @@ SQValType = Union[float, torch.Tensor]
 def construct_perturbed_elements(
         circuit: Circuit,
         new_values: torch.Tensor,
-):
+) -> Dict[Tuple[int, int], List[Element]]:
+    """
+    Construct a dictionary of elements based on ``circuit``, where the elements
+    present in `circuit.parameters`` have their values updated by those
+    provided in ``new_values``.
+
+    Parameters
+    ----------
+        circuit:
+            A circuit to use as the initial elements.
+        new_values:
+            The values for the perturbed elements to take. This is a tensor of
+            length ``circuit.parameters``, and the values are assigned to the 
+            elements according to the order given by
+            ``circuit.parameters_elems``.
+    
+    Returns
+    ----------
+        A dictionary of elements, with perturbed values.
+    """
     # Construct replacement loops with updated values, where necessary
     replacement_loops = {}
     for loop in circuit.loops:
@@ -46,7 +65,23 @@ def construct_perturbed_elements(
     return new_elements
 
 
-def hinge_loss(val, cutoff, slope) -> SQValType:
+def hinge_loss(val: SQValType, cutoff: float, slope: float) -> SQValType:
+    """
+    Compute a linear hinge loss.
+    
+    Parameters
+    ----------
+        val:
+            The input value.
+        cutoff:
+            The cutoff above which to apply hinge loss.
+        slope:
+            The slope of the loss above ``cutoff``.
+    
+    Returns
+    ----------
+        Zero if ``val < cutoff``, otherwise ``slope * (val - cutoff)``.      
+    """
     if val < cutoff:
         return 0.0 * val
     else:
@@ -54,8 +89,23 @@ def hinge_loss(val, cutoff, slope) -> SQValType:
 
 
 def zero() -> SQValType:
+    """
+    Return the value of 0 in the appropriate datatype for the current
+    optimization mode.
 
+    Returns
+    ----------
+        The float 0.0 if not get_optim_mode(), otherwise the tensor value of 0.
+    """
     if get_optim_mode():
         return torch.tensor(0.0)
 
     return 0.0
+
+def detach_if_optim(value: SQValType) -> SQValType:
+    """Detach the value if is in torch. Otherwise, return the value itself."""
+
+    if get_optim_mode():
+        return value.detach()
+
+    return value
