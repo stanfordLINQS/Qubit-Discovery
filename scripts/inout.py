@@ -21,7 +21,7 @@ for all the scripts):
     - flux_sensitivity: Flux sensitivity loss.
     - charge_sensitivity: Charge sensitivity loss.
     - T1: Energy relaxation time (T1) loss.
-- use_metrics: List of strings. Metrics to use in simulations, e.g., ["T2"] for
+- use_metrics: List of strings. Metrics to use in simulations, e.g., ["T1"] for
   coherence time.
 
 Example:
@@ -38,7 +38,7 @@ Example:
       flux_sensitivity: 1.0
       charge_sensitivity: 1.0
       T1: 0.0
-    use_metrics: ["T2"]
+    use_metrics: ["T1"]
     optim_type: SGD
     circuit_code: JL
     init_circuit: ""
@@ -106,14 +106,10 @@ UNITS = {
     't1_capacitive': '[s]',
     't1_inductive': '[s]',
     't1_quasiparticle': '[s]',
-    't2': '[s]',
-    't2_proxy': '[s]',
-    't2_charge': '[s]',
-    't2_proxy_charge': '[s]',
-    't2_cc': '[s]',
-    't2_proxy_cc': '[s]',
-    't2_flux': '[s]',
-    't2_proxy_flux': '[s]',
+    'tp': '[s]',
+    'tp_charge': '[s]',
+    'tp_cc': '[s]',
+    'tp_flux': '[s]',
 }
 UNITS = defaultdict(lambda: "", UNITS)
 

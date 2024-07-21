@@ -103,6 +103,7 @@ def main() -> None:
     ############################################################################
 
     sq.set_optim_mode(True)
+    sq.set_max_eigenvector_grad(2)
 
     capacitor_range = eval_list(parameters['capacitor_range'])
     junction_range = eval_list(parameters['junction_range'])

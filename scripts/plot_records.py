@@ -51,20 +51,22 @@ PLOT_SCHEME = defaultdict(lambda: '#81221B')
 PLOT_SCHEME['JL'] = 'darkorange'
 
 # metric keys for plotting.
-METRIC_KEYS = [
-    'flux_sensitivity',             # (0, 0) plot position
-    'charge_sensitivity',           # (0, 1) plot position
-    'anharmonicity',                # (0, 2) plot position
-    't2_flux',                      # (1, 0) plot position
-    't2_charge',                    # (1, 1) plot position
-    't2_cc',                        # (1, 2) plot position
-    't1',                           # (2, 0) plot position
-    't2',                           # (2, 1) plot position
-    'frequency',                    # (2, 2) plot position
-    't',                            # (3, 0) plot position
-    'gate_speed',                   # (3, 1) plot position
-    'number_of_gates',              # (3, 2) plot position
-]
+METRIC_NAMES = {
+    'flux_sensitivity': 'Flux Sensitivity',         # (0, 0) plot position
+    'charge_sensitivity': 'Charge Sensitivity',     # (0, 1) plot position
+    'anharmonicity': 'Anharmonicity',               # (0, 2) plot position
+    'tp_flux': r'$T_\varphi$ Flux',                 # (1, 0) plot position
+    'tp_charge': r'$T_\varphi$ Charge',             # (1, 1) plot position
+    'tp_cc': r'$T_\varphi$ Critical Current',       # (1, 2) plot position
+    't1': '$T_1$',                                  # (2, 0) plot position
+    'tp': r'$T_\varphi$',                           # (2, 1) plot position
+    'frequency': 'Frequency',                       # (2, 2) plot position
+    't': '$T_2$',                                   # (3, 0) plot position
+    'gate_speed': 'Gate Speed',                     # (3, 1) plot position
+    'number_of_gates': 'Number of Gates',           # (3, 2) plot position
+}
+
+METRIC_KEYS = METRIC_NAMES.keys()
 
 # loss keys for plotting.
 LOSS_KEYS = [
@@ -78,17 +80,6 @@ LOSS_KEYS = [
 ################################################################################
 # Helper functions.
 ################################################################################
-
-
-def capitalize_metric(input_str):
-    """Capitalize metric string for title purposes."""
-
-    # Split the input string by underscores
-    parts = input_str.split('_')
-    # Capitalize the first letter of each part and join them back with a space
-    formatted_str = ' '.join(part.capitalize() for part in parts)
-    return formatted_str
-
 
 def compute_best_ids(
     aggregate_loss_records,
@@ -136,7 +127,7 @@ def plot_circuit_metrics(
             linestyle=None if best else '--',
         )
         axs[i, j].set_title(
-            capitalize_metric(key) + f" {get_units()[key]}"
+            METRIC_NAMES[key] + f" {get_units()[key]}"
         )
         axs[i, j].set_yscale('log')
         axs[i, j].legend(loc="upper left")
