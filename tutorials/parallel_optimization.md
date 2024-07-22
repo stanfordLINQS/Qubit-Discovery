@@ -61,7 +61,7 @@ python optimize.py --help
 
 It constructs a loss function based on the provided YAML file, and runs optimization of the type specified by `optim_type` starting with a randomly sampled circuit of `circuit_code` within the element ranges provided (or starting with `init_circuit`, if given). Since optimization can become stuck in local minima, it is usually necessary to run multiple times with different random intializiations, for example,
 ```
-for i in {1..10}
+for i in {0..9}
 do
     python scripts/optimize.py tutorials/optim_data-min.yaml --circuit_code=JL --seed=$i --optim_type=BFGS
 done

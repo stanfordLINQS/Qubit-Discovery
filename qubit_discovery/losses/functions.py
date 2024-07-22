@@ -95,7 +95,7 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
             A ``Circuit`` object to calculate the decoherence time of.
         t_type:
             A string specifying the type of decoherence. It must be either
-            ``'t1'`` or ``'tp'``.
+            ``'t1'`` or ``'t_phi'``.
         dec_type:
             A string specifying the channel of the decoherence time. It must be
             either ``'capacitive'``, ``'inductive'``, ``'quasiparticle'``,
@@ -119,18 +119,18 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
                 "'total'"
             )
             dec_type_list = [dec_type]
-    elif t_type == 'tp':
+    elif t_type == 't_phi':
         all_tp_channels = ['charge', 'cc', 'flux']
         if dec_type == 'total':
             dec_type_list = all_tp_channels
         else:
             assert dec_type in all_tp_channels, (
-                f"dec_type with 'tp' mode should be in {all_tp_channels}, or "
+                f"dec_type with 't_phi' mode should be in {all_tp_channels}, or "
                 "'total'"
             )
             dec_type_list = [dec_type]
     else:
-        raise ValueError("t_type must be either 't1' or 'tp'")
+        raise ValueError("t_type must be either 't1' or 't_phi'")
 
     for dec_type in dec_type_list:
         gamma = gamma + circuit.dec_rate(dec_type, (0, 1))
@@ -160,7 +160,7 @@ def total_dec_time(circuit: Circuit) -> SQValType:
 
     tp = decoherence_time(
         circuit=circuit,
-        t_type='tp',
+        t_type='t_phi',
         dec_type='total'
     )
 
@@ -316,9 +316,9 @@ def flux_sensitivity(
 
 def element_sensitivity(
     circuit: Circuit,
+    circuit_metric: Callable[[Circuit], SQValType],
     n_samples=25,
     fabrication_error=0.01,
-    circuit_metric: Callable[[Circuit], SQValType]:
 ) -> Tuple[SQValType, SQValType]:
     """Compute an estimate of circuit sensitivity, as determined by the
     standard deviation in a circuit metric calculated for circuits with a
@@ -337,6 +337,8 @@ def element_sensitivity(
     ----------
         circuit:
             A ``Circuit`` object to use as the center of the distribution.
+        circuit_metric:
+            A metric to calculate the sensitivity of ``circuit`` to. 
         n_samples:
             The number of randomly sampled circuits to calculate. More samples
             provide more reproducible results.
@@ -344,8 +346,6 @@ def element_sensitivity(
             The percentage fabrication error to simulate. The elements for the
             new circuit are sampled from a normal distribution with standard
             deviation ``fabrication_error * element_value``.
-        circuit_metric:
-            A metric to calculate the sensitivity of ``circuit`` to. 
 
     Returns
     ----------

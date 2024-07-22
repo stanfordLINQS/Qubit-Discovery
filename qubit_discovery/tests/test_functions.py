@@ -9,6 +9,7 @@ from qubit_discovery.losses.functions import (
     element_sensitivity,
     fastest_gate_speed,
     flux_sensitivity,
+    number_of_gates
 )
 from qubit_discovery.tests.conftest import (
     get_fluxonium,
@@ -63,6 +64,6 @@ def test_element_sensitivity() -> None:
     cr = get_fluxonium()
     cr.set_trunc_nums([120])
     cr.diag(20)
-    sens = element_sensitivity(cr)
+    sens = element_sensitivity(cr, number_of_gates)
     print(sens.dtype)
     assert torch.isclose(sens, target_sensitivity, rtol=0.5)

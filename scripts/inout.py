@@ -106,10 +106,10 @@ UNITS = {
     't1_capacitive': '[s]',
     't1_inductive': '[s]',
     't1_quasiparticle': '[s]',
-    'tp': '[s]',
-    'tp_charge': '[s]',
-    'tp_cc': '[s]',
-    'tp_flux': '[s]',
+    't_phi': '[s]',
+    't_phi_charge': '[s]',
+    't_phi_cc': '[s]',
+    't_phi_flux': '[s]',
 }
 UNITS = defaultdict(lambda: "", UNITS)
 

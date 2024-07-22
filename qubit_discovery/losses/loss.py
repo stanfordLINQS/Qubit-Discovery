@@ -52,7 +52,7 @@ def t1_loss(
     ----------
         loss:
             Always zero.
-        TP:
+        T1:
             The T1 time of ``circuit``.
     """
     t1 = decoherence_time(
@@ -64,7 +64,10 @@ def t1_loss(
     return zero(), t1
 
 
-def tp_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
+def t_phi_loss(
+        circuit: Circuit,
+        dec_type='total'
+) -> Tuple[SQValType, SQValType]:
     """Computes the dephasing time of the qubit.
 
     Parameters
@@ -79,12 +82,12 @@ def tp_loss(circuit: Circuit, dec_type='total') -> Tuple[SQValType, SQValType]:
     ----------
         loss:
             Always zero.
-        TP:
+        T_phi:
             The dephasing time of ``circuit``.
     """
     tp = decoherence_time(
         circuit=circuit,
-        t_type='tp',
+        t_type='t_phi',
         dec_type=dec_type
     )
 
@@ -140,7 +143,7 @@ def element_sensitivity_loss(
         sensitivity:
             The sensitivity of the gate number to element variation.
     """
-    sens = element_sensitivity(circuit, n_samples, error, number_of_gates)
+    sens = element_sensitivity(circuit, number_of_gates, n_samples, error)
 
     return zero(), sens
 
@@ -354,15 +357,15 @@ ALL_FUNCTIONS = {
     't1_capacitive': lambda cr: t1_loss(cr, dec_type='capacitive'),
     't1_inductive': lambda cr: t1_loss(cr, dec_type='inductive'),
     't1_quasiparticle': lambda cr: t1_loss(cr, dec_type='quasiparticle'),
-    'tp': tp_loss,
-    'tp_charge': lambda cr: tp_loss(cr, dec_type='charge'),
-    'tp_cc': lambda cr: tp_loss(cr, dec_type='cc'),
-    'tp_flux': lambda cr: tp_loss(cr, dec_type='flux'),
+    't_phi': t_phi_loss,
+    't_phi_charge': lambda cr: t_phi_loss(cr, dec_type='charge'),
+    't_phi_cc': lambda cr: t_phi_loss(cr, dec_type='cc'),
+    't_phi_flux': lambda cr: t_phi_loss(cr, dec_type='flux'),
     # TODO: delete once YAML files are updated
-    't2': tp_loss,
-    't2_charge': lambda cr: tp_loss(cr, dec_type='charge'),
-    't2_cc': lambda cr: tp_loss(cr, dec_type='cc'),
-    't2_flux': lambda cr: tp_loss(cr, dec_type='flux')
+    't2': t_phi_loss,
+    't2_charge': lambda cr: t_phi_loss(cr, dec_type='charge'),
+    't2_cc': lambda cr: t_phi_loss(cr, dec_type='cc'),
+    't2_flux': lambda cr: t_phi_loss(cr, dec_type='flux')
 }
 
 

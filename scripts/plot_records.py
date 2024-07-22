@@ -55,27 +55,29 @@ METRIC_NAMES = {
     'flux_sensitivity': 'Flux Sensitivity',         # (0, 0) plot position
     'charge_sensitivity': 'Charge Sensitivity',     # (0, 1) plot position
     'anharmonicity': 'Anharmonicity',               # (0, 2) plot position
-    'tp_flux': r'$T_\varphi$ Flux',                 # (1, 0) plot position
-    'tp_charge': r'$T_\varphi$ Charge',             # (1, 1) plot position
-    'tp_cc': r'$T_\varphi$ Critical Current',       # (1, 2) plot position
+    't_phi_flux': r'$T_\varphi$ Flux',              # (1, 0) plot position
+    't_phi_charge': r'$T_\varphi$ Charge',          # (1, 1) plot position
+    't_phi_cc': r'$T_\varphi$ Critical Current',    # (1, 2) plot position
     't1': '$T_1$',                                  # (2, 0) plot position
-    'tp': r'$T_\varphi$',                           # (2, 1) plot position
+    't_phi': r'$T_\varphi$',                        # (2, 1) plot position
     'frequency': 'Frequency',                       # (2, 2) plot position
     't': '$T_2$',                                   # (3, 0) plot position
     'gate_speed': 'Gate Speed',                     # (3, 1) plot position
-    'number_of_gates': 'Number of Gates',           # (3, 2) plot position
+    'number_of_gates': 'Number of Gates'            # (3, 2) plot position
 }
 
-METRIC_KEYS = METRIC_NAMES.keys()
+METRIC_KEYS = list(METRIC_NAMES.keys())
 
 # loss keys for plotting.
-LOSS_KEYS = [
-    'flux_sensitivity_loss',        # (0, 0) plot position
-    'charge_sensitivity_loss',      # (0, 1) plot position
-    'frequency_loss',               # (0, 2) plot position
-    'number_of_gates_loss',         # (1, 0) plot position
-    'total_loss'                    # (1, 1) plot position
-]
+LOSS_NAMES = {
+    'flux_sensitivity_loss': 'Flux Sensitivity Loss',       # (0, 0) plot position
+    'charge_sensitivity_loss': 'Charge Sensitivity Loss',   # (0, 1) plot position
+    'frequency_loss': 'Frequency Loss',                     # (0, 2) plot position
+    'number_of_gates_loss': 'Number of Gates Loss',         # (1, 0) plot position
+    'total_loss': 'Total Loss'                              # (1, 1) plot position
+}
+
+LOSS_KEYS = list(LOSS_NAMES.keys())
 
 ################################################################################
 # Helper functions.
@@ -113,6 +115,7 @@ def plot_circuit_metrics(
 ) -> None:
 
     record_keys = METRIC_KEYS if plot_type == 'metrics' else LOSS_KEYS
+    record_names = METRIC_NAMES if plot_type == 'metrics' else LOSS_NAMES
     # l = 3 if plot_type == 'metrics' else 2
 
     for plot_idx in range(len(record_keys)):
@@ -127,7 +130,7 @@ def plot_circuit_metrics(
             linestyle=None if best else '--',
         )
         axs[i, j].set_title(
-            METRIC_NAMES[key] + f" {get_units()[key]}"
+            record_names[key] + f" {get_units()[key]}"
         )
         axs[i, j].set_yscale('log')
         axs[i, j].legend(loc="upper left")

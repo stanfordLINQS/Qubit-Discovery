@@ -29,7 +29,7 @@ def test_bfgs_run() -> None:
         'frequency_loss': [np.array(1e-13)],
         'anharmonicity_loss': [np.array(1.42174492)],
         't1_loss': [np.array(0)],
-        'tp_loss': [np.array(0)],
+        't_phi_loss': [np.array(0)],
         'flux_sensitivity_loss': [np.array(1.e-13)],
         'charge_sensitivity_loss': [np.array(1e-13)],
         'total_loss': [np.array(1.42174492)],
@@ -44,7 +44,7 @@ def test_bfgs_run() -> None:
                 "flux_sensitivity": 1.0,
                 "charge_sensitivity": 1.0,
                 "t1": 1.0,
-                "tp": 1.0
+                "t_phi": 1.0
             },
             use_metrics=[]
         )
