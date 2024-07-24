@@ -14,8 +14,8 @@ To ensure replicability, all metadata about the optimization is recorded in a YA
 - `capacitor_range`: Range of capacitor values in Farads, specified as `[min, max]`.
 - `inductor_range`: List of floats. Range of inductor values in Henries, specified as `[min, max]`.
 - `junction_range`: List of floats. Range of junction frequencies in radians per second, specified as `[min, max]`.
-- `use_losses`: Specifies how to construct the loss function. A list of metrics is specified as `metric: weight` pairs, and the total loss function is constructed by $\mathcal{L} = \sum \text{weight} \times \text{metric}(\text{circuit})$. The available metrics can be found by calling `qubit_discovery.losses.loss.get_all_metrics()`. 
-- `use_metrics`: List of metrics to calculate during optimization, but not to include in loss function. Useful if you want to track how something evolves during optimization, but don't want to optimize _for_ it. The available metrics can found by calling `qubit_discovery.losses.loss.get_all_metrics()`.
+- `use_losses`: Specifies how to construct the loss function. A list of metrics is specified as `metric: weight` pairs, and the total loss function is constructed by $\mathcal{L} = \sum \text{weight} \times \text{metric}(\text{circuit})$. The available metrics can be found by calling `qubit_discovery.losses.get_all_metrics()`. 
+- `use_metrics`: List of metrics to calculate during optimization, but not to include in loss function. Useful if you want to track how something evolves during optimization, but don't want to optimize _for_ it. The available metrics can found by calling `qubit_discovery.losses.get_all_metrics()`.
 
 An example YAML file is provided in [`optim_data-min.yaml`](optim_data-min.yaml). 
 

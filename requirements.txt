@@ -1,7 +1,6 @@
 numpy>=1.23
 torch>=2.0
 scipy>=1.10
-joblib
 sqcircuit @ git+https://github.com/stanfordLINQS/SQcircuit.git@dev-tq
 dill==0.3.8
 matplotlib~=3.7.2
