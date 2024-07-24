@@ -27,11 +27,12 @@ command line or in <yaml_file>.
 """
 
 import random
+from typing import List
 
 from docopt import docopt
 import numpy as np
 from qubit_discovery.optimization import run_SGD, run_BFGS
-from qubit_discovery.losses.loss import calculate_loss_metrics
+from qubit_discovery.losses import build_loss_function
 from qubit_discovery.optimization.sampler import CircuitSampler
 import SQcircuit as sq
 from SQcircuit import Circuit
@@ -61,12 +62,10 @@ OPTIMIZE_OPTIONAL_KEYS = [
 ################################################################################
 
 
-def eval_list(ls: list) -> list:
-    """Evaluates elements of a list and returns as a list.
-    Warning: this can execute arbitrary code! Don't accept uninspected YAML
-    files from strangers.
+def float_list(ls: List[str]) -> List[float]:
+    """Evaluates a list of strings and returns a list of floats.
     """
-    return [eval(i) for i in ls]
+    return [float(i) for i in ls]
 
 
 def set_seed(seed: int) -> None:
@@ -105,9 +104,9 @@ def main() -> None:
     sq.set_optim_mode(True)
     sq.set_max_eigenvector_grad(2)
 
-    capacitor_range = eval_list(parameters['capacitor_range'])
-    junction_range = eval_list(parameters['junction_range'])
-    inductor_range = eval_list(parameters['inductor_range'])
+    capacitor_range = float_list(parameters['capacitor_range'])
+    junction_range = float_list(parameters['junction_range'])
+    inductor_range = float_list(parameters['inductor_range'])
 
     bounds = {
         sq.Junction: torch.tensor(junction_range),
@@ -124,12 +123,10 @@ def main() -> None:
 
     set_seed(int(parameters['seed']))
 
-    def my_loss_function(cr: Circuit):
-        return calculate_loss_metrics(
-            cr,
-            use_losses=parameters["use_losses"],
-            use_metrics=parameters["use_metrics"],
-        )
+    my_loss_function = build_loss_function(
+        use_losses=parameters["use_losses"],
+        use_metrics=parameters["use_metrics"]
+    )
 
     if parameters['init_circuit'] is None or parameters['init_circuit'] == "":
         sampler = CircuitSampler(
@@ -157,7 +154,7 @@ def main() -> None:
             circuit=circuit,
             circuit_code=parameters['circuit_code'],
             loss_metric_function=my_loss_function,
-            name=parameters['name'] + '_' + str(parameters['seed']),
+            identifer = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
             num_eigenvalues=parameters['num_eigenvalues'],
             baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
@@ -168,9 +165,8 @@ def main() -> None:
     elif parameters['optim_type'] == "BFGS":
         run_BFGS(
             circuit=circuit,
-            circuit_code=parameters['circuit_code'],
             loss_metric_function=my_loss_function,
-            name=parameters['name'] + '_' + str(parameters['seed']),
+            identifer = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
             num_eigenvalues=parameters['num_eigenvalues'],
             baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],

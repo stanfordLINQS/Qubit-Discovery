@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 import SQcircuit as sq
-from SQcircuit import Circuit
+from SQcircuit import Circuit, Element, Loop
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
@@ -15,11 +15,9 @@ from .utils import (
     RecordType
 )
 
+from ..losses.loss import LossFunctionType
+
 SQValType = Union[float, Tensor]
-LossFunctionType = Callable[
-    [Circuit],
-    Tuple[Tensor, Dict[str, SQValType], Dict[str, SQValType]]
-]
 
 
 def get_alpha_param_from_circuit_param(
@@ -110,72 +108,68 @@ def get_gradients(loss: Tensor, circuit: Circuit, bounds) -> Tensor:
     # print(f"partial_alpha_partial_elem: {partial_alpha_partial_elem}")
     circuit.zero_parameters_grad()
 
-    gradient = (partial_loss_partial_elem / partial_alpha_partial_elem)
+    gradient = partial_loss_partial_elem / partial_alpha_partial_elem
 
     return gradient.to(torch.float64)
 
 
 def run_BFGS(
     circuit: Circuit,
-    circuit_code: str,
     loss_metric_function: LossFunctionType,
-    name: str,
-    num_eigenvalues: int,
-    baseline_trunc_nums: List[int],
+    max_iter: int,
     total_trunc_num: int,
-    save_loc: Optional[str] = None,
-    bounds: Optional = None,
+    bounds: Dict[Union[Element, Loop], Tensor],
+    num_eigenvalues: int = 10,
     lr: float = 100,
-    max_iter: int = 100,
     tolerance: float = 1e-15,
-    verbose: bool = False,
-    save_intermediate_circuits: bool = True
-) -> Tuple[Tensor, RecordType]:
+    save_loc: Optional[str] = None,
+    identifier: Optional[str] = None,
+    save_intermediate_circuits: bool = False,
+    verbose: bool = False
+) -> Tuple[Circuit, Tensor, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
 
     Parameters
     ----------
         circuit:
-            A circuit which has preliminary truncation numbers assigned, but
-            not necessarily diagonalized.
-        circuit_code:
-            A string giving the type of the circuit.
+            A circuit to optimize.
         loss_metric_function:
             Loss function to optimize.
-        name:
-            Name identifying this run (e.g. seed, etc.)
-        num_eigenvalues:
-            Number of eigenvalues to calculate when diagonalizing.
-        baseline_trunc_nums:
-            Number of trunc nums to allocate for heuristic function.
-        total_trunc_num:
-            Maximum total truncation number to allocate.
-        save_loc:
-            Folder to save results in.
-        bounds:
-            Dictionary giving bounds for each element type.
-        lr:
-            Learning rate
         max_iter:
             Maximum number of iterations.
+        total_trunc_num:
+            Maximum total truncation number to allocate.
+        bounds:
+            Dictionary giving bounds for each element type.
+        num_eigenvalues:
+            Number of eigenvalues to calculate when diagonalizing.
+        lr:
+            Learning rate
         tolerance:
             Minimum change each step must achieve to not terminate.
-        verbose:
-            Whether to print out progress.
+        save_loc:
+            Folder to save results in, or None.
+        identifier:
+            String identifying this run (e.g. seed, name, circuit code, …)
+            to use when saving.
         save_intermediate_circuits:
             Whether to save the circuit at each iteration.
+        verbose:
+            Whether to print out progress.
+        
     """
 
     params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone()
     identity = torch.eye(params.size(0), dtype=torch.float64)
     H = identity
 
+    circuit.truncate_circuit(total_trunc_num)
     circuit.diag(num_eigenvalues)
+    
     # Get gradient and loss values to start with
     loss, loss_values, metric_values = loss_metric_function(circuit)
     loss_record, metric_record = init_records(
-        circuit_code,
         loss_values,
         metric_values
     )
@@ -193,10 +187,6 @@ def run_BFGS(
     for iteration in range(max_iter):
         print(f"Iteration {iteration}")
 
-        # Test if circuit has at least one harmonic mode
-        if sum(circuit.omega != 0) > 0:
-            circuit.set_trunc_nums(baseline_trunc_nums)
-            circuit.diag(num_eigenvalues)
         assign_trunc_nums(circuit, total_trunc_num)
         circuit.diag(num_eigenvalues)
         converged, _ = test_convergence(circuit, eig_vec_idx=1)
@@ -229,8 +219,7 @@ def run_BFGS(
                 loss_record,
                 metric_record,
                 circuit,
-                circuit_code,
-                name,
+                identifier,
                 save_loc,
                 'BFGS',
                 save_intermediate_circuits=save_intermediate_circuits
@@ -295,7 +284,7 @@ def run_BFGS(
         params = params_next
         # circuit.update()
 
-    return params, loss_record
+    return circuit, params, loss_record
 
 
 def backtracking_line_search(

@@ -1,5 +1,5 @@
 """Contains code for defining loss functions used in circuit optimization."""
-from typing import List, Tuple, Dict
+from typing import Callable, List, Tuple, Dict
 
 import numpy as np
 import torch
@@ -383,14 +383,77 @@ def get_all_metrics() -> List[str]:
     return list(ALL_FUNCTIONS.keys())
 
 
+def add_to_metrics(
+    name: str,
+    function: Callable[[Circuit], Tuple[SQValType, SQValType]]
+) -> None:
+    """Add a function to the available metrics to construct a loss function.
+
+    Parameters
+    ----------
+        name:
+            Name of new metric.
+        function:
+            Function computing the metric and loss.
+    """
+    ALL_FUNCTIONS[name] = function
+
+
+LossFunctionRetType = Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]
+LossFunctionType = Callable[
+    [Circuit],
+    LossFunctionRetType
+]
+
+
+def build_loss_function(
+    use_losses: Dict[str, float],
+    use_metrics: List[str],
+    master_use_grad: bool = True
+) -> LossFunctionType:
+    """Build a loss function based on the metrics provided in ``use_losses``.
+    The constructed loss function will also calculate metrics in
+    ``use_metrics``.
+    
+    The loss function takes in a circuit and returns
+        - Total loss: the sum of metrics in ``use_losses``.
+        - Loss values: A dictionary of ``metric: value`` for metrics in
+        ``use_losses``.
+        - Metric values: A dictionary of ``metric: value`` for metrics in
+        ``use_metrics``.
+
+    Parameters
+    ----------
+        use_losses:
+            A dictionary of ``metric: weight`` pairs, where ``metric`` is the 
+            name of a metric returned by ``get_all_metrics()`` and ``weight`` 
+            is the weight in the total loss function.
+        use_metrics:
+            A list of metrics to calculate, where the available metrics are 
+            provided in the list returned by ``get_all_metrics()``.
+        master_use_grad:
+            Whether to enable gradient when calculating the total loss.
+
+    Returns
+    ----------
+        A loss function which computes the total loss using ``use_losses`` as
+        well as the metrics in ``use_metrics``.
+    """
+    return lambda circuit: calculate_loss_metrics(
+        circuit,
+        use_losses,
+        use_metrics,
+        master_use_grad=master_use_grad
+    )
+
+
 def calculate_loss_metrics(
     circuit: Circuit,
     use_losses: Dict[str, float],
     use_metrics: List[str],
     master_use_grad: bool = True,
-) -> Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]:
-    """
-    Calculates an overall loss function for ``circuit``, based on metrics 
+) -> LossFunctionRetType:
+    """Calculates an overall loss function for ``circuit``, based on metrics 
     provided in ``use_losses``. Additionally calculates other metrics provided
     in ``use_metrics``, but does not include them in the overall loss.
 

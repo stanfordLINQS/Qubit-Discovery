@@ -81,13 +81,11 @@ def init_records(
     loss_record: RecordType = {
         loss_type: [] for loss_type in loss_values.keys()
     }
-    loss_record['circuit_code'] = circuit_code
 
     # Init metric record
     metric_record: RecordType = {
         metric_type: [] for metric_type in metric_values.keys()
     }
-    metric_record['circuit_code'] = circuit_code
 
     return loss_record, metric_record
 
@@ -107,8 +105,7 @@ def save_results(
     loss_record: RecordType,
     metric_record: RecordType,
     circuit: Circuit,
-    circuit_code: str,
-    name: str,
+    identifier: str, # {circuit_code}_{name}
     save_loc: str,
     optim_type: str,
     save_intermediate_circuits=True,
@@ -118,12 +115,12 @@ def save_results(
     for record_type, record in save_records.items():
         save_url = os.path.join(
             save_loc,
-            f'{optim_type}_{record_type}_record_{circuit_code}_{name}.pickle'
+            f'{optim_type}_{record_type}_record_{identifier}.pickle'
         )
         print(f"Saving in {save_url}")
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
-    
+
     if save_intermediate_circuits:
         write_mode = 'ab+'
     else:
@@ -131,7 +128,7 @@ def save_results(
 
     circuit_save_url = os.path.join(
         save_loc,
-        f'{optim_type}_circuit_record_{circuit_code}_{name}.pickle'
+        f'{optim_type}_circuit_record_{identifier}.pickle'
     )
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
