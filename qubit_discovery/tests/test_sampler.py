@@ -42,9 +42,9 @@ def test_convergence():
         # truncation number that converges
         fluxonium.set_trunc_nums([x, ])
         fluxonium.diag(num_eigenvalues)
-        if fluxonium.test_convergence([x, ])[0] is False:
+        if not fluxonium.check_convergence(threshold=1e-5)[0]:
             cutoff = x + 1
-    assert cutoff == 39
+    assert cutoff == 41
 
 
 def get_elements_from_code(circuit_code: str) -> Circuit:
@@ -52,7 +52,9 @@ def get_elements_from_code(circuit_code: str) -> Circuit:
     sampler = CircuitSampler(
         capacitor_range=[12e-15, 12e-9],
         inductor_range=[12e-9, 12e-6],
-        junction_range=[2*np.pi*1e9, 2*np.pi*10e9]
+        junction_range=[1e9, 10e9],
+        flux_range=[0.5, 0.5],
+        elems_not_to_optimize=[sq.Loop]
     )
     circuit = sampler.sample_circuit_code(circuit_code)
 

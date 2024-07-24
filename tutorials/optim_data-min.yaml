@@ -4,7 +4,7 @@ epochs: 100
 num_eigenvalues: 10
 capacitor_range: [1e-15, 12e-12]
 inductor_range: [1e-15, 5e-6]
-junction_range: [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]
+junction_range: [1e9, 100e9]
 use_losses:
   frequency: 1.0
   flux_sensitivity: 1.0

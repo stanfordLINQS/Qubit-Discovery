@@ -1,54 +1,39 @@
 from collections import defaultdict
-from typing import List, Union, Optional
+from typing import Dict, List, Optional, Union
 
 from scipy.stats import uniform, loguniform
 import numpy as np
+import torch
 
 import SQcircuit as sq
 
 from SQcircuit.circuit import Circuit
-from SQcircuit.elements import Capacitor, Inductor, Junction
-
-
-def find_last_element_index_outside_parentheses(circuit_code: str) -> int:
-    """Find last element index outside parentheses. This is the last element
-    that encloses the main loop.
-
-    Parameters
-    ----------
-        circuit_code:
-            A string specifying the circuit code.
-    """
-    stack = []
-    last_index = -1
-
-    for i, char in enumerate(circuit_code):
-        if char == '(':
-            stack.append(char)
-        elif char == ')':
-            if stack:
-                stack.pop()
-        else:
-            if not stack:
-                last_index = i
-
-    return last_index
+from SQcircuit.elements import Capacitor, Element, Inductor, Junction, Loop
 
 
 class CircuitSampler:
-    """Class used to randomly sample different circuit configurations.
+    """Class used to randomly sample different circuit configurations with a
+    single inductive loop.
 
     Parameters
     ----------
         capacitor_range:
             A list specifying the lower bound and upper bound for the
-            capacitors.
+            capacitors, in Farads.
         inductor_range:
-            A list specifying the lower bound and upper bound for the inductors.
+            A list specifying the lower bound and upper bound for the inductors,
+            in Henries.
         junction_range:
-            A list specifying the lower bound and upper bound for the junctions.
-        loop_in_optim:
-            A boolean specifying whether to use the loop in optimization or not.
+            A list specifying the lower bound and upper bound for the junctions,
+            in Hertz.
+        flux_range:
+            A range of external flux values to uniformly sample from for the
+            loop.
+        elems_not_to_optimize:
+            A list of element types no to optimize. These are randomly sampled,
+            but then fixed during the optimization procedure (the 
+            ``required_grad`` attribute is set to False). If ``None``, all
+            element types are optimized.
     """
 
     def __init__(
@@ -56,78 +41,100 @@ class CircuitSampler:
         capacitor_range: List[float],
         inductor_range: List[float],
         junction_range: List[float],
-        flux_range: Optional[List[float]] = None
+        flux_range: List[float],
+        elems_not_to_optimize: Optional[List[Union[Element, Loop]]]=None,
     ) -> None:
 
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
         self.junction_range = junction_range
+        self.flux_range = [val / 2 / np.pi for val in flux_range]
 
-        if flux_range is None:
-            self.loop = sq.Loop(0.5 - 1e-2)
-        else:
-            flux_value = uniform.rvs(*flux_range, size=1)[0]
-            flux_value = flux_value / (2 * np.pi)
-            self.loop = sq.Loop(
-                flux_value,
-                requires_grad=sq.get_optim_mode()
-            )
-
-        self.special_circuit_codes = [
-            "transmon",
-            "flux_qubit",
-            "JJJJ_1",
-            "JJJJ_2"
+        if elems_not_to_optimize is None:
+            elems_not_to_optimize = []
+        self.elems_to_optimize = [
+            elem_type for elem_type in [Capacitor, Inductor, Junction, Loop]
+            if elem_type not in elems_not_to_optimize
         ]
 
-    def get_elem(
+        # Special circuit codes used to create symmetric circuits
+        self.special_circuit_codes = [
+            'transmon',
+            'flux_qubit',
+            'JJJJ_1',
+            'JJJJ_2'
+        ]
+
+    @property
+    def bounds(self) -> Dict[Union[Element, Loop], Union[torch.Tensor, List[float]]]:
+        if sq.get_optim_mode():
+            return {
+                Capacitor: torch.tensor(self.capacitor_range),
+                Inductor: torch.tensor(self.inductor_range),
+                Junction: torch.tensor(self.junction_range),
+                Loop: torch.tensor(self.flux_range)
+            }
+        else:
+            return {
+                Capacitor: self.capacitor_range,
+                Inductor: self.inductor_range,
+                Junction: self.junction_range,
+                Loop: self.flux_range
+            }
+
+    def _get_elem(
         self,
         elem_str: str,
         main_loop: bool,
     ) -> Union[Capacitor, Inductor, Junction]:
         """Get a random capacitor, inductor, or junction based on the specified
-        range for sampler.
+        range for sampler. Element values are log-uniformly sampled.
 
         Parameters
         ----------
             elem_str:
-                A string element type that should be either "L", "C", or "J".
+                A string element type that should be either ``"L"``,``"C"``,
+                or ``"J"``.
             main_loop:
                 A boolean that indicates whether we are in the main loop of
                 the circuit or not.
+
+        Returns
+        ----------
+            An element of type specified by``elem_str``, which includes the
+            loop if ``main_loop`` is ``True``.
         """
 
         loops = []
         if main_loop:
             loops = [self.loop,]
 
-        if elem_str == "J":
+        if elem_str == 'J':
             junc_value = loguniform.rvs(*self.junction_range, size=1)[0]
-            junc_value /= (2 * np.pi)
             elem = sq.Junction(
                 junc_value,
                 'Hz',
                 loops=loops,
-                requires_grad=sq.get_optim_mode(),
-                min_value=self.junction_range[0],
-                max_value=self.junction_range[1]
+                requires_grad=sq.get_optim_mode() and Junction in self.elems_to_optimize,
+                min_value=2*np.pi*self.junction_range[0],
+                max_value=2*np.pi*self.junction_range[1]
             )
-        elif elem_str == "L":
+        elif elem_str == 'L':
             ind_value = loguniform.rvs(*self.inductor_range, size=1)[0]
             elem = sq.Inductor(
                 ind_value,
                 'H',
                 loops=loops,
-                requires_grad=sq.get_optim_mode(),
+                requires_grad=sq.get_optim_mode() and Inductor in self.elems_to_optimize,
                 min_value=self.inductor_range[0],
                 max_value=self.inductor_range[1]
             )
-        elif elem_str == "C":
+        elif elem_str == 'C':
             cap_value = loguniform.rvs(*self.capacitor_range, size=1)[0]
             elem = Capacitor(
                 cap_value,
                 'F',
-                requires_grad=sq.get_optim_mode(),
+                requires_grad=sq.get_optim_mode() and Capacitor in self.elems_to_optimize,
                 min_value=self.capacitor_range[0],
                 max_value=self.capacitor_range[1]
             )
@@ -136,24 +143,27 @@ class CircuitSampler:
 
         return elem
 
-    def sample_special_circuit(self, circuit_code):
-
-        if circuit_code == "transmon":
-            junc_1 = self.get_elem('J', main_loop=True)
+    def _sample_special_circuit(self, circuit_code):
+        """Sample a symmetric circuit.
+        
+        Parameters
+        """
+        if circuit_code == 'transmon':
+            junc_1 = self._get_elem('J', main_loop=True)
             junc_2 = junc_1
 
-            cap = self.get_elem('C', main_loop=False)
+            cap = self._get_elem('C', main_loop=False)
 
             elements = {(0, 1): [junc_1, junc_2, cap]}
 
-        elif circuit_code == "flux_qubit":
-            junc_1 = self.get_elem('J', main_loop=True)
+        elif circuit_code == 'flux_qubit':
+            junc_1 = self._get_elem('J', main_loop=True)
             junc_2 = junc_1
-            junc_3 = self.get_elem('J', main_loop=True)
+            junc_3 = self._get_elem('J', main_loop=True)
 
-            cap_1 = self.get_elem('C', main_loop=False)
+            cap_1 = self._get_elem('C', main_loop=False)
             cap_2 = cap_1
-            cap_3 = self.get_elem('C', main_loop=False)
+            cap_3 = self._get_elem('C', main_loop=False)
 
             elements = {
                 (0, 1): [junc_1, cap_1],
@@ -161,15 +171,15 @@ class CircuitSampler:
                 (2, 0): [junc_3, cap_3]
             }
 
-        elif circuit_code == "JJJJ_1":
+        elif circuit_code == 'JJJJ_1':
 
-            junc_1 = self.get_elem('J', main_loop=True)
-            junc_2 = self.get_elem('J', main_loop=True)
+            junc_1 = self._get_elem('J', main_loop=True)
+            junc_2 = self._get_elem('J', main_loop=True)
             junc_3 = junc_2
             junc_4 = junc_3
 
-            cap_1 = self.get_elem('C', main_loop=False)
-            cap_2 = self.get_elem('C', main_loop=False)
+            cap_1 = self._get_elem('C', main_loop=False)
+            cap_2 = self._get_elem('C', main_loop=False)
             cap_3 = cap_2
             cap_4 = cap_3
 
@@ -180,15 +190,15 @@ class CircuitSampler:
                 (3, 0): [junc_4, cap_4]
             }
 
-        elif circuit_code == "JJJJ_2":
+        elif circuit_code == 'JJJJ_2':
 
-            junc_1 = self.get_elem('J', main_loop=True)
-            junc_2 = self.get_elem('J', main_loop=True)
+            junc_1 = self._get_elem('J', main_loop=True)
+            junc_2 = self._get_elem('J', main_loop=True)
             junc_3 = junc_1
             junc_4 = junc_2
 
-            cap_1 = self.get_elem('C', main_loop=False)
-            cap_2 = self.get_elem('C', main_loop=False)
+            cap_1 = self._get_elem('C', main_loop=False)
+            cap_2 = self._get_elem('C', main_loop=False)
             cap_3 = cap_1
             cap_4 = cap_2
 
@@ -200,11 +210,11 @@ class CircuitSampler:
             }
 
         else:
-            raise ValueError("The circuit code is not supported!")
+            raise ValueError('The circuit code is not supported!')
 
         return sq.Circuit(elements, flux_dist='junctions')
 
-    def add_elem_to_elements(
+    def _add_elem_to_elements(
         self,
         elem_str: str,
         node_1: int,
@@ -231,7 +241,7 @@ class CircuitSampler:
                 the circuit or not.
         """
 
-        elem = self.get_elem(elem_str, main_loop)
+        elem = self._get_elem(elem_str, main_loop)
 
         if (node_2, node_1) in elements:
             elements[(node_2, node_1)].append(elem)
@@ -239,7 +249,7 @@ class CircuitSampler:
             elements[(node_1, node_2)].append(elem)
 
     @staticmethod
-    def if_capacitor_between_nodes(
+    def _if_capacitor_between_nodes(
         i: int,
         j: int,
         elements: dict
@@ -266,7 +276,7 @@ class CircuitSampler:
 
         return False
 
-    def add_all_to_all_cap_to_elements(
+    def _add_all_to_all_cap_to_elements(
         self,
         n_nodes: int,
         elements: dict,
@@ -285,41 +295,77 @@ class CircuitSampler:
         for i in range(n_nodes):
             for j in range(i + 1, n_nodes):
                 # we prevent more than one capacitor on each branch
-                if self.if_capacitor_between_nodes(i, j, elements):
+                if self._if_capacitor_between_nodes(i, j, elements):
                     continue
 
-                self.add_elem_to_elements(
+                self._add_elem_to_elements(
                     elem_str="C",
                     node_1=i,
                     node_2=j,
                     elements=elements,
                 )
 
-    def sample_circuit_code(self, circuit_code) -> Circuit:
-        """Sample a random circuit with specified circuit code.
+    @staticmethod
+    def _find_last_element_index_outside_parentheses(circuit_code: str) -> int:
+        """Find last element index outside parentheses. This is the last
+        element that encloses the main loop.
 
         Parameters
         ----------
             circuit_code:
                 A string specifying the circuit code.
         """
+        stack = []
+        last_index = -1
+
+        for i, char in enumerate(circuit_code):
+            if char == '(':
+                stack.append(char)
+            elif char == ')':
+                if stack:
+                    stack.pop()
+            else:
+                if not stack:
+                    last_index = i
+
+        return last_index
+
+    def sample_circuit_code(self, circuit_code: str) -> Circuit:
+        """Sample a random circuit with specified circuit code. Element
+        values are log-uniformly sampled from the element ranges used to
+        initialize the class.
+
+        Parameters
+        ----------
+            circuit_code:
+                A string specifying the circuit code.
+
+        Returns
+        ----------
+            The randomly sampled circuit.
+        """
+
+        # Initialize the loop the loop
+        flux_value = uniform.rvs(*self.flux_range, size=1)[0]
+        self.loop = Loop(
+            flux_value,
+            requires_grad=sq.get_optim_mode() and Loop in self.elems_to_optimize
+        )
 
         if circuit_code in self.special_circuit_codes:
-            return self.sample_special_circuit(circuit_code)
+            return self._sample_special_circuit(circuit_code)
 
         current_node = 0
         hold_nodes = []
         idx = 0
         elements = defaultdict(list)
 
-        final_i = find_last_element_index_outside_parentheses(circuit_code)
+        final_i = self._find_last_element_index_outside_parentheses(circuit_code)
 
         for i in range(len(circuit_code)):
-
             if circuit_code[i] in ("J", "L", "C"):
-
                 if i == final_i and i == len(circuit_code)-1:
-                    self.add_elem_to_elements(
+                    self._add_elem_to_elements(
                         elem_str=circuit_code[i],
                         node_1=current_node,
                         node_2=0,
@@ -327,10 +373,9 @@ class CircuitSampler:
                         main_loop=not bool(len(hold_nodes)),
                     )
                     continue
-
                 if circuit_code[i+1] == "(":
                     if i == final_i:
-                        self.add_elem_to_elements(
+                        self._add_elem_to_elements(
                             elem_str=circuit_code[i],
                             node_1=current_node,
                             node_2=0,
@@ -340,7 +385,7 @@ class CircuitSampler:
                         hold_nodes.append(0)
                     else:
                         idx += 1
-                        self.add_elem_to_elements(
+                        self._add_elem_to_elements(
                             elem_str=circuit_code[i],
                             node_1=current_node,
                             node_2=idx,
@@ -348,10 +393,9 @@ class CircuitSampler:
                             main_loop=not bool(len(hold_nodes)),
                         )
                         hold_nodes.append(idx)
-
                 elif circuit_code[i+1] == ")":
                     next_node = hold_nodes.pop()
-                    self.add_elem_to_elements(
+                    self._add_elem_to_elements(
                         elem_str=circuit_code[i],
                         node_1=current_node,
                         node_2=next_node,
@@ -359,10 +403,9 @@ class CircuitSampler:
                         main_loop=not bool(len(hold_nodes)),
                     )
                     current_node = next_node
-
                 else:
                     idx += 1
-                    self.add_elem_to_elements(
+                    self._add_elem_to_elements(
                         elem_str=circuit_code[i],
                         node_1=current_node,
                         node_2=idx,
@@ -371,6 +414,6 @@ class CircuitSampler:
                     )
                     current_node = idx
 
-        self.add_all_to_all_cap_to_elements(idx+1, elements)
+        self._add_all_to_all_cap_to_elements(idx+1, elements)
 
         return sq.Circuit(elements, flux_dist='junctions')
