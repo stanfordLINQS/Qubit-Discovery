@@ -83,7 +83,8 @@ def get_bounds() -> Dict[Element, Tensor]:
     bounds = {
         sq.Capacitor: torch.tensor([1e-15, 12e-12]),
         sq.Inductor: torch.tensor([1e-15, 5e-6]),
-        sq.Junction: torch.tensor([1e9 * 2 * torch.pi, 100e9 * 2 * torch.pi]),
+        sq.Junction: torch.tensor([1e9*2*np.pi, 100e9*2*np.pi]),
+        sq.Loop: torch.tensor([0, 2*np.pi])
     }
 
     return bounds

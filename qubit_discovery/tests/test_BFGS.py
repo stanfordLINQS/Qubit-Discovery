@@ -1,20 +1,45 @@
 """Test Module for BFGS algorithm."""
 import pytest
 
-import torch
+import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 import SQcircuit as sq
 
 from SQcircuit import Circuit
 
 from qubit_discovery.optimization import run_BFGS
-from qubit_discovery.losses.loss import calculate_loss_metrics
+from qubit_discovery.losses import build_loss_function
 from qubit_discovery.tests.conftest import (
     get_fluxonium,
     get_bounds,
     are_loss_dicts_close
 )
+
+def test_my_bfgs() -> None:
+    sq.set_optim_mode(True)
+
+    total_trunc_num: int = 120
+
+    circuit = get_fluxonium()
+
+    my_loss_function = build_loss_function(
+        use_losses={
+            'frequency_loss': 1.0,
+            'flux_sensitivity': 1.0,
+            'number_of_gates': 1.0
+        },
+        use_metrics=[]
+    )
+
+    final_circuits, loss_record, metrics_record = run_BFGS(
+        circuit = circuit,
+        loss_metric_function  = my_loss_function,
+        max_iter = 30,
+        total_trunc_num = 50,
+        bounds = get_bounds()
+    )
 
 
 def test_bfgs_run() -> None:

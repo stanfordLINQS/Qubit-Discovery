@@ -28,7 +28,7 @@ class CircuitSampler:
             in Hertz.
         flux_range:
             A range of external flux values to uniformly sample from for the
-            loop.
+            loop, in units of Phi_0/2π.
         elems_not_to_optimize:
             A list of element types no to optimize. These are randomly sampled,
             but then fixed during the optimization procedure (the 
@@ -67,19 +67,37 @@ class CircuitSampler:
 
     @property
     def bounds(self) -> Dict[Union[Element, Loop], Union[torch.Tensor, List[float]]]:
+        """
+        Bounds for circuit parameters, as a dictionary of
+        ``element type: (lower bound, upper_bound)``. To match ``SQcircuit``, the
+        units are
+            - Capacitors: Farads
+            - Inductors: Henries
+            - Junctions: 2π*Hz
+            - External flux: Phi_0
+
+        The units of junction and external flux differ from those used to
+        initialize the sampler. 
+        """
+
+        # Bounds in new units to represent difference between setting
+        # and getting value in `SQcircuit.`
+        flux_range_bounds = [i * 2 * np.pi for i in self.flux_range]
+        junction_range_bounds = [i * 2 * np.pi for i in self.junction_range]
+
         if sq.get_optim_mode():
             return {
                 Capacitor: torch.tensor(self.capacitor_range),
                 Inductor: torch.tensor(self.inductor_range),
-                Junction: torch.tensor(self.junction_range),
-                Loop: torch.tensor(self.flux_range)
+                Junction: torch.tensor(junction_range_bounds),
+                Loop: torch.tensor(flux_range_bounds)
             }
         else:
             return {
                 Capacitor: self.capacitor_range,
                 Inductor: self.inductor_range,
-                Junction: self.junction_range,
-                Loop: self.flux_range
+                Junction: junction_range_bounds,
+                Loop: flux_range_bounds
             }
 
     def _get_elem(

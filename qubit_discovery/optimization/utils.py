@@ -58,7 +58,7 @@ RecordType = Dict[
 
 
 def print_loss_records(loss_record) -> None:
-
+    # TOOD -- these might not all be present
     print(
         f"frequency_loss: "
         f"{loss_record['frequency_loss'][-1]}",
@@ -73,7 +73,6 @@ def print_loss_records(loss_record) -> None:
 
 @torch.no_grad()
 def init_records(
-    circuit_code: str,
     loss_values: Dict[str, List[torch.tensor]],
     metric_values: Dict[str, List[torch.tensor]]
 ) -> Tuple[RecordType, RecordType]:
@@ -172,3 +171,9 @@ def build_circuit(element_dictionary):
             elements[edge].append(element)
     circuit = Circuit(elements)
     return circuit
+
+class ConvergenceError(Exception):
+    def __init__(self, epsilon):
+        self.epsilon = epsilon
+    def __str__(self):
+        return f'Your circuit did not converge. The computed epsilon was {self.epsilon}.'
