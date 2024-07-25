@@ -151,10 +151,10 @@ def trunc_num_heuristic(
     """
     assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
-    # If circuit already passes convergence test, no need to run heuristic fit
+    '''# If circuit already passes convergence test, no need to run heuristic fit
     converged, eps = test_convergence(circuit, eig_vec_idx=eig_vec_idx)
     if converged:
-        return list(circuit.trunc_nums)
+        return list(circuit.trunc_nums)'''
 
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
