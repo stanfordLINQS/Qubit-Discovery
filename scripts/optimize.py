@@ -31,12 +31,13 @@ from typing import List
 
 from docopt import docopt
 import numpy as np
+import torch
+
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses import build_loss_function
 from qubit_discovery.optimization.sampler import CircuitSampler
 import SQcircuit as sq
 from SQcircuit import Circuit
-import torch
 
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
@@ -108,22 +109,19 @@ def main() -> None:
     junction_range = float_list(parameters['junction_range'])
     inductor_range = float_list(parameters['inductor_range'])
 
-    bounds = {
-        sq.Junction: torch.tensor(junction_range),
-        sq.Inductor: torch.tensor(inductor_range),
-        sq.Capacitor: torch.tensor(capacitor_range)
-    }
-
     if "flux_range" in parameters.keys():
         flux_range = float_list(parameters['flux_range'])
+        elements_not_to_optimize = []
     else:
         flux_range = [0.5, 0.5]
+        elements_not_to_optimize = [sq.Loop]
 
     sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
             junction_range=junction_range,
-            flux_range=flux_range
+            flux_range=flux_range,
+            elems_not_to_optimize=elements_not_to_optimize
     )
 
     set_seed(int(parameters['seed']))
@@ -149,18 +147,18 @@ def main() -> None:
     ############################################################################
 
     if parameters['optim_type'] == "SGD":
-        run_SGD(
-            circuit=circuit,
-            circuit_code=parameters['circuit_code'],
-            loss_metric_function=my_loss_function,
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
-            num_eigenvalues=parameters['num_eigenvalues'],
-            baseline_trunc_nums=baseline_trunc_num,
-            total_trunc_num=parameters['K'],
-            num_epochs=parameters['epochs'],
-            save_loc=directory.get_records_dir(),
-            save_intermediate_circuits=parameters['save-intermediate']
-        )
+        raise ValueError('SGD is currently deprecated.')
+        # run_SGD(
+        #     circuit=circuit,
+        #     circuit_code=parameters['circuit_code'],
+        #     loss_metric_function=my_loss_function,
+        #     num_eigenvalues=parameters['num_eigenvalues'],
+        #     baseline_trunc_nums=baseline_trunc_num,
+        #     total_trunc_num=parameters['K'],
+        #     num_epochs=parameters['epochs'],
+        #     save_loc=directory.get_records_dir(),
+        #     save_intermediate_circuits=parameters['save-intermediate']
+        # )
     elif parameters['optim_type'] == "BFGS":
         run_BFGS(
             circuit=circuit,
