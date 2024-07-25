@@ -28,9 +28,15 @@ def test_my_bfgs() -> None:
         use_losses={
             'frequency_loss': 1.0,
             'flux_sensitivity': 1.0,
+            'charge_sensitivity': 1.0,
             'number_of_gates': 1.0
         },
-        use_metrics=[]
+        use_metrics=[
+            't1', 
+            't_phi',
+            't2',
+            'frequency'
+        ]
     )
 
     final_circuits, loss_record, metrics_record = run_BFGS(

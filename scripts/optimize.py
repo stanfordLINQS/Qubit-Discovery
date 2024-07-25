@@ -115,11 +115,16 @@ def main() -> None:
     }
 
     if "flux_range" in parameters.keys():
-        flux_range = eval_list(parameters['flux_range'])
-        bounds[sq.Loop] = torch.tensor(flux_range)
-
+        flux_range = float_list(parameters['flux_range'])
     else:
-        flux_range = None
+        flux_range = [0.5, 0.5]
+
+    sampler = CircuitSampler(
+            capacitor_range=capacitor_range,
+            inductor_range=inductor_range,
+            junction_range=junction_range,
+            flux_range=flux_range
+    )
 
     set_seed(int(parameters['seed']))
 
@@ -129,12 +134,6 @@ def main() -> None:
     )
 
     if parameters['init_circuit'] is None or parameters['init_circuit'] == "":
-        sampler = CircuitSampler(
-            capacitor_range=capacitor_range,
-            inductor_range=inductor_range,
-            junction_range=junction_range,
-            flux_range=flux_range
-        )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
         print(circuit.loops[0].value() / 2 / np.pi)
         print("Circuit sampled!")
@@ -154,7 +153,7 @@ def main() -> None:
             circuit=circuit,
             circuit_code=parameters['circuit_code'],
             loss_metric_function=my_loss_function,
-            identifer = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
             num_eigenvalues=parameters['num_eigenvalues'],
             baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
@@ -166,15 +165,14 @@ def main() -> None:
         run_BFGS(
             circuit=circuit,
             loss_metric_function=my_loss_function,
-            identifer = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
-            num_eigenvalues=parameters['num_eigenvalues'],
-            baseline_trunc_nums=baseline_trunc_num,
-            total_trunc_num=parameters['K'],
-            bounds=bounds,
-            save_loc=directory.get_records_dir(),
             max_iter=parameters['epochs'],
-            verbose=True,
-            save_intermediate_circuits=parameters['save-intermediate']
+            total_trunc_num=parameters['K'],
+            bounds=sampler.bounds,
+            num_eigenvalues=parameters['num_eigenvalues'],
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            save_loc=directory.get_records_dir(),
+            save_intermediate_circuits=parameters['save-intermediate'],
+            verbose=True
         )
 
 

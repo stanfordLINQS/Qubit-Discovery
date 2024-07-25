@@ -253,9 +253,10 @@ def flux_sensitivity_loss(
     a=0.1,
     b=1,
 ) -> Tuple[SQValType, SQValType]:
-    """Applies a hinge loss to flux sensitivity of circuit. See
-    ``functions.flux_sensitivity`` for details on how the flux sensitivity
-    is calculated.
+    """Applies a hinge loss to flux sensitivity of circuit. The flux sensitivity
+    is the normalized variation in qubit frequency for small perturbations of
+    the external flux about the operating point. See ``functions.flux_sensitivity``
+    for more details.
     
     Parameters
     ----------
@@ -342,7 +343,7 @@ def number_of_gates_loss(
 # Incorporating all losses into one loss function
 ###############################################################################
 
-ALL_FUNCTIONS = {
+ALL_METRICS = {
     ###########################################################################
     'frequency': frequency_loss,
     'flux_sensitivity': flux_sensitivity_loss,
@@ -373,14 +374,14 @@ def get_all_metrics() -> List[str]:
     """
     Provides a list of all available metrics which can be calculated for a
     circuit or used to construct a loss function. Each function can be accessed
-    via ``ALL_FUNCTIONS[key]``, where ``key`` is any string in the returned
+    via ``ALL_METRICS[key]``, where ``key`` is any string in the returned
     list.
 
     Returns
     ----------
         List of names of available metrics.
     """
-    return list(ALL_FUNCTIONS.keys())
+    return list(ALL_METRICS.keys())
 
 
 def add_to_metrics(
@@ -396,7 +397,7 @@ def add_to_metrics(
         function:
             Function computing the metric and loss.
     """
-    ALL_FUNCTIONS[name] = function
+    ALL_METRICS[name] = function
 
 
 LossFunctionRetType = Tuple[SQValType, Dict[str, SQValType], Dict[str, SQValType]]
@@ -497,7 +498,7 @@ def calculate_loss_metrics(
 
         if key in use_losses:
             with torch.set_grad_enabled(master_use_grad):
-                specific_loss, specific_metric = ALL_FUNCTIONS[key](circuit)
+                specific_loss, specific_metric = ALL_METRICS[key](circuit)
                 loss = loss + use_losses[key] * specific_loss
 
             with torch.no_grad():
@@ -506,7 +507,7 @@ def calculate_loss_metrics(
 
         elif key not in use_losses and key in use_metrics:
             with torch.no_grad():
-                specific_loss, specific_metric = ALL_FUNCTIONS[key](circuit)
+                specific_loss, specific_metric = ALL_METRICS[key](circuit)
 
                 loss_values[key + '_loss'] = detach_if_optim(specific_loss)
                 metrics[key] = detach_if_optim(specific_metric)
