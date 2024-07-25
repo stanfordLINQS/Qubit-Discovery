@@ -5,6 +5,7 @@ num_eigenvalues: 10
 capacitor_range: [1e-15, 12e-12]
 inductor_range: [1e-15, 5e-6]
 junction_range: [1e9, 100e9]
+flux_range: [1e-2, 4.99e-1]
 use_losses:
   frequency: 1.0
   flux_sensitivity: 1.0
