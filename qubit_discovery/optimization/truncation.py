@@ -181,7 +181,8 @@ def trunc_num_heuristic(
     trunc_nums[circuit.omega == 0] = charge_mode_cutoff
     # Ensure each mode has at least `min_trunc` by allocating truncation
     # numbers as proportion of `min_trunc`
-    K = K / min_trunc ** len(harmonic_modes) / charge_mode_cutoff ** num_charge_modes
+    charge_dimensionality = 2 * charge_mode_cutoff - 1
+    K = K / min_trunc ** len(harmonic_modes) / charge_dimensionality ** num_charge_modes
 
 
 

@@ -134,8 +134,6 @@ class CircuitSampler:
                 'Hz',
                 loops=loops,
                 requires_grad=sq.get_optim_mode() and Junction in self.elems_to_optimize,
-                min_value=2*np.pi*self.junction_range[0],
-                max_value=2*np.pi*self.junction_range[1]
             )
         elif elem_str == 'L':
             ind_value = loguniform.rvs(*self.inductor_range, size=1)[0]
@@ -144,8 +142,6 @@ class CircuitSampler:
                 'H',
                 loops=loops,
                 requires_grad=sq.get_optim_mode() and Inductor in self.elems_to_optimize,
-                min_value=self.inductor_range[0],
-                max_value=self.inductor_range[1]
             )
         elif elem_str == 'C':
             cap_value = loguniform.rvs(*self.capacitor_range, size=1)[0]
@@ -153,8 +149,6 @@ class CircuitSampler:
                 cap_value,
                 'F',
                 requires_grad=sq.get_optim_mode() and Capacitor in self.elems_to_optimize,
-                min_value=self.capacitor_range[0],
-                max_value=self.capacitor_range[1]
             )
         else:
             raise ValueError("elem_str should be either 'J', 'L', or 'C' ")
