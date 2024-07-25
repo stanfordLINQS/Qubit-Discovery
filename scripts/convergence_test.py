@@ -36,6 +36,7 @@ from qubit_discovery.optimization.truncation import (
     test_convergence,
     get_reshaped_eigvec
 )
+from qubit_discovery.optimization.utils import float_list
 from plot_utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
 
@@ -176,9 +177,16 @@ def main() -> None:
 
     sq.set_optim_mode(True)
 
-    capacitor_range = eval_list(parameters['capacitor_range'])
-    junction_range = eval_list(parameters['junction_range'])
-    inductor_range = eval_list(parameters['inductor_range'])
+    capacitor_range = float_list(parameters['capacitor_range'])
+    junction_range = float_list(parameters['junction_range'])
+    inductor_range = float_list(parameters['inductor_range'])
+
+    if "flux_range" in parameters.keys():
+        flux_range = float_list(parameters['flux_range'])
+        elements_not_to_optimize = []
+    else:
+        flux_range = [0.5, 0.5]
+        elements_not_to_optimize = [sq.Loop]
 
     set_seed(int(parameters['seed']))
 
@@ -186,7 +194,9 @@ def main() -> None:
         sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
-            junction_range=junction_range
+            junction_range=junction_range,
+            flux_range=flux_range,
+            elems_not_to_optimize=elements_not_to_optimize
         )
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
         if circuit.loops:

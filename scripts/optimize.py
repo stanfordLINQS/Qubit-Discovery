@@ -36,6 +36,7 @@ import torch
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses import build_loss_function
 from qubit_discovery.optimization.sampler import CircuitSampler
+from qubit_discovery.optimization.utils import float_list
 import SQcircuit as sq
 from SQcircuit import Circuit
 
@@ -61,12 +62,6 @@ OPTIMIZE_OPTIONAL_KEYS = [
 ################################################################################
 # Helper functions.
 ################################################################################
-
-
-def float_list(ls: List[str]) -> List[float]:
-    """Evaluates a list of strings and returns a list of floats.
-    """
-    return [float(i) for i in ls]
 
 
 def set_seed(seed: int) -> None:

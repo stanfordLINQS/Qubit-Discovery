@@ -20,6 +20,15 @@ from SQcircuit import (
 )
 import torch
 
+################################################################################
+# Helper functions.
+################################################################################
+
+def float_list(ls: List[str]) -> List[float]:
+    """Evaluates a list of strings and returns a list of floats.
+    """
+    return [float(i) for i in ls]
+
 
 # General utilities
 SQValType = Union[float, torch.Tensor]
