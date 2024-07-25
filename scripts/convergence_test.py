@@ -69,14 +69,6 @@ DEFAULT_FLUX_POINT = 0.5 - 1e-2
 ################################################################################
 
 
-def eval_list(ls: list) -> list:
-    """Evaluates elements of a list and returns as a list.
-    Warning: this can execute arbitrary code! Don't accept uninspected YAML
-    files from strangers.
-    """
-    return [eval(i) for i in ls]
-
-
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
