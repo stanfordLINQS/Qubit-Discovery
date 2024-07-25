@@ -151,6 +151,11 @@ def trunc_num_heuristic(
     """
     assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
 
+    # If circuit already passes convergence test, no need to run heuristic fit
+    converged, eps = test_convergence(circuit, eig_vec_idx=eig_vec_idx)
+    if converged:
+        return list(circuit.m)
+
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
     num_charge_modes = np.sum(circuit.omega == 0)
@@ -183,8 +188,6 @@ def trunc_num_heuristic(
     # numbers as proportion of `min_trunc`
     charge_dimensionality = 2 * charge_mode_cutoff - 1
     K = K / min_trunc ** len(harmonic_modes) / charge_dimensionality ** num_charge_modes
-
-
 
     _, mode_magnitudes = get_reshaped_eigvec(
         circuit,
@@ -271,7 +274,10 @@ def assign_trunc_nums(
             "keep equal truncation numbers for "
             "all modes (circuit with only charge modes)"
         )
-        return circuit.trunc_nums
+        num_charge_modes = len(circuit.m)
+        trunc_num_average = K ** (1 / num_charge_modes)
+        charge_allocation = int(np.floor((1 / 2) * (trunc_num_average + 1)))
+        return [charge_allocation for _ in range(num_charge_modes)]
 
     else:
         print("re-allocate truncation numbers (2+ modes)")
