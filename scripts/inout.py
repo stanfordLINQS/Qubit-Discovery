@@ -21,7 +21,7 @@ for all the scripts):
     - flux_sensitivity: Flux sensitivity loss.
     - charge_sensitivity: Charge sensitivity loss.
     - T1: Energy relaxation time (T1) loss.
-- use_metrics: List of strings. Metrics to use in simulations, e.g., ["T2"] for
+- use_metrics: List of strings. Metrics to use in simulations, e.g., ["T1"] for
   coherence time.
 
 Example:
@@ -38,7 +38,7 @@ Example:
       flux_sensitivity: 1.0
       charge_sensitivity: 1.0
       T1: 0.0
-    use_metrics: ["T2"]
+    use_metrics: ["T1"]
     optim_type: SGD
     circuit_code: JL
     init_circuit: ""
@@ -71,11 +71,12 @@ The working tree for the outputs of scripts will look like:
 Ensure that you have the correct file structure for proper operation
 of the scripts and modules within this project.
 """
-import os
-import yaml
 
-from typing import List, Tuple, Dict
 from collections import defaultdict
+import os
+from typing import List, Tuple, Dict
+
+import yaml
 
 from qubit_discovery.losses.loss import get_all_metrics
 
@@ -105,14 +106,10 @@ UNITS = {
     't1_capacitive': '[s]',
     't1_inductive': '[s]',
     't1_quasiparticle': '[s]',
-    't2': '[s]',
-    't2_proxy': '[s]',
-    't2_charge': '[s]',
-    't2_proxy_charge': '[s]',
-    't2_cc': '[s]',
-    't2_proxy_cc': '[s]',
-    't2_flux': '[s]',
-    't2_proxy_flux': '[s]',
+    't_phi': '[s]',
+    't_phi_charge': '[s]',
+    't_phi_cc': '[s]',
+    't_phi_flux': '[s]',
 }
 UNITS = defaultdict(lambda: "", UNITS)
 
@@ -174,21 +171,21 @@ def add_command_line_keys(
     keys: List[str],
     optional_keys: List[str] = None,
 ) -> dict:
-    """Add command line argument keys to the parameters which is loaded from
-    yaml file.
+    """Add command line argument keys to the parameters which are loaded from
+    YAML file.
 
     Parameters
     ----------
         parameters:
-            A dictionary containing the parameters of the yaml file.
+            A dictionary containing the parameters of the YAML file.
         arguments:
             A dictionary containing the arguments of the command line.
         keys:
-            A list of string keys that must be either specified in the yaml
+            A list of string keys that must be either specified in the YAML
             file or command line options.
         optional_keys:
             A list of string keys that are optional and can be not specified in
-            both the yaml file and the command line options.
+            both the YAML file and the command line options.
     """
 
     if optional_keys is None:

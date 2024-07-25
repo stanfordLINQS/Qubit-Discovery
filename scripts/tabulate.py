@@ -7,7 +7,7 @@ Usage:
   tabulate.py -h | --help
   tabulate.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -84,7 +84,6 @@ def main() -> None:
         parameters=parameters,
         arguments=arguments,
         keys=YAML_OR_COMMANDLINE_KEYS,
-        optional_keys=[],
     )
 
     directory = Directory(parameters, arguments)

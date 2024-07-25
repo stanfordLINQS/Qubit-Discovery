@@ -8,7 +8,7 @@ Usage:
   optimize.py -h | --help
   optimize.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -21,14 +21,18 @@ Options:
   -i, --init_circuit=<init_circuit>         Set intial circuit to <init_circuit>.
   --save-intermediate                       Save intermediate circuits during
                                             optimization to file.
+
+Notes: Optional arguments to optimize.py must either be provided on the
+command line or in <yaml_file>.
 """
 
 import random
+from typing import List
 
 from docopt import docopt
 import numpy as np
 from qubit_discovery.optimization import run_SGD, run_BFGS
-from qubit_discovery.losses.loss import calculate_loss_metrics
+from qubit_discovery.losses import build_loss_function
 from qubit_discovery.optimization.sampler import CircuitSampler
 import SQcircuit as sq
 from SQcircuit import Circuit
@@ -42,12 +46,15 @@ from inout import load_yaml_file, add_command_line_keys, Directory
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
-    "seed",
-    "circuit_code",
-    "optim_type",
-    "save-intermediate",
-    "init_circuit",
+OPTIMIZE_REQUIRED_KEYS = [
+    'seed',
+    'circuit_code',
+    'optim_type',
+    'save-intermediate',
+]
+
+OPTIMIZE_OPTIONAL_KEYS = [
+    'init_circuit'
 ]
 
 ################################################################################
@@ -55,12 +62,10 @@ YAML_OR_COMMANDLINE_KEYS = [
 ################################################################################
 
 
-def eval_list(ls: list) -> list:
-    """Evaluates elements of a list and returns as a list.
-    Warning: this can execute arbitrary code! Don't accept uninspected YAML
-    files from strangers.
+def float_list(ls: List[str]) -> List[float]:
+    """Evaluates a list of strings and returns a list of floats.
     """
-    return [eval(i) for i in ls]
+    return [float(i) for i in ls]
 
 
 def set_seed(seed: int) -> None:
@@ -86,7 +91,8 @@ def main() -> None:
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
+        keys=OPTIMIZE_REQUIRED_KEYS,
+        optional_keys=OPTIMIZE_OPTIONAL_KEYS
     )
 
     directory = Directory(parameters, arguments)
@@ -96,10 +102,11 @@ def main() -> None:
     ############################################################################
 
     sq.set_optim_mode(True)
+    sq.set_max_eigenvector_grad(2)
 
-    capacitor_range = eval_list(parameters['capacitor_range'])
-    junction_range = eval_list(parameters['junction_range'])
-    inductor_range = eval_list(parameters['inductor_range'])
+    capacitor_range = float_list(parameters['capacitor_range'])
+    junction_range = float_list(parameters['junction_range'])
+    inductor_range = float_list(parameters['inductor_range'])
 
     bounds = {
         sq.Junction: torch.tensor(junction_range),
@@ -108,35 +115,31 @@ def main() -> None:
     }
 
     if "flux_range" in parameters.keys():
-        flux_range = eval_list(parameters['flux_range'])
-        bounds[sq.Loop] = torch.tensor(flux_range)
-
+        flux_range = float_list(parameters['flux_range'])
     else:
-        flux_range = None
+        flux_range = [0.5, 0.5]
 
-    set_seed(int(parameters['seed']))
-
-    def my_loss_function(cr: Circuit):
-        return calculate_loss_metrics(
-            cr,
-            use_losses=parameters["use_losses"],
-            use_metrics=parameters["use_metrics"],
-        )
-
-    if parameters['init_circuit'] == "":
-        sampler = CircuitSampler(
+    sampler = CircuitSampler(
             capacitor_range=capacitor_range,
             inductor_range=inductor_range,
             junction_range=junction_range,
             flux_range=flux_range
-        )
+    )
+
+    set_seed(int(parameters['seed']))
+
+    my_loss_function = build_loss_function(
+        use_losses=parameters["use_losses"],
+        use_metrics=parameters["use_metrics"]
+    )
+
+    if parameters['init_circuit'] is None or parameters['init_circuit'] == "":
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-        print(circuit.loops[0].value()/np.pi/2)
+        print(circuit.loops[0].value() / 2 / np.pi)
         print("Circuit sampled!")
     else:
         circuit = load_final_circuit(parameters['init_circuit'])
         circuit.update()
-        circuit._toggle_fullcopy = True
         print("Circuit loaded!")
 
     baseline_trunc_num = circuit.truncate_circuit(parameters['K'])
@@ -150,7 +153,7 @@ def main() -> None:
             circuit=circuit,
             circuit_code=parameters['circuit_code'],
             loss_metric_function=my_loss_function,
-            name=parameters['name'] + '_' + str(parameters['seed']),
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
             num_eigenvalues=parameters['num_eigenvalues'],
             baseline_trunc_nums=baseline_trunc_num,
             total_trunc_num=parameters['K'],
@@ -161,17 +164,15 @@ def main() -> None:
     elif parameters['optim_type'] == "BFGS":
         run_BFGS(
             circuit=circuit,
-            circuit_code=parameters['circuit_code'],
             loss_metric_function=my_loss_function,
-            name=parameters['name'] + '_' + str(parameters['seed']),
-            num_eigenvalues=parameters['num_eigenvalues'],
-            baseline_trunc_nums=baseline_trunc_num,
-            total_trunc_num=parameters['K'],
-            bounds=bounds,
-            save_loc=directory.get_records_dir(),
             max_iter=parameters['epochs'],
-            verbose=True,
-            save_intermediate_circuits=parameters['save-intermediate']
+            total_trunc_num=parameters['K'],
+            bounds=sampler.bounds,
+            num_eigenvalues=parameters['num_eigenvalues'],
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            save_loc=directory.get_records_dir(),
+            save_intermediate_circuits=parameters['save-intermediate'],
+            verbose=True
         )
 
 

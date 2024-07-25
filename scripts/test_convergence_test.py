@@ -7,7 +7,7 @@ Usage:
   test_convergence_test.py -h | --help
   test_convergence_test.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -44,10 +44,13 @@ from inout import load_yaml_file, add_command_line_keys, Directory
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
-    "seed",
-    "circuit_code",
-    "init_circuit",
+TEST_CONVERGENCE_REQUIRED_KEYS = [
+    'seed',
+    'circuit_code'
+]
+
+TEST_CONVERGENCE_OPTIONAL_KEYS = [
+    'init_circuit'
 ]
 
 N_EIG_DIAG = 10
@@ -155,7 +158,8 @@ def main() -> None:
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
+        keys=TEST_CONVERGENCE_REQUIRED_KEYS,
+        optional_keys=TEST_CONVERGENCE_OPTIONAL_KEYS
     )
 
     directory = Directory(parameters, arguments)
@@ -180,7 +184,7 @@ def main() -> None:
         circuit_code = parameters['circuit_code']
         name = parameters['name']
 
-        if parameters['init_circuit'] == "":
+        if parameters['init_circuit'] is None or parameters['init_circuit'] == '':
             sampler = CircuitSampler(
                 capacitor_range=capacitor_range,
                 inductor_range=inductor_range,

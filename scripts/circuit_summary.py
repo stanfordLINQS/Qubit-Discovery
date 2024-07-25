@@ -40,9 +40,10 @@ from plot_utils import load_final_circuit
 ################################################################################
 
 # Keys that should be in either command line or Yaml file.
-YAML_OR_COMMANDLINE_KEYS = [
+SUMMARY_REQUIRED_KEYS = [
     "ids",
     "circuit_code",
+    "optim_type",
 ]
 
 ################################################################################
@@ -63,7 +64,7 @@ def main():
     parameters = add_command_line_keys(
         parameters=parameters,
         arguments=arguments,
-        keys=YAML_OR_COMMANDLINE_KEYS,
+        keys=SUMMARY_REQUIRED_KEYS,
     )
 
     directory = Directory(parameters, arguments)

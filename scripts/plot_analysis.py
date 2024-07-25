@@ -8,7 +8,7 @@ Usage:
   plot_analysis.py -h | --help
   plot_analysis.py --version
 
-Arguments
+Arguments:
   <yaml_file>   YAML file containing details about the optimization.
 
 Options:
@@ -43,7 +43,7 @@ from inout import (
 YAML_OR_COMMANDLINE_KEYS = [
     "ids",
     "circuit_code",
-    "optim_type",
+    "optim_type"
 ]
 
 
