@@ -154,7 +154,7 @@ def trunc_num_heuristic(
     # If circuit already passes convergence test, no need to run heuristic fit
     converged, eps = test_convergence(circuit, eig_vec_idx=eig_vec_idx)
     if converged:
-        return list(circuit.m)
+        return list(circuit.trunc_nums)
 
     trunc_nums = np.zeros_like(circuit.m)
     harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
