@@ -1,5 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Union, List
-from sys import exit
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import torch
 from torch import Tensor
@@ -115,12 +114,6 @@ def diag_with_convergence(
             raise ConvergenceError(eps)
 
     return True
-
-def clamp_params(params, min_val, max_val):
-    params  = torch.min(params, torch.full_like(params, max_val))
-    params  = torch.max(params, torch.full_like(params, min_val))
-    return params
-
 
 def run_BFGS(
     circuit: Circuit,
@@ -239,9 +232,6 @@ def run_BFGS(
         alpha_params_next = (
                 alpha_params + delta_params
         )
-        # Clamp within bounds (this should have been done during line search,
-        # but just to make sure).
-        alpha_params_next = clamp_params(alpha_params_next, 1e-5, torch.pi - 1e-5)
         alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
 
         # 4. Step the circuit, and compute the loss + gradient at the new
@@ -316,23 +306,16 @@ def backtracking_line_search(
     """
     print(50*"=" + "Line search called." + 50*"=")
 
-    # Enforce step size within bounds
-
-    # max_step_size = float(min([
-    #     (torch.pi - params[i])/p[i] if p[i] > 0 else (-params[i]/p[i])
-    #     for i in range(len(params))
-    # ]).detach().numpy())
-
-    # alpha = min(lr, max_step_size)
     alpha = lr
 
-    print(f"params:{params}")
+    print(f"params: {params}")
+    print(f"circuit params: {circuit.parameters}")
     print(f"p: {p}, alpha: {alpha}")
 
     counter = 0
     # with torch.no_grad(): # messes up adding things to parameters. Need to fix
     while (
-            objective_func(circuit, clamp_params(params + alpha * p, 1e-5, torch.pi - 1e-5))[0]
+            objective_func(circuit, params + alpha * p)[0]
             > initial_loss + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho

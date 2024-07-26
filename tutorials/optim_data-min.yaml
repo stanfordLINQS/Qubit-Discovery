@@ -1,6 +1,6 @@
 name: "tutorial_optimization"
-K: 200
-epochs: 30
+K: 500
+epochs: 50
 num_eigenvalues: 10
 capacitor_range: [1e-15, 12e-12]
 inductor_range: [1e-15, 5e-6]
