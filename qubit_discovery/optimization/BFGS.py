@@ -28,7 +28,7 @@ def get_alpha_param_from_circuit_param(
     elem_type=None
 ) -> Tensor:
     """
-    Get the circuit parameter from the alpha in [-1, 1] parameterization.
+    Get the circuit parameter from the alpha in [0, π] parameterization.
     """
     l_bound, u_bound = bounds[elem_type]
 
@@ -180,11 +180,9 @@ def run_BFGS(
 
         return loss_metric_function(cr)
 
-    print(circuit.parameters)
-
     # Set up initial reparameterization
     alpha_params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone().requires_grad_(True)
-
+    
     # Set initial truncation numbers
     circuit.truncate_circuit(total_trunc_num)
 
@@ -235,7 +233,12 @@ def run_BFGS(
         # 3. Compute next parameters and zero their gradient
         alpha_params_next = (
                 alpha_params + delta_params
-        ).clone().detach().requires_grad_(True)
+        )
+        # Clamp within bounds (this should have been done during line search,
+        # but just to make sure).
+        alpha_params_next =torch.min(alpha_params_next, torch.full_like(alpha_params_next, torch.pi))
+        alpha_params_next =torch.max(alpha_params_next, torch.full_like(alpha_params, 0))
+        alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
 
         # 4. Step the circuit, and compute the loss + gradient at the new
         # parameter values.
@@ -308,7 +311,15 @@ def backtracking_line_search(
     set to ``params + alpha * p``.
     """
     print(50*"=" + "Line search called." + 50*"=")
-    alpha = lr
+
+    # Enforce step size within bounds
+
+    max_step_size = float(min([
+        (torch.pi - params[i])/p[i] if p[i] > 0 else (-params[i]/p[i])
+        for i in range(len(params))
+    ]).detach().numpy())
+
+    alpha = min(lr, max_step_size)
 
     print(f"params:{params}")
     print(f"p: {p}, alpha: {alpha}")
