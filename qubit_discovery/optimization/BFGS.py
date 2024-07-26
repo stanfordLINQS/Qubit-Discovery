@@ -116,6 +116,11 @@ def diag_with_convergence(
 
     return True
 
+def clamp_params(params, min_val, max_val):
+    params  = torch.min(params, torch.full_like(params, max_val))
+    params  = torch.max(params, torch.full_like(params, min_val))
+    return params
+
 
 def run_BFGS(
     circuit: Circuit,
@@ -236,8 +241,7 @@ def run_BFGS(
         )
         # Clamp within bounds (this should have been done during line search,
         # but just to make sure).
-        alpha_params_next =torch.min(alpha_params_next, torch.full_like(alpha_params_next, torch.pi))
-        alpha_params_next =torch.max(alpha_params_next, torch.full_like(alpha_params, 0))
+        alpha_params_next = clamp_params(alpha_params_next, 1e-5, torch.pi - 1e-5)
         alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
 
         # 4. Step the circuit, and compute the loss + gradient at the new
@@ -314,12 +318,13 @@ def backtracking_line_search(
 
     # Enforce step size within bounds
 
-    max_step_size = float(min([
-        (torch.pi - params[i])/p[i] if p[i] > 0 else (-params[i]/p[i])
-        for i in range(len(params))
-    ]).detach().numpy())
+    # max_step_size = float(min([
+    #     (torch.pi - params[i])/p[i] if p[i] > 0 else (-params[i]/p[i])
+    #     for i in range(len(params))
+    # ]).detach().numpy())
 
-    alpha = min(lr, max_step_size)
+    # alpha = min(lr, max_step_size)
+    alpha = lr
 
     print(f"params:{params}")
     print(f"p: {p}, alpha: {alpha}")
@@ -327,7 +332,7 @@ def backtracking_line_search(
     counter = 0
     # with torch.no_grad(): # messes up adding things to parameters. Need to fix
     while (
-            objective_func(circuit, params + alpha * p)[0]
+            objective_func(circuit, clamp_params(params + alpha * p, 1e-5, torch.pi - 1e-5))[0]
             > initial_loss + c * alpha * torch.dot(p, gradient)
     ):
         alpha *= rho
