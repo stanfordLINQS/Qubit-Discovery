@@ -135,7 +135,7 @@ def main() -> None:
         circuit.update()
         print("Circuit loaded!")
 
-    baseline_trunc_num = circuit.truncate_circuit(parameters['K'])
+    circuit.truncate_circuit(parameters['K'])
 
     ############################################################################
     # Run the optimizations.

@@ -48,7 +48,7 @@ class CircuitSampler:
         self.capacitor_range = capacitor_range
         self.inductor_range = inductor_range
         self.junction_range = junction_range
-        self.flux_range = [val / 2 / np.pi for val in flux_range]
+        self.flux_range = flux_range
 
         if elems_not_to_optimize is None:
             elems_not_to_optimize = []
@@ -128,7 +128,7 @@ class CircuitSampler:
             loops = [self.loop,]
 
         if elem_str == 'J':
-            junc_value = loguniform.rvs(*self.junction_range, size=1)[0]
+            junc_value = loguniform.rvs(*self.junction_range)
             elem = sq.Junction(
                 junc_value,
                 'Hz',
@@ -136,7 +136,7 @@ class CircuitSampler:
                 requires_grad=sq.get_optim_mode() and Junction in self.elems_to_optimize,
             )
         elif elem_str == 'L':
-            ind_value = loguniform.rvs(*self.inductor_range, size=1)[0]
+            ind_value = loguniform.rvs(*self.inductor_range)
             elem = sq.Inductor(
                 ind_value,
                 'H',
@@ -144,7 +144,7 @@ class CircuitSampler:
                 requires_grad=sq.get_optim_mode() and Inductor in self.elems_to_optimize,
             )
         elif elem_str == 'C':
-            cap_value = loguniform.rvs(*self.capacitor_range, size=1)[0]
+            cap_value = loguniform.rvs(*self.capacitor_range)
             elem = Capacitor(
                 cap_value,
                 'F',
@@ -358,7 +358,8 @@ class CircuitSampler:
         """
 
         # Initialize the loop the loop
-        flux_value = uniform.rvs(*self.flux_range, size=1)[0]
+        flux_value = uniform.rvs(loc=self.flux_range[0],
+                                 scale=self.flux_range[1] - self.flux_range[0])
         self.loop = Loop(
             flux_value,
             requires_grad=sq.get_optim_mode() and Loop in self.elems_to_optimize
