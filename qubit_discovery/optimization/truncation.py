@@ -265,17 +265,23 @@ def assign_trunc_nums(
     """
     if len(circuit.m) == 1:
         print("re-allocate truncation numbers (single mode)")
-        circuit.set_trunc_nums([total_trunc_num, ])
+        # Charge mode
+        if sum(circuit.omega) == 0:
+            charge_allocation = int(np.floor((1 / 2) * (total_trunc_num + 1)))
+            circuit.set_trunc_nums([charge_allocation, ])
+        # Harmonic mode
+        else:
+            circuit.set_trunc_nums([total_trunc_num, ])
         return [total_trunc_num, ]
 
-    # circuit that has only charge modes 
+    # circuit that has only charge modes
     elif len(circuit.m) == sum(circuit.omega == 0):
         print(
             "keep equal truncation numbers for "
             "all modes (circuit with only charge modes)"
         )
         num_charge_modes = len(circuit.m)
-        trunc_num_average = K ** (1 / num_charge_modes)
+        trunc_num_average = total_trunc_num ** (1 / num_charge_modes)
         charge_allocation = int(np.floor((1 / 2) * (trunc_num_average + 1)))
         return [charge_allocation for _ in range(num_charge_modes)]
 
