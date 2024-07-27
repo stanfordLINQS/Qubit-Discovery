@@ -107,6 +107,7 @@ def diag_with_convergence(
     # Otherwise try re-allocating
     # if not converged:
     assign_trunc_nums(circuit, total_trunc_num)
+    print(f"Assigned trunc nums: {circuit.ms}")
     circuit.diag(num_eigenvalues)
 
         # converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
