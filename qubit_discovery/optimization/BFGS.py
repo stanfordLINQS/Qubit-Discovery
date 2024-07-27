@@ -103,11 +103,11 @@ def diag_with_convergence(
     circuit.diag(num_eigenvalues)
 
     # Check if converges with old truncation numbers
-    converged, _ = test_convergence(circuit, eig_vec_idx=1)
+    # converged, _ = test_convergence(circuit, eig_vec_idx=1)
     # Otherwise try re-allocating
-    if not converged:
-        assign_trunc_nums(circuit, total_trunc_num)
-        circuit.diag(num_eigenvalues)
+    # if not converged:
+    assign_trunc_nums(circuit, total_trunc_num)
+    circuit.diag(num_eigenvalues)
 
         # converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
         # if not converged:
