@@ -1,7 +1,8 @@
-<br />
-<p align="center">
-<img src = pics/README_logo.png width= 250px" />
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="pics/dark_logo_qd.svg">
+  <source media="(prefers-color-scheme: light)" srcset="pics/light_logo_qd.svg">
+  <img alt="Logo image" src="pics/dark_logo_qd.svg" width="500" height="250">
+</picture>
 
 # Qubit-Discovery
 [**Introduction**](##Introduction)
