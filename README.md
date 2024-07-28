@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="pics/dark_logo_qd.png">
   <source media="(prefers-color-scheme: light)" srcset="pics/light_logo_qd.png">
-  <img alt="Logo image" src="pics/dark_logo_qd.png" width="500" height="250">
+  <img alt="Logo image" src="pics/dark_logo_qd.png" width="150" height="auto">
 </picture>
 
 # Qubit-Discovery
