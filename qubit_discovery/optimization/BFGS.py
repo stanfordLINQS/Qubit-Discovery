@@ -187,12 +187,14 @@ def run_BFGS(
 
     # Get gradient and loss values to start with
     loss, loss_values, metric_values = objective_func(circuit, alpha_params)
+    loss.backward()
+    gradient = alpha_params.grad.type(torch.float64) # TODO: why double?
+
+    # Initialize records
     loss_record, metric_record = init_records(
         loss_values,
         metric_values
     )
-    loss.backward()
-    gradient = alpha_params.grad.type(torch.float64) # TODO: why double?
 
     # Initialize BFGS algorithm
     def identity():
@@ -241,8 +243,8 @@ def run_BFGS(
             circuit,
             alpha_params_next
         )
-        update_record(circuit, metric_record, metric_values)
-        update_record(circuit, loss_record, loss_values)
+        update_record(metric_record, metric_values)
+        update_record(loss_record, loss_values)
 
         loss_next.backward()
         gradient_next = alpha_params_next.grad
