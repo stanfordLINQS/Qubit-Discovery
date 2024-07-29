@@ -17,94 +17,49 @@ from qubit_discovery.tests.conftest import (
     are_loss_dicts_close
 )
 
-def test_my_bfgs() -> None:
-    sq.set_optim_mode(True)
 
-    total_trunc_num: int = 120
+def test_bfgs_run() -> None:
+    """Test two steps of the BFGS algorithm."""
 
-    circuit = get_fluxonium()
+    target_params = [1.7817e-14, 3.4925e-07, 6.2715e+09]
+
+    target_loss_record = {
+        'frequency_loss': [np.array(1.e-13),np.array(1.e-13)],
+        'number_of_gates_loss': [np.array(2.2558016e-05), np.array(1.19195123e-05)],
+        'flux_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13)],
+        'charge_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13)],
+        'total_loss': [np.array(2.25580163e-05), np.array(1.19195126e-05)]
+    }
 
     my_loss_function = build_loss_function(
         use_losses={
-            'frequency_loss': 1.0,
-            'flux_sensitivity': 1.0,
-            'charge_sensitivity': 1.0,
-            'number_of_gates': 1.0
-        },
-        use_metrics=[
-            't1', 
-            't_phi',
-            't2',
-            'frequency'
-        ]
-    )
-
-    final_circuits, loss_record, metrics_record = run_BFGS(
-        circuit = circuit,
-        loss_metric_function  = my_loss_function,
-        max_iter = 30,
-        total_trunc_num = 50,
-        bounds = get_bounds()
-    )
-
-
-def test_bfgs_run() -> None:
-    """Test one step of BFGS algorithm."""
-
-    target_params = torch.tensor(
-        [4.6898e-12, 1.6346e-07, 6.2832e+09],
-        dtype=torch.float64
-    )
-
-    target_loss_record = {
-        'frequency_loss': [np.array(1e-13)],
-        'anharmonicity_loss': [np.array(1.42174492)],
-        't1_loss': [np.array(0)],
-        't_phi_loss': [np.array(0)],
-        'flux_sensitivity_loss': [np.array(1.e-13)],
-        'charge_sensitivity_loss': [np.array(1e-13)],
-        'total_loss': [np.array(1.42174492)],
-    }
-
-    def my_loss_function(cr: Circuit):
-        return calculate_loss_metrics(
-            cr,
-            use_losses={
                 "frequency": 1.0,
-                "anharmonicity": 1.0,
+                "number_of_gates": 1.0,
                 "flux_sensitivity": 1.0,
                 "charge_sensitivity": 1.0,
-                "t1": 1.0,
-                "t_phi": 1.0
             },
-            use_metrics=[]
-        )
+        use_metrics=[]
+    )
 
     sq.set_optim_mode(True)
 
-    total_trunc_num: int = 120
-    baseline_trunc_num = total_trunc_num
+    total_trunc_num = 120
 
     circuit = get_fluxonium()
     circuit.set_trunc_nums([total_trunc_num])
 
-    params, loss_record = run_BFGS(
+    circuit, loss_record, _ = run_BFGS(
         circuit=circuit,
-        circuit_code="JL",
         loss_metric_function=my_loss_function,
-        name="BFGS_test",
-        num_eigenvalues=10,
+        max_iter=2,
         total_trunc_num=total_trunc_num,
-        baseline_trunc_nums=[baseline_trunc_num],
-        bounds=get_bounds(),
+        bounds = get_bounds(),
+        num_eigenvalues=10,
         lr=1.0,
-        max_iter=1,
         tolerance=1e-7,
-        verbose=False,
-        save_intermediate_circuits=False,
+        verbose=False
     )
 
-    del loss_record['circuit_code']
-
-    assert params.detach() == pytest.approx(target_params, rel=1e-2)
+    print(circuit.parameters)
+    assert torch.stack(circuit.parameters).detach() == pytest.approx(target_params, rel=1e-2)
     assert are_loss_dicts_close(loss_record, target_loss_record, rel=1e-2)

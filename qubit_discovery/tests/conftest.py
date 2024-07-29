@@ -83,8 +83,8 @@ def get_bounds() -> Dict[Element, Tensor]:
     bounds = {
         sq.Capacitor: torch.tensor([1e-15, 12e-12]),
         sq.Inductor: torch.tensor([1e-15, 5e-6]),
-        sq.Junction: torch.tensor([1e9*2*np.pi, 100e9*2*np.pi]),
-        sq.Loop: torch.tensor([0, 2*np.pi])
+        sq.Junction: torch.tensor([1e9, 100e9]),
+        sq.Loop: torch.tensor([0, 1])
     }
 
     return bounds
@@ -98,7 +98,8 @@ def are_loss_dicts_close(dict1, dict2, rel: float = 1e-2) -> bool:
         return False
 
     for key in dict1:
-        if not np.isclose(dict1[key][-1], dict2[key][-1], rtol=rel):
-            return False
-
+        for i in range(len(dict1[key])):
+            if not np.isclose(dict1[key][i], dict2[key][i], rtol=rel):
+                return False
+            
     return True

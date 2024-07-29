@@ -87,12 +87,14 @@ def init_records(
 ) -> Tuple[RecordType, RecordType]:
     # Init loss record
     loss_record: RecordType = {
-        loss_type: [] for loss_type in loss_values.keys()
+        loss_type: [loss_value.detach().numpy()]
+        for loss_type, loss_value in loss_values.items()
     }
 
     # Init metric record
     metric_record: RecordType = {
-        metric_type: [] for metric_type in metric_values.keys()
+        metric_type: [metric_value.detach().numpy()]
+        for metric_type, metric_value in metric_values.items()
     }
 
     return loss_record, metric_record
@@ -100,7 +102,6 @@ def init_records(
 
 @torch.no_grad()
 def update_record(
-    circuit: Circuit,
     record: RecordType,
     values: Dict[str, List[torch.Tensor]]
 ) -> None:
