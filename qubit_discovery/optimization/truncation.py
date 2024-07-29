@@ -246,7 +246,7 @@ def assign_trunc_nums(
     circuit: Circuit,
     total_trunc_num: int,
     axes=None,
-    min_trunc=1
+    min_trunc=4
 ) -> List[int]:
     """
     Heuristically re-assign truncation numbers for a circuit with one
