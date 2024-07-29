@@ -1,8 +1,8 @@
-<picture>
+<div style="text-align: center;" markdown="1"> <picture>
   <source media="(prefers-color-scheme: dark)" srcset="pics/dark_logo_qd.png">
   <source media="(prefers-color-scheme: light)" srcset="pics/light_logo_qd.png">
   <img alt="Logo image" src="pics/dark_logo_qd.png" width="150" height="auto">
-</picture>
+</picture></div>
 
 # Qubit-Discovery
 [**Introduction**](##Introduction)
