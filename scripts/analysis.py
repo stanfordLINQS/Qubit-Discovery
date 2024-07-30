@@ -2,6 +2,7 @@ import numpy as np
 
 import SQcircuit as sq
 import SQcircuit.functions as sqf
+from SQcircuit.settings import get_optim_mode
 
 
 ################################################################################
@@ -52,7 +53,7 @@ def build_circuit_topology_string(circuit):
             element_value = element.get_value(element_unit)
             if type(element) is sq.Junction:
                 element_value /= (2 * np.pi)
-            if sq.get_optim_mode():
+            if get_optim_mode():
                 element_value = element_value.detach().numpy()
             element_value = round_n_sigfigs(element_value)
             output += f"Value: {element_value} {element_unit}\n"

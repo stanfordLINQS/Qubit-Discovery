@@ -6,10 +6,10 @@ import numpy as np
 import scipy, scipy.signal
 from matplotlib.axes import Axes
 
-from SQcircuit import get_optim_mode, Circuit
+from SQcircuit import Circuit, Junction
 import SQcircuit.functions as sqf
 import SQcircuit.units as unt
-from SQcircuit import Junction
+from SQcircuit.settings import get_optim_mode
 
 
 def get_reshaped_eigvec(

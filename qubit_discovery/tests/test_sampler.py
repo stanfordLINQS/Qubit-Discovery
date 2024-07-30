@@ -5,6 +5,7 @@ import SQcircuit as sq
 import numpy as np
 
 from SQcircuit import Circuit
+from SQcircuit.settings import set_optim_mode
 
 from qubit_discovery.optimization.sampler import CircuitSampler
 
@@ -144,7 +145,7 @@ def test_circuit_sampling_from_code_3() -> None:
 
 def test_circuit_sampling_from_code_4() -> None:
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
 
     elements = get_elements_from_code("flux_qubit")
 
@@ -161,12 +162,12 @@ def test_circuit_sampling_from_code_4() -> None:
 
     assert len(circuit.parameters) == 4
 
-    sq.set_optim_mode(False)
+    set_optim_mode(False)
 
 
 def test_circuit_sampling_from_code_5() -> None:
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
 
     elements = get_elements_from_code("transmon")
 
@@ -180,12 +181,12 @@ def test_circuit_sampling_from_code_5() -> None:
 
     assert len(circuit.parameters) == 2
 
-    sq.set_optim_mode(False)
+    set_optim_mode(False)
 
 
 def test_circuit_sampling_from_code_6() -> None:
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
 
     elements = get_elements_from_code("JJJJ_1")
 
@@ -201,12 +202,12 @@ def test_circuit_sampling_from_code_6() -> None:
 
     assert len(circuit.parameters) == 4
 
-    sq.set_optim_mode(False)
+    set_optim_mode(False)
 
 
 def test_circuit_sampling_from_code_7() -> None:
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
 
     elements = get_elements_from_code("JJJJ_2")
 
@@ -222,4 +223,4 @@ def test_circuit_sampling_from_code_7() -> None:
 
     assert len(circuit.parameters) == 4
 
-    sq.set_optim_mode(False)
+    set_optim_mode(False)

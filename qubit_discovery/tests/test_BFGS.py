@@ -24,11 +24,11 @@ def test_bfgs_run() -> None:
     target_params = [1.7817e-14, 3.4925e-07, 6.2715e+09]
 
     target_loss_record = {
-        'frequency_loss': [np.array(1.e-13),np.array(1.e-13)],
-        'number_of_gates_loss': [np.array(2.2558016e-05), np.array(1.19195123e-05)],
-        'flux_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13)],
-        'charge_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13)],
-        'total_loss': [np.array(2.25580163e-05), np.array(1.19195126e-05)]
+        'frequency_loss': [np.array(1.e-13), np.array(1.e-13), np.array(1.e-13)],
+        'number_of_gates_loss': [np.array(2.25816574e-05), np.array(2.2558016e-05), np.array(1.19195123e-05)],
+        'flux_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13), np.array(1.e-13)],
+        'charge_sensitivity_loss': [np.array(1.e-13), np.array(1.e-13), np.array(1.e-13)],
+        'total_loss': [np.array(2.25816577e-05), np.array(2.25580163e-05), np.array(1.19195126e-05)]
     }
 
     my_loss_function = build_loss_function(
@@ -41,7 +41,7 @@ def test_bfgs_run() -> None:
         use_metrics=[]
     )
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
 
     total_trunc_num = 120
 
@@ -61,5 +61,6 @@ def test_bfgs_run() -> None:
     )
 
     print(circuit.parameters)
+    print(loss_record)
     assert torch.stack(circuit.parameters).detach() == pytest.approx(target_params, rel=1e-2)
     assert are_loss_dicts_close(loss_record, target_loss_record, rel=1e-2)

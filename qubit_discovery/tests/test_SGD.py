@@ -35,7 +35,7 @@ def test_sgd_run() -> None:
             use_metrics=[],
         )
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
 
     total_trunc_num = 120
 

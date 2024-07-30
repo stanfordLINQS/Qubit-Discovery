@@ -9,6 +9,7 @@ import SQcircuit as sq
 
 from SQcircuit.circuit import Circuit
 from SQcircuit.elements import Capacitor, Element, Inductor, Junction, Loop
+from SQcircuit.settings import get_optim_mode
 
 
 class CircuitSampler:
@@ -85,7 +86,7 @@ class CircuitSampler:
         flux_range_bounds = [i * 2 * np.pi for i in self.flux_range]
         junction_range_bounds = [i * 2 * np.pi for i in self.junction_range]
 
-        if sq.get_optim_mode():
+        if get_optim_mode():
             return {
                 Capacitor: torch.tensor(self.capacitor_range),
                 Inductor: torch.tensor(self.inductor_range),
@@ -133,7 +134,7 @@ class CircuitSampler:
                 junc_value,
                 'Hz',
                 loops=loops,
-                requires_grad=sq.get_optim_mode() and Junction in self.elems_to_optimize,
+                requires_grad=get_optim_mode() and Junction in self.elems_to_optimize,
             )
         elif elem_str == 'L':
             ind_value = loguniform.rvs(*self.inductor_range)
@@ -141,14 +142,14 @@ class CircuitSampler:
                 ind_value,
                 'H',
                 loops=loops,
-                requires_grad=sq.get_optim_mode() and Inductor in self.elems_to_optimize,
+                requires_grad=get_optim_mode() and Inductor in self.elems_to_optimize,
             )
         elif elem_str == 'C':
             cap_value = loguniform.rvs(*self.capacitor_range)
             elem = Capacitor(
                 cap_value,
                 'F',
-                requires_grad=sq.get_optim_mode() and Capacitor in self.elems_to_optimize,
+                requires_grad=get_optim_mode() and Capacitor in self.elems_to_optimize,
             )
         else:
             raise ValueError("elem_str should be either 'J', 'L', or 'C' ")
@@ -362,7 +363,7 @@ class CircuitSampler:
                                  scale=self.flux_range[1] - self.flux_range[0])
         self.loop = Loop(
             flux_value,
-            requires_grad=sq.get_optim_mode() and Loop in self.elems_to_optimize
+            requires_grad=get_optim_mode() and Loop in self.elems_to_optimize
         )
 
         if circuit_code in self.special_circuit_codes:

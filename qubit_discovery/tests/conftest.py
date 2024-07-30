@@ -10,21 +10,21 @@ import numpy as np
 from torch import Tensor
 
 import SQcircuit as sq
-from SQcircuit import Circuit, Element
+from SQcircuit.settings import get_optim_mode
 
 
-def get_fluxonium() -> Circuit:
+def get_fluxonium() -> sq.Circuit:
     """Returns a Fluxonium qubit for test purposes."""
 
     loop = sq.Loop(0.5)
     cap = sq.Capacitor(
-        1.0, requires_grad=sq.get_optim_mode()
+        1.0, requires_grad=get_optim_mode()
     )
     ind = sq.Inductor(
-        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+        1.0, loops=[loop], requires_grad=get_optim_mode()
     )
     junc = sq.Junction(
-        1.0, loops=[loop], requires_grad=sq.get_optim_mode()
+        1.0, loops=[loop], requires_grad=get_optim_mode()
     )
 
     circuit = sq.Circuit(
@@ -35,18 +35,18 @@ def get_fluxonium() -> Circuit:
 
     return circuit
 
-def get_fluxonium_random() -> Circuit:
+def get_fluxonium_random() -> sq.Circuit:
     """Returns a Fluxonium qubit for test purposes."""
 
     loop = sq.Loop(0.5)
     cap = sq.Capacitor(
-        np.random.normal(1.0, 0.1), requires_grad=sq.get_optim_mode()
+        np.random.normal(1.0, 0.1), requires_grad=get_optim_mode()
     )
     ind = sq.Inductor(
-        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=sq.get_optim_mode()
+        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=get_optim_mode()
     )
     junc = sq.Junction(
-        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=sq.get_optim_mode()
+        np.random.normal(1.0, 0.1), loops=[loop], requires_grad=get_optim_mode()
     )
 
     circuit = sq.Circuit(
@@ -57,15 +57,15 @@ def get_fluxonium_random() -> Circuit:
 
     return circuit
 
-def get_cpb() -> Circuit:
+def get_cpb() -> sq.Circuit:
     """Returns a Transmon qubit for test purposes."""
 
     loop = sq.Loop(0.5)
     cap = sq.Capacitor(
-        1.2, 'GHz', requires_grad=sq.get_optim_mode()
+        1.2, 'GHz', requires_grad=get_optim_mode()
     )
     junc = sq.Junction(
-        0.2, 'GHz', loops=[loop], requires_grad=sq.get_optim_mode()
+        0.2, 'GHz', loops=[loop], requires_grad=get_optim_mode()
     )
 
     circuit = sq.Circuit(
@@ -77,7 +77,7 @@ def get_cpb() -> Circuit:
     return circuit
 
 
-def get_bounds() -> Dict[Element, Tensor]:
+def get_bounds() -> Dict[sq.Element, Tensor]:
     """Returns element bounds for test purposes."""
 
     bounds = {
@@ -101,5 +101,5 @@ def are_loss_dicts_close(dict1, dict2, rel: float = 1e-2) -> bool:
         for i in range(len(dict1[key])):
             if not np.isclose(dict1[key][i], dict2[key][i], rtol=rel):
                 return False
-            
+
     return True

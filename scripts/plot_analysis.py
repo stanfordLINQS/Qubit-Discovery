@@ -76,7 +76,7 @@ def main() -> None:
 
     set_plotting_defaults()
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
     for id_num in ids:
         circuit_path = directory.get_record_file_dir(
             record_type="circuit",

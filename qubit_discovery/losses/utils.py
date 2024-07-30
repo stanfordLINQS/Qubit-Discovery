@@ -2,7 +2,8 @@ from collections import defaultdict
 from copy import copy
 from typing import Dict, List, Tuple, Union
 
-from SQcircuit import Circuit, Element, get_optim_mode
+from SQcircuit import Circuit, Element
+from SQcircuit.settings import get_optim_mode
 import torch
 
 SQValType = Union[float, torch.Tensor]

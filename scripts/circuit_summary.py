@@ -73,7 +73,7 @@ def main():
     # Summarize the Circuit.
     ############################################################################
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
     for id_num in parameters['ids'].split(','):
 
         cr = load_final_circuit(directory.get_record_file_dir(

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 import SQcircuit as sq
+from SQcircuit.settings import set_optim_mode
 
 from qubit_discovery.losses.functions import (
     element_sensitivity,
@@ -29,7 +30,7 @@ def test_fastest_gate_speed() -> None:
 
     def get_circuit_based_op_optim(optimization_mode: bool) -> sq.Circuit:
 
-        sq.set_optim_mode(optimization_mode)
+        set_optim_mode(optimization_mode)
 
         cr = get_fluxonium()
         cr.set_trunc_nums([total_trunc_num])
@@ -50,7 +51,7 @@ def test_fastest_gate_speed() -> None:
 def test_flux_sensitivity() -> None:
     target_sensitivity = torch.tensor(0.001179668, dtype=torch.float64)
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
     cr = get_fluxonium()
     cr.set_trunc_nums([120])
     cr.diag(20)
@@ -60,7 +61,7 @@ def test_flux_sensitivity() -> None:
 def test_element_sensitivity() -> None:
     target_sensitivity = torch.tensor(0.0178, dtype=torch.float32)
 
-    sq.set_optim_mode(True)
+    set_optim_mode(True)
     cr = get_fluxonium()
     cr.set_trunc_nums([120])
     cr.diag(20)

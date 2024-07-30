@@ -170,7 +170,7 @@ def main() -> None:
     # Initiate the optimization settings.
     ############################################################################
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
 
     capacitor_range = eval_list(parameters['capacitor_range'])
     junction_range = eval_list(parameters['junction_range'])

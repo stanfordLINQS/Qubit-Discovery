@@ -97,7 +97,7 @@ def main() -> None:
     # Initiating the optimization settings.
     ############################################################################
 
-    sq.set_optim_mode(True)
+    sq.set_engine('PyTorch')
     sq.set_max_eigenvector_grad(2)
 
     capacitor_range = float_list(parameters['capacitor_range'])
