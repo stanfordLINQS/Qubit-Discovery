@@ -237,6 +237,14 @@ def trunc_num_heuristic(
 
     # Round to nearest integer and assign harmonic modes
     harmonic_mode_values = np.floor(np.real(mode_results * min_trunc))
+
+    # Maximize each individual mode cutoff while ensuring product less than K
+    for mode_idx in range(len(harmonic_mode_values)):
+        max_harmonic_mode_values = harmonic_mode_values.copy()
+        while np.prod(max_harmonic_mode_values) <= K:
+            harmonic_mode_values = max_harmonic_mode_values.copy()
+            max_harmonic_mode_values[mode_idx] += 1
+
     trunc_nums[circuit.omega != 0] = harmonic_mode_values
 
     return list(trunc_nums)
