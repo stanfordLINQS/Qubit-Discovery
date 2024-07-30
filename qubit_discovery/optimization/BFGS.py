@@ -100,6 +100,8 @@ def diag_with_convergence(
     re-allocating the truncation numbers. If this fails, then we give up and
     say the circuit has not converged.
     """
+    # Reset to even split of truncation numbers
+    circuit.truncate_circuit(total_trunc_num)
     circuit.diag(num_eigenvalues)
 
     # Check if converges with old truncation numbers
