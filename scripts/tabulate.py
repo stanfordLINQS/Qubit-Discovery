@@ -27,7 +27,7 @@ from typing import Dict, List
 from docopt import docopt
 from matplotlib import pyplot as plt
 
-from plot_utils import load_record
+from utils import load_record
 from inout import (
     load_yaml_file,
     add_command_line_keys,

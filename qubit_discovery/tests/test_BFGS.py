@@ -56,11 +56,10 @@ def test_bfgs_run() -> None:
         bounds = get_bounds(),
         num_eigenvalues=10,
         lr=1.0,
-        tolerance=1e-7,
-        verbose=False
+        tolerance=1e-7
     )
 
     print(circuit.parameters)
-    print(loss_record)
+    print('Final', loss_record)
     assert torch.stack(circuit.parameters).detach() == pytest.approx(target_params, rel=1e-2)
     assert are_loss_dicts_close(loss_record, target_loss_record, rel=1e-2)

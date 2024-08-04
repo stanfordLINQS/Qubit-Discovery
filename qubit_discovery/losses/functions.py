@@ -1,5 +1,6 @@
 """Contains helper functions used in remainder of code."""
 from copy import copy
+import logging
 from typing import Callable, Tuple
 
 import numpy as np
@@ -13,6 +14,8 @@ from .utils import (
     zero,
     SQValType
 )
+
+logger = logging.getLogger(__name__)
 
 # NOTE: All functions treat the input `circuit` as const, at least
 # in effect.
@@ -114,20 +117,22 @@ def decoherence_time(circuit: Circuit, t_type: str, dec_type: str) -> SQValType:
         if dec_type == 'total':
             dec_type_list = all_t1_channels
         else:
-            assert dec_type in all_t1_channels, (
-                f"dec_type with 't1' mode should be {all_t1_channels}, or "
-                "'total'"
-            )
+            if dec_type not in all_t1_channels:
+                raise ValueError(
+                    "dec_type with 't1' mode should be {all_t1_channels}, or "
+                    "'total'"
+                )
             dec_type_list = [dec_type]
     elif t_type == 't_phi':
         all_tp_channels = ['charge', 'cc', 'flux']
         if dec_type == 'total':
             dec_type_list = all_tp_channels
         else:
-            assert dec_type in all_tp_channels, (
-                f"dec_type with 't_phi' mode should be in {all_tp_channels}, or "
-                "'total'"
-            )
+            if dec_type not in all_tp_channels:
+                raise ValueError(
+                    "dec_type with 't_phi' mode should be in {all_tp_channels}"
+                    ", or 'total'"
+                )
             dec_type_list = [dec_type]
     else:
         raise ValueError("t_type must be either 't1' or 't_phi'")
@@ -360,9 +365,9 @@ def element_sensitivity(
     new_params = dist.rsample((n_samples, ))
     vals = torch.zeros((n_samples,))
 
-    print("Calculating element sensitivity...")
+    logger.info('Calculating element sensitivity...')
     for i in range(n_samples):
-        print(f"{i+1}/{n_samples}")
+        logger.info('%i/%i', i+1, n_samples)
         elements_sampled = construct_perturbed_elements(circuit,
                                                         new_params[i,:])
         cr_sampled = Circuit(elements_sampled)

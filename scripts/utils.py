@@ -1,9 +1,27 @@
 import os
+import logging
+import sys
 from typing import Any
 
 import dill as pickle
 from matplotlib import pyplot as plt
 from SQcircuit import Circuit
+
+def add_stdout_to_logger(
+        logger: logging.Logger,
+        level: int =logging.INFO
+) -> logging.Handler:
+    """Add a handler to ``logger`` to print to stdout.
+    """
+    handler = logging.StreamHandler(stream=sys.stdout)
+    formatter = logging.Formatter('[%(asctime)s] %(message)s',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(level)
+
+    return handler
 
 
 def load_record(url: str) -> Any:
