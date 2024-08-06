@@ -1,14 +1,14 @@
-from typing import Callable, Dict, Optional, Tuple, Union
-
-import torch
-from torch import Tensor
+import logging
+from typing import Dict, Optional, Tuple, Union
 
 import SQcircuit as sq
 from SQcircuit import Circuit, Element, Loop
+import torch
+from torch import Tensor
+from tqdm import trange
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    print_loss_records,
     init_records,
     update_record,
     save_results,
@@ -17,8 +17,10 @@ from .utils import (
 )
 
 from ..losses.loss import LossFunctionType
+from ..losses.loss import SQValType
 
-SQValType = Union[float, Tensor]
+
+logger = logging.getLogger(__name__)
 
 
 def get_alpha_param_from_circuit_param(
@@ -125,12 +127,12 @@ def run_BFGS(
     total_trunc_num: int,
     bounds: Dict[Union[Element, Loop], Tensor],
     num_eigenvalues: int = 10,
-    lr: float = 100,
+    lr: float = 1,
     tolerance: float = 1e-15,
+    history_size: Optional[int] = None,
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
-    verbose: bool = False
 ) -> Tuple[Circuit, RecordType, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
@@ -159,30 +161,32 @@ def run_BFGS(
             String identifying this run (e.g. seed, name, circuit code, …)
             to use when saving.
         save_intermediate_circuits:
-            Whether to save the circuit at each iteration.
-        verbose:
-            Whether to print out progress.
-        
+            Whether to save the circuit at each iteration.      
     """
-
     # Set up initial reparameterization
     alpha_params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone().requires_grad_(True)
 
     # Set initial truncation numbers
     circuit.truncate_circuit(total_trunc_num)
 
-    lbfgs = torch.optim.LBFGS([alpha_params],
-                              history_size=10,
-                              max_iter=1,
-                              line_search_fn="strong_wolfe")
+    if history_size is None:
+        history_size = max_iter
+
+    # Set `max_iter = 1` and iterate manually to control print-out.
+    # This incurs 1 extra function evaluation per step vs. using `max_iter`.
+    lbfgs = torch.optim.LBFGS(
+        [alpha_params],
+        history_size=history_size,
+        max_iter=1,
+        line_search_fn="strong_wolfe",
+    )
 
     last_total_loss = None
     last_loss_values = None
     last_metric_values = None
 
     def objective_closure():
-        """
-        Objective function for optimization with reparameterization. It 
+        """Objective function for optimization with reparameterization. It 
             1. Rebuilds circuit from alpha_params
             2. Diagonalizes it and checks convergence
             3. Computes losses and metrics
@@ -218,26 +222,55 @@ def run_BFGS(
         last_metric_values
     )
 
-    for it in range(max_iter):
-        print(it)
-        lbfgs.step(objective_closure)
-        update_record(
-            loss_record,
-            last_loss_values
-        )
-        update_record(
-            metric_record,
-            last_metric_values
-        )
-        if save_loc:
-            save_results(
-                loss_record,
-                metric_record,
-                circuit,
-                identifier,
-                save_loc,
-                'BFGS',
-                save_intermediate_circuits=save_intermediate_circuits
+    with trange(max_iter) as t:
+        for iteration in t:
+            # Print info
+            t.set_description('Iteration %i' % iteration)
+            t.set_postfix(loss=f'{last_total_loss.detach().numpy():.3e}')
+            logger.info(
+                '%s\n'
+                + 'Optimization progress\n'
+                + 'iteration: %s\n'
+                + 'params: %s\n'
+                + 'circuit params: %s\n'
+                + 'loss: %s',
+                90 * '-', iteration, alpha_params.detach().numpy(),
+                [p.detach().numpy() for p in circuit.parameters],
+                last_total_loss.detach().numpy()
             )
+            for key in loss_record:
+                logger.info('\t%s: %s', key, loss_record[key][-1])
+
+            # Hold old parameter values
+            old_alpha_params = alpha_params.detach().clone()
+
+            # Step
+            lbfgs.step(objective_closure)
+
+            # Update records
+            update_record(
+                loss_record,
+                last_loss_values
+            )
+            update_record(
+                metric_record,
+                last_metric_values
+            )
+            if save_loc:
+                save_results(
+                    loss_record,
+                    metric_record,
+                    circuit,
+                    identifier,
+                    save_loc,
+                    'BFGS',
+                    save_intermediate_circuits=save_intermediate_circuits
+                )
+
+            # Check if the optimizer has finished (params did not move)
+            # (optimizer can break at several points internally depending on
+            # which termination condition has been reached)
+            if torch.all(old_alpha_params == alpha_params):
+                break
 
     return circuit, loss_record, metric_record

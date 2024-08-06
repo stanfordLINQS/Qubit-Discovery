@@ -164,8 +164,7 @@ def main() -> None:
             num_eigenvalues=parameters['num_eigenvalues'],
             identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
             save_loc=directory.get_records_dir(),
-            save_intermediate_circuits=parameters['save-intermediate'],
-            verbose=True
+            save_intermediate_circuits=parameters['save-intermediate']
         )
 
 
