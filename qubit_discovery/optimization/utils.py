@@ -19,6 +19,7 @@ from SQcircuit import (
     Capacitor
 )
 import torch
+from torch.optim import Optimizer, SGD, LBFGS
 
 from .truncation import assign_trunc_nums, test_convergence
 
@@ -218,3 +219,12 @@ def diag_with_convergence(
             raise ConvergenceError(eps)
 
     return True
+
+def get_optimizer_keyword(optimizer: Optimizer):
+    if optimizer is SGD:
+        return "SGD"
+    elif optimizer is LBFGS:
+        return "BFGS"
+    else:
+        return "none"
+    

@@ -19,7 +19,8 @@ from .utils import (
     LossFunctionType,
     RecordType,
     save_results,
-    update_record
+    update_record,
+    get_optimizer_keyword
 )
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ def run_optimization(
                     circuit,
                     identifier,
                     save_loc,
-                    'BFGS',
+                    get_optimizer_keyword(optimizer),
                     save_intermediate_circuits=save_intermediate_circuits
                 )
 
