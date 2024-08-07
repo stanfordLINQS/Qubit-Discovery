@@ -1,122 +1,20 @@
-import logging
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
-import SQcircuit as sq
 from SQcircuit import Circuit, Element, Loop
-import torch
+from torch.optim import LBFGS
 from torch import Tensor
-from tqdm import trange
 
-from .truncation import assign_trunc_nums, test_convergence
-from .utils import (
-    init_records,
-    update_record,
-    save_results,
-    RecordType,
-    ConvergenceError
-)
+from .run_optimization import run_optimization
+from .utils import LossFunctionType, RecordType
 
-from ..losses.utils import SQValType
-from ..losses.loss import LossFunctionType
-
-logger = logging.getLogger(__name__)
-
-def get_alpha_param_from_circuit_param(
-    circuit_param: Tensor,
-    bounds: dict,
-    elem_type=None
-) -> Tensor:
-    """
-    Get the circuit parameter from the alpha in [0, π] parameterization.
-    """
-    l_bound, u_bound = bounds[elem_type]
-
-    if elem_type == sq.Loop:
-        var = (u_bound - l_bound) / 2
-        mean = (u_bound + l_bound) / 2
-
-        return torch.acos((circuit_param - mean) / var)
-    else:
-        var = (torch.log(u_bound) - torch.log(l_bound))/2
-        mean = (torch.log(u_bound) + torch.log(l_bound))/2
-
-        return torch.acos((torch.log(circuit_param) - mean) / var)
-
-
-def get_alpha_params_from_circuit_params(circuit: Circuit, bounds) -> Tensor:
-    alpha_params = torch.zeros(torch.stack(circuit.parameters).shape)
-
-    for param_idx, circuit_param in enumerate(circuit.parameters):
-        alpha_params[param_idx] = get_alpha_param_from_circuit_param(
-            circuit_param,
-            bounds,
-            circuit.get_params_type()[param_idx]
-        )
-    return alpha_params.detach()
-
-
-def get_circuit_param_from_alpha_param(
-    alpha_param: Tensor,
-    bounds: dict,
-    elem_type=None,
-) -> Tensor:
-    l_bound, u_bound = bounds[elem_type]
-
-    if elem_type == sq.Loop:
-        var = (u_bound - l_bound) / 2
-        mean = (u_bound + l_bound) / 2
-
-        return mean + var * torch.cos(alpha_param)
-    else:
-        var = (torch.log(u_bound) - torch.log(l_bound))/2
-        mean = (torch.log(u_bound) + torch.log(l_bound))/2
-
-        return torch.exp(mean + var * torch.cos(alpha_param))
-
-
-def get_circuit_params_from_alpha_params(
-    alpha_params: Tensor,
-    circuit: Circuit,
-    bounds
-) -> Tensor:
-    circuit_params = torch.zeros(alpha_params.shape)
-
-    for param_idx, alpha_param in enumerate(alpha_params):
-        circuit_params[param_idx] = get_circuit_param_from_alpha_param(
-            alpha_param,
-            bounds,
-            circuit.get_params_type()[param_idx]
-        )
-    return circuit_params
-
-
-def diag_with_convergence(
-        circuit: Circuit,
-        num_eigenvalues: int,
-        total_trunc_num: int
-) -> bool:
-    """
-    Diagonalize the circuit, and, if the circuit has not converged, try
-    re-allocating the truncation numbers. If this fails, then we give up and
-    say the circuit has not converged.
-    """
-    # Reset to even split of truncation numbers
-    circuit.truncate_circuit(total_trunc_num)
-    circuit.diag(num_eigenvalues)
-
-    # Check if converges with old truncation numbers
-    # converged, _ = test_convergence(circuit, eig_vec_idx=1)
-    # Otherwise try re-allocating
-    # if not converged:
-    assign_trunc_nums(circuit, total_trunc_num)
-    logger.info(f'Assigned trunc nums: {circuit.trunc_nums}')
-    circuit.diag(num_eigenvalues)
-
-    # converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
-    # if not converged:
-    #     raise ConvergenceError(eps)
-
-    return True
+# Set `max_iter = 1` and iterate manually to control print-out.
+# This incurs 1 extra function evaluation per step vs. using `max_iter`.
+DEFAULT_OPTIM_KWARGS = {
+    'lr': 10,
+    'history_size': None,
+    'max_iter': 1,
+    'line_search_fn': 'strong_wolfe',
+}
 
 def run_BFGS(
     circuit: Circuit,
@@ -124,9 +22,8 @@ def run_BFGS(
     max_iter: int,
     total_trunc_num: int,
     bounds: Dict[Union[Element, Loop], Tensor],
+    optimizer_kwargs: Optional[Dict] = None,
     num_eigenvalues: int = 10,
-    lr: float = 100,
-    tolerance: float = 1e-15,
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
@@ -148,189 +45,37 @@ def run_BFGS(
             Dictionary giving bounds for each element type.
         num_eigenvalues:
             Number of eigenvalues to calculate when diagonalizing.
-        lr:
-            Learning rate
-        tolerance:
-            Minimum change each step must achieve to not terminate.
         save_loc:
             Folder to save results in, or None.
         identifier:
             String identifying this run (e.g. seed, name, circuit code, …)
             to use when saving.
         save_intermediate_circuits:
-            Whether to save the circuit at each iteration.        
+            Whether to save the circuit at each iteration.      
     """
 
-    # Define our objective function
-    def objective_func(cr: Circuit, x: Tensor):
-        """
-        Objective function for optimization with reparameterization. It 
-            1. Rebuilds circuit from alpha_params
-            2. Diagonalizes it and checks convergence
-            3. Computes losses and metrics
-        """
-        circuit_params = get_circuit_params_from_alpha_params(
-            x, cr, bounds
-        )
-        cr.parameters = circuit_params
-        diag_with_convergence(circuit, num_eigenvalues, total_trunc_num)
+    # Set up optimizer keyword arguments
+    if optimizer_kwargs is None:
+        optimizer_kwargs = {}
 
-        return loss_metric_function(cr)
+    optimizer_kwargs = DEFAULT_OPTIM_KWARGS | optimizer_kwargs
 
-    # Set up initial reparameterization
-    alpha_params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone().requires_grad_(True)
+    if optimizer_kwargs['history_size'] is None:
+        optimizer_kwargs['history_size'] = max_iter
 
-    # Set initial truncation numbers
-    circuit.truncate_circuit(total_trunc_num)
 
-    # Get gradient and loss values to start with
-    loss, loss_values, metric_values = objective_func(circuit, alpha_params)
-    loss.backward()
-    gradient = alpha_params.grad.type(torch.float64) # TODO: why double?
-
-    # Initialize records
-    loss_record, metric_record = init_records(
-        loss_values,
-        metric_values
+    # Run it!
+    return run_optimization(
+        circuit = circuit,
+        loss_metric_function = loss_metric_function,
+        max_iter = max_iter,
+        total_trunc_num = total_trunc_num,
+        bounds = bounds,
+        optimizer = LBFGS,
+        uses_closure=True,
+        optimizer_kwargs = optimizer_kwargs,
+        num_eigenvalues = num_eigenvalues,
+        save_loc = save_loc,
+        identifier = identifier,
+        save_intermediate_circuits = save_intermediate_circuits
     )
-
-    # Initialize BFGS algorithm
-    def identity():
-        return torch.eye(alpha_params.size(0), dtype=torch.float64)
-    H = identity()
-
-    with trange(max_iter) as t:
-        for iteration in t:
-            t.set_description('Iteration %i' % iteration)
-            t.set_postfix(loss=f'{loss.detach().numpy():.3e}')
-            logger.info(
-                '%s\n'
-                + 'Optimization progress\n'
-                + 'iteration: %s\n'
-                + 'params: %s\n'
-                + 'circuit params: %s\n'
-                + 'loss: %s',
-                90 * '-', iteration, alpha_params.detach().numpy(),
-                [p.detach().numpy() for p in circuit.parameters],
-                loss.detach().numpy()
-            )
-            for key in loss_record:
-                logger.info('\t%s: %s', key, loss_record[key][-1])
-
-            # 0. Save values
-            if save_loc:
-                save_results(
-                    loss_record,
-                    metric_record,
-                    circuit,
-                    identifier,
-                    save_loc,
-                    'BFGS',
-                    save_intermediate_circuits=save_intermediate_circuits
-                )
-
-            # 1. Compute search direction
-            p = -torch.matmul(H, gradient)
-
-            # 2. Compute step size
-            alpha = backtracking_line_search(
-                circuit,
-                objective_func,
-                alpha_params,
-                loss,
-                gradient,
-                p,
-                lr=lr
-            )
-            delta_params = alpha * p
-
-            # 3. Compute next parameters and zero their gradient
-            alpha_params_next = (
-                    alpha_params + delta_params
-            )
-            alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
-
-            # 4. Step the circuit, and compute the loss + gradient at the new
-            # parameter values.
-            loss_next, loss_values, metric_values = objective_func(
-                circuit,
-                alpha_params_next
-            )
-            update_record(metric_record, metric_values)
-            update_record(loss_record, loss_values)
-
-            loss_next.backward()
-            gradient_next = alpha_params_next.grad
-
-
-            # 5. Check whether to break
-            loss_diff = loss_next - loss
-            loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))
-
-            logger.info('i:%s loss:%s, loss_diff_ratio=%s, alpha=%s',
-                        iteration, loss.detach().numpy(),
-                        loss_diff_ratio.detach().numpy(), alpha)
-
-            if loss_diff_ratio < tolerance:
-                break
-
-            # 6. Compute next Hessian approximation
-            s = delta_params
-
-            y = gradient_next - gradient
-
-            rho = 1 / torch.dot(y, s)
-
-            if rho.item() < 0:
-                H = identity()
-            else:
-                A = identity() - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
-                B = identity() - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
-                H = (
-                        torch.matmul(A, torch.matmul(H, B))
-                        + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
-                )
-
-            # 7. "Re-index"
-            loss = loss_next
-            alpha_params = alpha_params_next
-            gradient = gradient_next
-
-    return circuit, loss_record, metric_record
-
-
-def backtracking_line_search(
-    circuit: Circuit,
-    objective_func: Callable[[Circuit, Tensor], Tensor],
-    params: torch.tensor,       # params at starting point
-    initial_loss: torch.tensor, # loss at starting point
-    gradient: torch.tensor,     # gradient at starting point
-    p: torch.tensor,            # search direction
-    lr=0.01,
-    c=1e-4,
-    rho=0.5
-) -> float:
-    """At the end of line search, ``circuit`` will have its internal parameters
-    set to ``params + alpha * p``.
-    """
-    logger.info('%sLine search called%s', 50*'=', 50*'=')
-
-    alpha = lr
-
-    logger.info('params: %s', params)
-    logger.info('p: %s, alpha: %s', p, alpha)
-
-    counter = 0
-    # with torch.no_grad(): # messes up adding things to parameters. Need to fix
-    while (
-            objective_func(circuit, params + alpha * p)[0]
-            > initial_loss + c * alpha * torch.dot(p, gradient)
-    ):
-        alpha *= rho
-        counter += 1
-        if rho**counter < 1e-8:
-            logger.warning('The line search broke')
-            break
-
-    logger.info('%sThe end%s', 55 * '=', 56 * '=')
-    return alpha
