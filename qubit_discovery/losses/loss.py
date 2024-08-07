@@ -200,8 +200,9 @@ def anharmonicity_loss(
         anharmonicity:
             The traditional anharmonicity of ``circuit``.
     """
-    message = "Anharmonicity is only defined for at least three energy levels."
-    assert len(circuit.efreqs) > 2, message
+    if len(circuit.efreqs) <= 2:
+        raise ValueError('Anharmonicity is only defined for at least three energy levels.')
+
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
     omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
     x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
@@ -361,12 +362,7 @@ ALL_METRICS = {
     't_phi': t_phi_loss,
     't_phi_charge': lambda cr: t_phi_loss(cr, dec_type='charge'),
     't_phi_cc': lambda cr: t_phi_loss(cr, dec_type='cc'),
-    't_phi_flux': lambda cr: t_phi_loss(cr, dec_type='flux'),
-    # TODO: delete once YAML files are updated
-    't2': t_phi_loss,
-    't2_charge': lambda cr: t_phi_loss(cr, dec_type='charge'),
-    't2_cc': lambda cr: t_phi_loss(cr, dec_type='cc'),
-    't2_flux': lambda cr: t_phi_loss(cr, dec_type='flux')
+    't_phi_flux': lambda cr: t_phi_loss(cr, dec_type='flux')
 }
 
 

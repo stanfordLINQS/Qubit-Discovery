@@ -33,7 +33,7 @@ from inout import (
     get_metrics_dict,
     get_units,
 )
-from plot_utils import load_final_circuit
+from utils import load_final_circuit
 
 ################################################################################
 # General Settings.
@@ -92,6 +92,8 @@ def main():
         # Prepare summary text for the circuit.
         summary_text = f"Description:\n{cr.description(_test=True)}\n"
         summary_text += an.build_circuit_topology_string(cr)
+
+        summary_text += f'\ntrunc_nums: {cr.trunc_nums}\n'
 
         total_loss, loss_details, metrics = calculate_loss_metrics(
             circuit=cr,

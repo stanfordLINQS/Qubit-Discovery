@@ -4,7 +4,7 @@ Optimize a single circuit.
 Usage:
   optimize.py <yaml_file> [--seed=<seed>] [--circuit_code=<circuit_code>]
               [--optim_type=<optim_type>] [--init_circuit=<init_circuit>]
-              [--save-intermediate]
+              [--save-intermediate] [--verbose]
   optimize.py -h | --help
   optimize.py --version
 
@@ -21,26 +21,26 @@ Options:
   -i, --init_circuit=<init_circuit>         Set intial circuit to <init_circuit>.
   --save-intermediate                       Save intermediate circuits during
                                             optimization to file.
+  -v, --verbose                             Turn on verbose output.
 
 Notes: Optional arguments to optimize.py must either be provided on the
 command line or in <yaml_file>.
 """
 
 import random
-from typing import List
 
 from docopt import docopt
-import numpy as np
 import torch
+import numpy as np
 
+import qubit_discovery as qd
 from qubit_discovery.optimization import run_SGD, run_BFGS
 from qubit_discovery.losses import build_loss_function
 from qubit_discovery.optimization.sampler import CircuitSampler
 from qubit_discovery.optimization.utils import float_list
 import SQcircuit as sq
-from SQcircuit import Circuit
 
-from plot_utils import load_final_circuit
+from utils import load_final_circuit, add_stdout_to_logger
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -93,6 +93,10 @@ def main() -> None:
 
     directory = Directory(parameters, arguments)
 
+    if arguments['--verbose']:
+        add_stdout_to_logger(sq.get_logger())
+        add_stdout_to_logger(qd.get_logger())
+
     ############################################################################
     # Initiating the optimization settings.
     ############################################################################
@@ -104,7 +108,7 @@ def main() -> None:
     junction_range = float_list(parameters['junction_range'])
     inductor_range = float_list(parameters['inductor_range'])
 
-    if "flux_range" in parameters.keys():
+    if 'flux_range' in parameters.keys():
         flux_range = float_list(parameters['flux_range'])
         elements_not_to_optimize = []
     else:
@@ -122,18 +126,18 @@ def main() -> None:
     set_seed(int(parameters['seed']))
 
     my_loss_function = build_loss_function(
-        use_losses=parameters["use_losses"],
-        use_metrics=parameters["use_metrics"]
+        use_losses=parameters['use_losses'],
+        use_metrics=parameters['use_metrics']
     )
 
-    if parameters['init_circuit'] is None or parameters['init_circuit'] == "":
+    if parameters['init_circuit'] is None or parameters['init_circuit'] == '':
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
-        print(circuit.loops[0].value() / 2 / np.pi)
-        print("Circuit sampled!")
+        print('Circuit sampled!')
+        print(f'Loop value: {circuit.loops[0].value() / 2 / np.pi}')
     else:
         circuit = load_final_circuit(parameters['init_circuit'])
         circuit.update()
-        print("Circuit loaded!")
+        print('Circuit loaded!')
 
     circuit.truncate_circuit(parameters['K'])
 
@@ -167,5 +171,5 @@ def main() -> None:
         )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

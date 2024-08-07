@@ -36,7 +36,7 @@ from qubit_discovery.optimization.truncation import (
     test_convergence,
     get_reshaped_eigvec
 )
-from plot_utils import load_final_circuit
+from utils import load_final_circuit
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################

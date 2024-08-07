@@ -3,7 +3,7 @@ Evaluate convergence test on randomly sampled (or fixed) circuit.
 
 Usage:
   convergence_test_simple.py <yaml_file>  [--seed=<seed>] [--circuit_code=<circuit_code>]
-                             [--init_circuit=<init_circuit>]
+                             [--init_circuit=<init_circuit>] [--verbose]
   convergence_test_simple.py -h | --help
   convergence_test_simple.py --version
 
@@ -17,6 +17,7 @@ Options:
   -c, --circuit_code=<circuit_code>         Circuit code
   -s, --seed=<seed>                         Seed for random generators
   -i, --init_circuit=<init_circuit>         Set initial circuit params
+  -v, --verbose                             Add verbose output
 """
 
 import os
@@ -27,12 +28,13 @@ import numpy as np
 import torch
 
 import SQcircuit as sq
+import qubit_discovery as qd
 from qubit_discovery.optimization.sampler import CircuitSampler
 from qubit_discovery.optimization.truncation import (
     assign_trunc_nums, test_convergence
 )
 
-from plot_utils import load_final_circuit
+from utils import load_final_circuit, add_stdout_to_logger
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -105,6 +107,10 @@ def main() -> None:
         keys=CONVERGENCE_SIMPLE_REQUIRED_KEYS,
         optional_keys=CONVERGENCE_SIMPLE_OPTIONAL_KEYS
     )
+
+    if arguments['--verbose']:
+        add_stdout_to_logger(sq.get_logger())
+        add_stdout_to_logger(qd.get_logger())
 
     directory = Directory(parameters, arguments)
     records_dir = directory.get_records_dir()

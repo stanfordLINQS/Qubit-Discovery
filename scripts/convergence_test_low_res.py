@@ -4,6 +4,7 @@ Evaluate convergence test on randomly sampled (or fixed) circuit.
 Usage:
   convergence_test_low_res.py <yaml_file> [--seed=<seed>] [--K=<K>]
                               [--circuit_code=<circuit_code>] [--init_circuit=<init_circuit>]
+                              [--verbose]
   convergence_test_low_res.py -h | --help
   convergence_test_low_res.py --version
 
@@ -17,6 +18,7 @@ Options:
   -c, --circuit_code=<circuit_code>         Circuit code
   -s, --seed=<seed>                         Seed for random generators
   -i, --init_circuit=<init_circuit>         Set initial circuit params
+  -v, --verbose                             Turn on verbose output.
 """
 
 import os
@@ -30,6 +32,7 @@ import torch
 
 import SQcircuit as sq
 
+import qubit_discovery as qd
 from qubit_discovery.optimization.sampler import CircuitSampler
 from qubit_discovery.optimization.truncation import (
     assign_trunc_nums,
@@ -38,7 +41,7 @@ from qubit_discovery.optimization.truncation import (
 )
 from qubit_discovery.optimization.utils import float_list
 
-from plot_utils import load_final_circuit
+from utils import load_final_circuit, add_stdout_to_logger
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -156,6 +159,10 @@ def main() -> None:
         keys=CONVERGENCE_REQUIRED_KEYS,
         optional_keys=CONVERGENCE_OPTIONAL_KEYS
     )
+
+    if arguments['--verbose']:
+        add_stdout_to_logger(sq.get_logger())
+        add_stdout_to_logger(qd.get_logger())
 
     parameters["optim_type"] = "convergence"
     parameters["name"] = "K_" + str(parameters['K'])

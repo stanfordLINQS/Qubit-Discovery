@@ -1,14 +1,14 @@
+import logging
 from typing import Callable, Dict, Optional, Tuple, Union
-
-import torch
-from torch import Tensor
 
 import SQcircuit as sq
 from SQcircuit import Circuit, Element, Loop
+import torch
+from torch import Tensor
+from tqdm import trange
 
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    print_loss_records,
     init_records,
     update_record,
     save_results,
@@ -16,10 +16,10 @@ from .utils import (
     ConvergenceError
 )
 
+from ..losses.utils import SQValType
 from ..losses.loss import LossFunctionType
 
-SQValType = Union[float, Tensor]
-
+logger = logging.getLogger(__name__)
 
 def get_alpha_param_from_circuit_param(
     circuit_param: Tensor,
@@ -109,7 +109,7 @@ def diag_with_convergence(
     # Otherwise try re-allocating
     # if not converged:
     assign_trunc_nums(circuit, total_trunc_num)
-    print(f"Assigned trunc nums: {circuit.ms}")
+    logger.info(f'Assigned trunc nums: {circuit.trunc_nums}')
     circuit.diag(num_eigenvalues)
 
     # converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
@@ -130,7 +130,6 @@ def run_BFGS(
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
-    verbose: bool = False
 ) -> Tuple[Circuit, RecordType, RecordType]:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
@@ -159,10 +158,7 @@ def run_BFGS(
             String identifying this run (e.g. seed, name, circuit code, …)
             to use when saving.
         save_intermediate_circuits:
-            Whether to save the circuit at each iteration.
-        verbose:
-            Whether to print out progress.
-        
+            Whether to save the circuit at each iteration.        
     """
 
     # Define our objective function
@@ -183,7 +179,7 @@ def run_BFGS(
 
     # Set up initial reparameterization
     alpha_params = get_alpha_params_from_circuit_params(circuit, bounds).detach().clone().requires_grad_(True)
-    
+
     # Set initial truncation numbers
     circuit.truncate_circuit(total_trunc_num)
 
@@ -203,94 +199,102 @@ def run_BFGS(
         return torch.eye(alpha_params.size(0), dtype=torch.float64)
     H = identity()
 
-    for iteration in range(max_iter):
-        print(f"Iteration {iteration}")
-
-        # 0. Save values
-        if save_loc:
-            save_results(
-                loss_record,
-                metric_record,
-                circuit,
-                identifier,
-                save_loc,
-                'BFGS',
-                save_intermediate_circuits=save_intermediate_circuits
+    with trange(max_iter) as t:
+        for iteration in t:
+            t.set_description('Iteration %i' % iteration)
+            t.set_postfix(loss=f'{loss.detach().numpy():.3e}')
+            logger.info(
+                '%s\n'
+                + 'Optimization progress\n'
+                + 'iteration: %s\n'
+                + 'params: %s\n'
+                + 'circuit params: %s\n'
+                + 'loss: %s',
+                90 * '-', iteration, alpha_params.detach().numpy(),
+                [p.detach().numpy() for p in circuit.parameters],
+                loss.detach().numpy()
             )
+            for key in loss_record:
+                logger.info('\t%s: %s', key, loss_record[key][-1])
 
-        # 1. Compute search direction
-        p = -torch.matmul(H, gradient)
-
-        # 2. Compute step size
-        alpha = backtracking_line_search(
-            circuit,
-            objective_func,
-            alpha_params,
-            loss,
-            gradient,
-            p,
-            lr=lr
-        )
-        delta_params = alpha * p
-
-        # 3. Compute next parameters and zero their gradient
-        alpha_params_next = (
-                alpha_params + delta_params
-        )
-        alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
-
-        # 4. Step the circuit, and compute the loss + gradient at the new
-        # parameter values.
-        loss_next, loss_values, metric_values = objective_func(
-            circuit,
-            alpha_params_next
-        )
-        update_record(metric_record, metric_values)
-        update_record(loss_record, loss_values)
-
-        loss_next.backward()
-        gradient_next = alpha_params_next.grad
-
-
-        # 5. Check whether to break
-        loss_diff = loss_next - loss
-        loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))
-
-        if verbose:
-            if iteration % 1 == 0:
-                print(
-                    f"i:{iteration}",
-                    f"loss: {loss.detach().numpy()}",
-                    f"loss_diff_ratio={loss_diff_ratio.detach().numpy()}",
-                    f"alpha={alpha}"
+            # 0. Save values
+            if save_loc:
+                save_results(
+                    loss_record,
+                    metric_record,
+                    circuit,
+                    identifier,
+                    save_loc,
+                    'BFGS',
+                    save_intermediate_circuits=save_intermediate_circuits
                 )
 
-                print_loss_records(loss_record)
+            # 1. Compute search direction
+            p = -torch.matmul(H, gradient)
 
-        if loss_diff_ratio < tolerance:
-            break
-
-        # 6. Compute next Hessian approximation
-        s = delta_params
-
-        y = gradient_next - gradient
-
-        rho = 1 / torch.dot(y, s)
-
-        if rho.item() < 0:
-            H = identity()
-        else:
-            A = identity() - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
-            B = identity() - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
-            H = (
-                    torch.matmul(A, torch.matmul(H, B))
-                    + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+            # 2. Compute step size
+            alpha = backtracking_line_search(
+                circuit,
+                objective_func,
+                alpha_params,
+                loss,
+                gradient,
+                p,
+                lr=lr
             )
+            delta_params = alpha * p
 
-        # 7. "Re-index"
-        loss = loss_next
-        alpha_params = alpha_params_next
-        gradient = gradient_next
+            # 3. Compute next parameters and zero their gradient
+            alpha_params_next = (
+                    alpha_params + delta_params
+            )
+            alpha_params_next = alpha_params_next.clone().detach().requires_grad_(True)
+
+            # 4. Step the circuit, and compute the loss + gradient at the new
+            # parameter values.
+            loss_next, loss_values, metric_values = objective_func(
+                circuit,
+                alpha_params_next
+            )
+            update_record(metric_record, metric_values)
+            update_record(loss_record, loss_values)
+
+            loss_next.backward()
+            gradient_next = alpha_params_next.grad
+
+
+            # 5. Check whether to break
+            loss_diff = loss_next - loss
+            loss_diff_ratio = torch.abs(loss_diff / (loss + 1e-30))
+
+            logger.info('i:%s loss:%s, loss_diff_ratio=%s, alpha=%s',
+                        iteration, loss.detach().numpy(),
+                        loss_diff_ratio.detach().numpy(), alpha)
+
+            if loss_diff_ratio < tolerance:
+                break
+
+            # 6. Compute next Hessian approximation
+            s = delta_params
+
+            y = gradient_next - gradient
+
+            rho = 1 / torch.dot(y, s)
+
+            if rho.item() < 0:
+                H = identity()
+            else:
+                A = identity() - rho * torch.matmul(s.unsqueeze(1), y.unsqueeze(0))
+                B = identity() - rho * torch.matmul(y.unsqueeze(1), s.unsqueeze(0))
+                H = (
+                        torch.matmul(A, torch.matmul(H, B))
+                        + rho * torch.matmul(s.unsqueeze(1), s.unsqueeze(0))
+                )
+
+            # 7. "Re-index"
+            loss = loss_next
+            alpha_params = alpha_params_next
+            gradient = gradient_next
 
     return circuit, loss_record, metric_record
 
@@ -306,16 +310,15 @@ def backtracking_line_search(
     c=1e-4,
     rho=0.5
 ) -> float:
-    """At the end of line search, `circuit` will have its internal parameters
+    """At the end of line search, ``circuit`` will have its internal parameters
     set to ``params + alpha * p``.
     """
-    print(50*"=" + "Line search called." + 50*"=")
+    logger.info('%sLine search called%s', 50*'=', 50*'=')
 
     alpha = lr
 
-    print(f"params: {params}")
-    print(f"circuit params: {circuit.parameters}")
-    print(f"p: {p}, alpha: {alpha}")
+    logger.info('params: %s', params)
+    logger.info('p: %s, alpha: %s', p, alpha)
 
     counter = 0
     # with torch.no_grad(): # messes up adding things to parameters. Need to fix
@@ -326,8 +329,8 @@ def backtracking_line_search(
         alpha *= rho
         counter += 1
         if rho**counter < 1e-8:
-            print("The line search broke")
+            logger.warning('The line search broke')
             break
 
-    print(60 * "=" + "The end." + 60 * "=")
+    logger.info('%sThe end%s', 55 * '=', 56 * '=')
     return alpha

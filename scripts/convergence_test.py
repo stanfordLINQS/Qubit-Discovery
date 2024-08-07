@@ -30,6 +30,7 @@ import torch
 
 import SQcircuit as sq
 
+import qubit_discovery as qd
 from qubit_discovery.optimization.sampler import CircuitSampler
 from qubit_discovery.optimization.truncation import (
     assign_trunc_nums,
@@ -37,7 +38,7 @@ from qubit_discovery.optimization.truncation import (
     get_reshaped_eigvec
 )
 from qubit_discovery.optimization.utils import float_list
-from plot_utils import load_final_circuit
+from utils import load_final_circuit, add_stdout_to_logger
 from inout import load_yaml_file, add_command_line_keys, Directory
 
 ################################################################################
@@ -156,6 +157,10 @@ def main() -> None:
         keys=CONVERGENCE_REQUIRED_KEYS,
         optional_keys=CONVERGENCE_OPTIONAL_KEYS
     )
+
+    if arguments['--verbose']:
+        add_stdout_to_logger(sq.get_logger())
+        add_stdout_to_logger(qd.get_logger())
 
     parameters["optim_type"] = "convergence"
 

@@ -1,5 +1,6 @@
 """Contains helper functions for estimating optimal truncation numbers"""
 
+import logging
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -9,7 +10,11 @@ from matplotlib.axes import Axes
 from SQcircuit import Circuit, Junction
 import SQcircuit.functions as sqf
 import SQcircuit.units as unt
+from SQcircuit.exceptions import CircuitStateError
 from SQcircuit.settings import get_optim_mode
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_reshaped_eigvec(
@@ -19,8 +24,8 @@ def get_reshaped_eigvec(
     """
     Returns the eigenvec and maximum magnitudes per mode index of the eigenvectors.
     """
-
-    assert len(circuit.efreqs) != 0, "circuit should be diagonalized first."
+    if len(circuit.efreqs) == 0:
+        raise CircuitStateError('The circuit must be diagonalized first.')
 
     # Reshape eigenvector dimensions to correspond to individual modes
     if get_optim_mode():
@@ -149,7 +154,14 @@ def trunc_num_heuristic(
     trunc numbers for rediagonalization that will maximize likelihood of
     convergence, defined under the `convergence_test` function.
     """
-    assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
+    if len(circuit.efreqs) == 0:
+        raise CircuitStateError('The circuit must be diagonalized first.')
+    if axes is not None:
+        if len(axes) < len(circuit.omega):
+            raise ValueError(
+                'Number of axes for fitting plots should match or exceed '
+                'number of modes'
+            )
 
     '''# If circuit already passes convergence test, no need to run heuristic fit
     converged, eps = test_convergence(circuit, eig_vec_idx=eig_vec_idx)
@@ -161,9 +173,7 @@ def trunc_num_heuristic(
     num_charge_modes = np.sum(circuit.omega == 0)
     # charge_mode_cutoff = trunc_num_average = np.ceil(K ** (1 / len(circuit.omega)))
 
-    if axes is not None:
-        assert len(axes) >= len(circuit.omega),\
-            "Number of axes for fitting plots should match or exceed number of modes"
+
 
     # Assign charge modes
     '''if num_charge_modes == 1:
@@ -272,7 +282,7 @@ def assign_trunc_nums(
             List of truncation numbers for each mode of circuit
     """
     if len(circuit.m) == 1:
-        print("re-allocate truncation numbers (single mode)")
+        logger.info('re-allocate truncation numbers (single mode)')
         # Charge mode
         if sum(circuit.omega) == 0:
             charge_allocation = int(np.floor((1 / 2) * (total_trunc_num - 1)))
@@ -284,9 +294,9 @@ def assign_trunc_nums(
 
     # circuit that has only charge modes
     elif len(circuit.m) == sum(circuit.omega == 0):
-        print(
-            "keep equal truncation numbers for "
-            "all modes (circuit with only charge modes)"
+        logger.info(
+            'keep equal truncation numbers for '
+            'all modes (circuit with only charge modes)'
         )
         num_charge_modes = len(circuit.m)
         trunc_num_average = total_trunc_num ** (1 / num_charge_modes)
@@ -294,7 +304,7 @@ def assign_trunc_nums(
         return [charge_allocation for _ in range(num_charge_modes)]
 
     else:
-        print("re-allocate truncation numbers (2+ modes)")
+        logger.info('re-allocate truncation numbers (2+ modes)')
         trunc_nums = trunc_num_heuristic(
             circuit,
             K=total_trunc_num,
@@ -323,7 +333,8 @@ def test_convergence(
     Returns a boolean of whether the convergence test passed, and a list
     of the average values of the last `t` components for each mode.
     """
-    assert len(circuit.efreqs) != 0, "Circuit should be diagonalized first"
+    if len(circuit.efreqs) == 0:
+        raise CircuitStateError('The circuit must be diagonalized first.')
 
     eigvec_mag, mode_magnitudes = get_reshaped_eigvec(
         circuit,

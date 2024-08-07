@@ -1,11 +1,13 @@
+"""utils.py """
+
 from collections import defaultdict
+import logging
 import os
 from typing import (
     Callable,
     Dict,
     List,
     Tuple,
-    TypeVar,
     Union
 )
 
@@ -20,7 +22,11 @@ from SQcircuit import (
 )
 import torch
 
+
 from .truncation import assign_trunc_nums, test_convergence
+
+logger = logging.getLogger(__name__)
+
 
 ################################################################################
 # Helper functions.
@@ -39,9 +45,6 @@ LossFunctionType = Callable[
     Tuple[torch.Tensor, Dict[str, SQValType], Dict[str, SQValType]]
 ]
 
-T = TypeVar('T')
-
-
 # Utilities for gradient updates
 def clamp_gradient(val: torch.Tensor, epsilon: float) -> None:
     max = torch.squeeze(torch.Tensor([epsilon, ]))
@@ -50,37 +53,10 @@ def clamp_gradient(val: torch.Tensor, epsilon: float) -> None:
     val.grad = torch.maximum(-max, val.grad)
 
 
-def print_new_circuit_sampled_message(total_l=131) -> None:
-    message = "NEW CIRCUIT SAMPLED"
-    print(total_l * "*")
-    print(total_l * "*")
-    print("*" + (total_l - 2) * " " + "*")
-    print("*" + int((total_l - len(message) - 2) / 2) * " " + message
-          + int((total_l - len(message) - 2) / 2) * " " + "*")
-    print("*" + (total_l - 2) * " " + "*")
-    print(+ total_l * "*")
-    print(total_l * "*")
-
-
 # Loss record utilities
 RecordType = Dict[
     str, Union[str, List[torch.Tensor], List[Circuit]]
 ]
-
-
-def print_loss_records(loss_record) -> None:
-    # TOOD -- these might not all be present
-    print(
-        f"frequency_loss: "
-        f"{loss_record['frequency_loss'][-1]}",
-        f"flux_sensitivity_loss: "
-        f"{loss_record['flux_sensitivity_loss'][-1]}",
-        f"charge_sensitivity_loss: "
-        f"{loss_record['charge_sensitivity_loss'][-1]}",
-        f"number_of_gates_loss: "
-        f"{loss_record['number_of_gates_loss'][-1]}"
-    )
-
 
 @torch.no_grad()
 def init_records(
@@ -120,14 +96,14 @@ def save_results(
     save_loc: str,
     save_intermediate_circuits=True,
 ) -> None:
-    save_records = {"loss": loss_record, "metrics": metric_record}
+    save_records = {'loss': loss_record, 'metrics': metric_record}
 
     for record_type, record in save_records.items():
         save_url = os.path.join(
             save_loc,
             f'{record_type}_record_{identifier}.pickle'
         )
-        print(f"Saving in {save_url}")
+        logger.info('Saving to %s', save_url)
         with open(save_url, 'wb') as f:
             pickle.dump(record, f)
 

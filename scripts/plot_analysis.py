@@ -28,7 +28,7 @@ import numpy as np
 import SQcircuit as sq
 
 import analysis as an
-from plot_utils import load_final_circuit, set_plotting_defaults
+from utils import load_final_circuit, set_plotting_defaults
 from inout import (
     load_yaml_file,
     add_command_line_keys,
