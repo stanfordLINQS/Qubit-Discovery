@@ -44,7 +44,7 @@ def t1_loss(
     Returns
     ----------
         loss:
-            1 / ``T1``.
+            ``-T1``.
         T1:
             The T1 time of ``circuit``.
     """
@@ -54,7 +54,7 @@ def t1_loss(
         dec_type=dec_type
     )
 
-    return (1 / t1) + EPSILON, t1
+    return -t1 + EPSILON, t1
 
 
 def t_phi_loss(
@@ -74,7 +74,7 @@ def t_phi_loss(
     Returns
     ----------
         loss:
-            1 / ``T_phi``.
+            ``-T_phi``.
         T_phi:
             The dephasing time of ``circuit``.
     """
@@ -84,10 +84,10 @@ def t_phi_loss(
         dec_type=dec_type
     )
 
-    return (1 / t_phi) + EPSILON, t_phi
+    return -t_phi + EPSILON, t_phi
 
 
-def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
+def t2_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     """Penalizes short T2 time, computed via all available decay channels.
     See ``functions.total_dec_time`` for a description of the decay channels
     considered.
@@ -100,13 +100,13 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Returns
     ----------
         loss:
-            1 / ``T2``.
+            ``-T2``.
         T2:
             The T2 time of ``circuit``.
     """
     t2 = total_dec_time(circuit)
 
-    return (1 / t2) + EPSILON, t2
+    return -t2 + EPSILON, t2
 
 
 def element_sensitivity_loss(
@@ -329,7 +329,7 @@ ALL_METRICS = {
     'anharmonicity': anharmonicity_loss,
     'element_sensitivity': element_sensitivity_loss,
     'gate_speed': gate_speed_loss,
-    't': t_loss,
+    't2': t2_loss,
     't1': t1_loss,
     't1_capacitive': lambda cr: t1_loss(cr, dec_type='capacitive'),
     't1_inductive': lambda cr: t1_loss(cr, dec_type='inductive'),
@@ -411,6 +411,18 @@ def build_loss_function(
         A loss function which computes the total loss using ``use_losses`` as
         well as the metrics in ``use_metrics``.
     """
+    if not isinstance(use_losses, dict):
+        raise ValueError('You must pass in dictionary of metric_name: weight'
+                         ' for `use_losses`.')
+    for metric_name in use_losses.keys():
+        if metric_name not in get_all_metrics():
+            raise ValueError(f'The metric \'{metric_name}\' is not available.')
+    if not isinstance(use_metrics, list):
+        raise ValueError('You must pass in list of metrics for `use_metrics`.')
+    for metric_name in use_metrics:
+        if metric_name not in get_all_metrics():
+            raise ValueError(f'The metric \'{metric_name}\' is not available.')
+
     return lambda circuit: calculate_loss_metrics(
         circuit,
         use_losses,
@@ -465,23 +477,23 @@ def calculate_loss_metrics(
     loss_values: Dict[str, SQValType] = {}
     metrics: Dict[str, SQValType] = {}
 
-    for key in get_all_metrics():
-
-        if key in use_losses:
+    try:
+        for key in use_losses:
             with torch.set_grad_enabled(master_use_grad):
                 specific_loss, specific_metric = ALL_METRICS[key](circuit)
                 loss = loss + use_losses[key] * specific_loss
-
             with torch.no_grad():
                 loss_values[key + '_loss'] = detach_if_optim(specific_loss)
                 metrics[key] = detach_if_optim(specific_metric)
+        for key in use_metrics:
+            if key not in use_losses:
+                with torch.no_grad():
+                    specific_loss, specific_metric = ALL_METRICS[key](circuit)
 
-        elif key not in use_losses and key in use_metrics:
-            with torch.no_grad():
-                specific_loss, specific_metric = ALL_METRICS[key](circuit)
-
-                loss_values[key + '_loss'] = detach_if_optim(specific_loss)
-                metrics[key] = detach_if_optim(specific_metric)
+                    loss_values[key + '_loss'] = detach_if_optim(specific_loss)
+                    metrics[key] = detach_if_optim(specific_metric)
+    except KeyError as e:
+        raise ValueError(f'The metric {e} is not available!') from None
 
     loss_values['total_loss'] = detach_if_optim(loss)
 

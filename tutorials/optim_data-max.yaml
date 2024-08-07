@@ -25,5 +25,5 @@ use_metrics:
   - "t_phi_charge"
   - "t_phi_cc"
   - "gate_speed"
-  - "t"
+  - "t2"
 save_intermediate: False

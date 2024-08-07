@@ -61,7 +61,7 @@ METRIC_NAMES = {
     't1': '$T_1$',                                  # (2, 0) plot position
     't_phi': r'$T_\varphi$',                        # (2, 1) plot position
     'frequency': 'Frequency',                       # (2, 2) plot position
-    't': '$T_2$',                                   # (3, 0) plot position
+    't2': '$T_2$',                                   # (3, 0) plot position
     'gate_speed': 'Gate Speed',                     # (3, 1) plot position
     'number_of_gates': 'Number of Gates'            # (3, 2) plot position
 }
