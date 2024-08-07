@@ -20,7 +20,6 @@ from .utils import (
     RecordType,
     save_results,
     update_record,
-    get_optimizer_keyword
 )
 
 logger = logging.getLogger(__name__)
@@ -150,11 +149,11 @@ def run_optimization(
                     circuit,
                     identifier,
                     save_loc,
-                    get_optimizer_keyword(optimizer),
                     save_intermediate_circuits=save_intermediate_circuits
                 )
 
             # Check if the optimizer has finished (params did not move)
             if torch.all(old_alpha_params == alpha_params):
-                print('Tried to exit')
                 break
+
+    return circuit, loss_record, metric_record

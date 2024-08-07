@@ -25,7 +25,7 @@ def get_alpha_param_from_circuit_param(
 
 
 def get_alpha_params_from_circuit_params(circuit: Circuit, bounds) -> Tensor:
-    alpha_params = torch.zeros(torch.stack(circuit.parameters).shape)
+    alpha_params = torch.zeros(torch.stack(circuit.parameters).shape, dtype=torch.float64)
 
     for param_idx, circuit_param in enumerate(circuit.parameters):
         alpha_params[param_idx] = get_alpha_param_from_circuit_param(
@@ -33,7 +33,7 @@ def get_alpha_params_from_circuit_params(circuit: Circuit, bounds) -> Tensor:
             bounds,
             circuit.get_params_type()[param_idx]
         )
-    return alpha_params.detach()
+    return alpha_params
 
 
 def get_circuit_param_from_alpha_param(
@@ -60,7 +60,7 @@ def get_circuit_params_from_alpha_params(
     circuit: Circuit,
     bounds
 ) -> Tensor:
-    circuit_params = torch.zeros(alpha_params.shape)
+    circuit_params = torch.zeros(alpha_params.shape, dtype=torch.float64)
 
     for param_idx, alpha_param in enumerate(alpha_params):
         circuit_params[param_idx] = get_circuit_param_from_alpha_param(

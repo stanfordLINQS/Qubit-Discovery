@@ -149,7 +149,7 @@ def main() -> None:
             total_trunc_num=parameters['K'],
             bounds=sampler.bounds,
             num_eigenvalues=parameters['num_eigenvalues'],
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_SGD',
             save_loc=directory.get_records_dir(),
             save_intermediate_circuits=parameters['save-intermediate']
         )
@@ -161,7 +161,7 @@ def main() -> None:
             total_trunc_num=parameters['K'],
             bounds=sampler.bounds,
             num_eigenvalues=parameters['num_eigenvalues'],
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_BFGS',
             save_loc=directory.get_records_dir(),
             save_intermediate_circuits=parameters['save-intermediate']
         )

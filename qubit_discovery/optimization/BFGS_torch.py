@@ -65,7 +65,7 @@ def run_BFGS(
 
 
     # Run it!
-    run_optimization(
+    return run_optimization(
         circuit = circuit,
         loss_metric_function = loss_metric_function,
         max_iter = max_iter,
