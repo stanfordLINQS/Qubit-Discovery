@@ -142,18 +142,17 @@ def main() -> None:
     ############################################################################
 
     if parameters['optim_type'] == "SGD":
-        raise ValueError('SGD is currently deprecated.')
-        # run_SGD(
-        #     circuit=circuit,
-        #     circuit_code=parameters['circuit_code'],
-        #     loss_metric_function=my_loss_function,
-        #     num_eigenvalues=parameters['num_eigenvalues'],
-        #     baseline_trunc_nums=baseline_trunc_num,
-        #     total_trunc_num=parameters['K'],
-        #     num_epochs=parameters['epochs'],
-        #     save_loc=directory.get_records_dir(),
-        #     save_intermediate_circuits=parameters['save-intermediate']
-        # )
+        run_SGD(
+            circuit=circuit,
+            loss_metric_function=my_loss_function,
+            max_iter=parameters['epochs'],
+            total_trunc_num=parameters['K'],
+            bounds=sampler.bounds,
+            num_eigenvalues=parameters['num_eigenvalues'],
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            save_loc=directory.get_records_dir(),
+            save_intermediate_circuits=parameters['save-intermediate']
+        )
     elif parameters['optim_type'] == "BFGS":
         run_BFGS(
             circuit=circuit,

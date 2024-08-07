@@ -20,6 +20,8 @@ from SQcircuit import (
 )
 import torch
 
+from .truncation import assign_trunc_nums, test_convergence
+
 ################################################################################
 # Helper functions.
 ################################################################################
@@ -182,8 +184,37 @@ def build_circuit(element_dictionary):
     circuit = Circuit(elements)
     return circuit
 
+
 class ConvergenceError(Exception):
     def __init__(self, epsilon):
         self.epsilon = epsilon
     def __str__(self):
         return f'Your circuit did not converge. The computed epsilon was {self.epsilon}.'
+    
+
+def diag_with_convergence(
+        circuit: Circuit,
+        num_eigenvalues: int,
+        total_trunc_num: int
+) -> bool:
+    """
+    Diagonalize the circuit, and, if the circuit has not converged, try
+    re-allocating the truncation numbers. If this fails, then we give up and
+    say the circuit has not converged.
+    """
+
+    # Reset to even split of truncation numbers
+    circuit.truncate_circuit(total_trunc_num)
+    circuit.diag(num_eigenvalues)
+    # Check if converges with even split
+    converged, _ = test_convergence(circuit, eig_vec_idx=1)
+    # Otherwise try re-allocating with the heuristic function
+    if not converged:
+        assign_trunc_nums(circuit, total_trunc_num)
+        circuit.diag(num_eigenvalues)
+
+        converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
+        if not converged:
+            raise ConvergenceError(eps)
+
+    return True
