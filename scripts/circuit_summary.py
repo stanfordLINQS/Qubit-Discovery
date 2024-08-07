@@ -22,6 +22,7 @@ Options:
 """
 
 from docopt import docopt
+import qubit_discovery as qd
 from qubit_discovery.losses.loss import calculate_loss_metrics
 import SQcircuit as sq
 
@@ -41,9 +42,9 @@ from utils import load_final_circuit
 
 # Keys that should be in either command line or Yaml file.
 SUMMARY_REQUIRED_KEYS = [
-    "ids",
-    "circuit_code",
-    "optim_type",
+    'ids',
+    'circuit_code',
+    'optim_type',
 ]
 
 ################################################################################
@@ -67,30 +68,30 @@ def main():
         keys=SUMMARY_REQUIRED_KEYS,
     )
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
 
     ############################################################################
     # Summarize the Circuit.
     ############################################################################
 
     sq.set_engine('PyTorch')
-    for id_num in parameters['ids'].split(','):
+    qd.log_to_stdout()
 
+    for id_num in parameters['ids'].split(','):
         cr = load_final_circuit(directory.get_record_file_dir(
-                record_type="circuit",
+                record_type='circuit',
                 circuit_code=parameters['circuit_code'],
                 idx=id_num,
         ))
-        cr._toggle_fullcopy = True
         cr.update()  # rebuild op memory
-        cr.diag(parameters["num_eigenvalues"])
+        cr.diag(parameters['num_eigenvalues'])
 
         metrics_in_optim, metrics_not_in_optim = get_metrics_dict(parameters)
         # add in element sensitivity for summary file
-        metrics_not_in_optim.append('element_sensitivity')
+        # metrics_not_in_optim.append('element_sensitivity')
 
         # Prepare summary text for the circuit.
-        summary_text = f"Description:\n{cr.description(_test=True)}\n"
+        summary_text = f'Description:\n{cr.description(_test=True)}\n'
         summary_text += an.build_circuit_topology_string(cr)
 
         summary_text += f'\ntrunc_nums: {cr.trunc_nums}\n'
@@ -103,7 +104,7 @@ def main():
         ########################################################################
         # In optimization losses
         ########################################################################
-        loss_in_optim_summary = "Loss in Optimization:\n"
+        loss_in_optim_summary = 'Loss in Optimization:\n'
         for key in metrics_in_optim:
             if loss_details[key + '_loss'] == 0.0:
                 continue
@@ -111,22 +112,22 @@ def main():
                 f"{key + '_loss'}: {loss_details[key + '_loss']}\n"
             )
         loss_in_optim_summary += (
-            f"{'total_loss'}: {loss_details['total_loss']}\n"
+            f'{"total_loss"}: {loss_details["total_loss"]}\n'
         )
         ########################################################################
         # Not in optimization losses
         ########################################################################
-        loss_not_in_optim_summary = "Other Losses:\n"
+        loss_not_in_optim_summary = 'Other Losses:\n'
         for key in metrics_not_in_optim:
             if loss_details[key + '_loss'] == 0.0:
                 continue
             loss_not_in_optim_summary += (
-                f"{key + '_loss'}: {loss_details[key+ '_loss']}\n"
+                f'{key + "_loss"}: {loss_details[key+ "_loss"]}\n'
             )
         ########################################################################
         # All the metrics
         ########################################################################
-        metrics_summary = "Metrics:\n"
+        metrics_summary = '\nMetrics:\n'
         for key in metrics_in_optim + metrics_not_in_optim:
             metrics_summary += f"{key} {get_units()[key]}: {metrics[key]}\n"
 

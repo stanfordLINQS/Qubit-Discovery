@@ -162,7 +162,7 @@ def main() -> None:
         optional_keys=TEST_CONVERGENCE_OPTIONAL_KEYS
     )
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
     plot_output_dir = directory.get_plots_dir()
     records_dir = directory.get_records_dir()
 
@@ -188,7 +188,9 @@ def main() -> None:
             sampler = CircuitSampler(
                 capacitor_range=capacitor_range,
                 inductor_range=inductor_range,
-                junction_range=junction_range
+                junction_range=junction_range,
+                flux_range=[0.5, 0.5],
+                elems_not_to_optimize=[sq.Loop]
             )
             circuit = sampler.sample_circuit_code(parameters['circuit_code'])
             if circuit.loops:
@@ -197,7 +199,6 @@ def main() -> None:
         else:
             circuit = load_final_circuit(parameters['init_circuit'])
             circuit.update()
-            circuit._toggle_fullcopy = True
             print("Circuit loaded!")
 
         fig, axes = plt.subplots(3, 3, figsize=(27, 14))

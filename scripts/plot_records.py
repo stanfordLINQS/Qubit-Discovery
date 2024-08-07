@@ -21,6 +21,7 @@ Options:
 """
 
 from collections import defaultdict
+import os
 from typing import Dict, List
 
 from docopt import docopt
@@ -141,7 +142,7 @@ def plot_results(
     plot_folder_directory,
     best_ids: Dict[str, List[int]],
     plot_type: str,
-    save_prefix: str = '',
+    save_suffix: str = '',
 ) -> None:
 
     if plot_type == 'metrics':
@@ -169,25 +170,9 @@ def plot_results(
             )
 
     plt.savefig(
-        f'{plot_folder_directory}/{save_prefix}_{plot_type}_record.png',
+        os.path.join(plot_folder_directory, f'{plot_type}_{save_suffix}.png'),
         dpi=500
     )
-
-
-def build_save_prefix(parameters) -> str:
-    save_prefix = ""
-    for code in parameters['circuit_code']:
-        save_prefix += code
-    if parameters['num_runs'] is not None:
-        save_prefix += f"_n_{parameters['num_runs']}"
-    if parameters['num_best'] is not None:
-        save_prefix += f"_b_{parameters['num_best']}"
-    if parameters['optim_type'] is not None:
-        save_prefix += f"_{parameters['optim_type']}"
-    if parameters['name'] is not None:
-        save_prefix += f"_{parameters['name']}"
-
-    return save_prefix
 
 ################################################################################
 # Main.
@@ -216,7 +201,7 @@ def main() -> None:
     else:
         best_n = int(parameters['num_runs'])
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
 
     ############################################################################
     # Plotting
@@ -247,7 +232,7 @@ def main() -> None:
                 aggregate_loss_record[circuit_code][id_num] = loss_record
                 aggregate_metrics_record[circuit_code][id_num] = metrics_record
 
-    save_prefix = build_save_prefix(parameters)
+    save_suffix = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["optim_type"]}_n_{best_n}'
     best_ids = compute_best_ids(aggregate_loss_record, best_n, circuit_codes)
 
     plot_results(
@@ -255,14 +240,14 @@ def main() -> None:
         plot_folder_directory=directory.get_plots_dir(),
         best_ids=best_ids,
         plot_type='loss',
-        save_prefix=save_prefix
+        save_suffix=save_suffix
     )
     plot_results(
         record=aggregate_metrics_record,
         plot_folder_directory=directory.get_plots_dir(),
         best_ids=best_ids,
         plot_type='metrics',
-        save_prefix=save_prefix
+        save_suffix=save_suffix
     )
     print(
         f"Loaded {success_count} of "

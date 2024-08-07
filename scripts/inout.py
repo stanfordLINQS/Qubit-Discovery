@@ -130,7 +130,7 @@ def get_metrics_dict(config: dict) -> Tuple[List[str], List[str]]:
 
     metrics_in_optim = list(config['use_losses'].keys())
     metrics_not_in_optim = []
-    all_metrics = get_all_metrics()
+    all_metrics = metrics_in_optim + config['use_metrics']
 
     for metric in all_metrics:
         if metric not in metrics_in_optim:
@@ -159,7 +159,7 @@ def load_yaml_file(path_to_yaml: str) -> dict:
 
     for key in YAML_KEYS:
         assert key in parameters.keys(), (
-            f"Yaml file must include \"{key}\" key."
+            f'Yaml file must include \'{key}\' key.'
         )
 
     return parameters
@@ -196,8 +196,8 @@ def add_command_line_keys(
             parameters[key] = arguments['--' + key]
 
         assert key in parameters.keys(), (
-            f"\"{key}\" key must be either passed "
-            f"in the command line or yaml file"
+            f'\'{key}\' key must be either passed '
+            f'in the command line or yaml file'
         )
 
     return parameters
@@ -213,52 +213,40 @@ class Directory:
     Parameters
     ----------
         parameters:
-            A dictionary containing the parameters of the yaml file.
-        arguments:
-            A dictionary containing the arguments of the command line.
+            A dictionary containing the parameters of YAML file/command line.
+        yaml_filepath:
+            The location of the YAML file.
     """
 
-    def __init__(self, parameters: dict, arguments: dict) -> None:
+    def __init__(self, parameters: dict, yaml_filepath: str) -> None:
 
         self.parameters = parameters
-        self.arguments = arguments
-
-    def get_main_dir(self) -> str:
-        """Return the directory for the main_folder (where the yaml file
-        is located)."""
-
-        return os.path.dirname(os.path.abspath(
-            self.arguments['<yaml_file>']
-        ))
+        self.loc = os.path.dirname(os.path.abspath(yaml_filepath))
 
     def get_experiment_dir(self) -> str:
         """Return the directory for the experiment folder. The experiment folder
         has the following format:
-        {optim_type}_{name}/
+            ``{name}/``
         """
 
-        if 'optim_type' in self.parameters:
-            experiment_name = f'{self.parameters["optim_type"]}_'
-        else:
-            experiment_name = ''
-        experiment_name += self.parameters['name']
         experiment_dir = os.path.join(
-            self.get_main_dir(),
-            experiment_name
+            self.loc,
+            self.parameters['name']
         )
 
-        # create the folder if it's not excited.
+        # create the folder if if does not exist.
         os.makedirs(experiment_dir, exist_ok=True)
 
         return experiment_dir
 
     def get_records_dir(self) -> str:
         """Return the directory for the records folder inside the experiment
-        folder."""
+        folder.
+        """
 
         records_dir = os.path.join(
             self.get_experiment_dir(),
-            "records",
+            'records',
         )
 
         # create the folder if it's not excited.
@@ -268,28 +256,30 @@ class Directory:
 
     def get_plots_dir(self) -> str:
         """Return the directory for the plot folder inside the experiment
-        folder."""
+        folder.
+        """
 
         plots_dir = os.path.join(
             self.get_experiment_dir(),
-            "plots"
+            'plots'
         )
 
-        # create the folder if it's not excited.
+        # create the folder if it does not exist
         os.makedirs(plots_dir, exist_ok=True)
 
         return plots_dir
 
     def get_summaries_dir(self) -> str:
         """Return the directory for the summaries folder inside the experiment
-        folder."""
+        folder.
+        """
 
         summaries_dir = os.path.join(
             self.get_experiment_dir(),
-            "summaries"
+            'summaries'
         )
 
-        # create the folder if it's not excited.
+        # create the folder if it does not exist
         os.makedirs(summaries_dir, exist_ok=True)
 
         return summaries_dir
@@ -315,13 +305,8 @@ class Directory:
         """
 
         record_name = (
-            f"{self.parameters['optim_type']}_" if 'optim_type' in self.parameters else "",
-            f"{record_type}",
-            f"_record",
-            f"_{circuit_code}",
-            f"_{self.parameters['name']}",
-            f"_{idx}",
-            f".pickle"
+            f'{record_type}_record_{circuit_code}_{self.parameters["name"]}'
+            + f'_{self.parameters["optim_type"]}_{idx}.pickle'
         )
         record_name = ''.join([str(word) for word in record_name])
 
@@ -339,19 +324,11 @@ class Directory:
             circuit_code:
                 A string specifying circuit_code of the circuit.
             idx:
-                An Integer specifying the index of the circuit in the records.
+                An integer specifying the index of the circuit in the records.
         """
-        optim_type = ""
-        if 'optim_type' in self.parameters:
-            optim_type = f"{self.parameters['optim_type']}_"
-        elif 'optim_type' in self.arguments:
-            optim_type = f"{self.arguments['optim_type']}_"
-
-        summary_name = optim_type + (
-            f"circuit_summary"
-            f"_{circuit_code}"
-            f"_{self.parameters['name']}"
-            f"_{idx}.txt"
+        summary_name = (
+            f'circuit_summary_{circuit_code}_{self.parameters["name"]}'
+            + f'_{self.parameters["optim_type"]}_{idx}.txt'
         )
 
         return os.path.join(

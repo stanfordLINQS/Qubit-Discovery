@@ -67,7 +67,7 @@ def main() -> None:
     optim_type = parameters['optim_type']
     ids = parameters['ids'].split(',')
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
     plot_output_folder = directory.get_plots_dir()
 
     ############################################################################
@@ -79,14 +79,14 @@ def main() -> None:
     sq.set_engine('PyTorch')
     for id_num in ids:
         circuit_path = directory.get_record_file_dir(
-            record_type="circuit",
+            record_type='circuit',
             circuit_code=circuit_code,
             idx=id_num,
         )
         cr = load_final_circuit(circuit_path)
         cr.update()  # rebuild op memory
 
-        save_prefix = f'{optim_type}_plot_{circuit_code}_{name}_{id_num}'
+        save_prefix = f'plot_{circuit_code}_{name}_{optim_type}_{id_num}'
         # Plot flux
         fig, ax = plt.subplots()
         flux_vals, flux_spectra = an.calculate_flux_spectrum(cr)

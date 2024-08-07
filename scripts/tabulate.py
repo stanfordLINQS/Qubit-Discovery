@@ -86,7 +86,7 @@ def main() -> None:
         keys=YAML_OR_COMMANDLINE_KEYS,
     )
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
     plot_output_dir = directory.get_plots_dir()
     records_dir = directory.get_records_dir()
 

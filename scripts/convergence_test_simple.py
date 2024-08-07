@@ -112,7 +112,7 @@ def main() -> None:
         add_stdout_to_logger(sq.get_logger())
         add_stdout_to_logger(qd.get_logger())
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
     records_dir = directory.get_records_dir()
 
     ############################################################################
@@ -134,11 +134,13 @@ def main() -> None:
         circuit_code = parameters['circuit_code']
         name = parameters['name']
 
-        if parameters['init_circuit'] is None or parameters['init_circuit']== "":
+        if parameters['init_circuit'] is None:
             sampler = CircuitSampler(
                 capacitor_range=capacitor_range,
                 inductor_range=inductor_range,
-                junction_range=junction_range
+                junction_range=junction_range,
+                flux_range=[0.5, 0.5],
+                elems_not_to_optimize=[sq.Loop]
             )
             circuit = sampler.sample_circuit_code(parameters['circuit_code'])
             if circuit.loops:
@@ -147,7 +149,6 @@ def main() -> None:
         else:
             circuit = load_final_circuit(parameters['init_circuit'])
             circuit.update()
-            circuit._toggle_fullcopy = True
             print("Circuit loaded!")
 
         ########################################################################

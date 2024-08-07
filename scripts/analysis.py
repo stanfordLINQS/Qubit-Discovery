@@ -48,7 +48,7 @@ def build_circuit_topology_string(circuit):
         output += f"Edge {circuit_edge}\n"
 
         for element_idx, element in enumerate(elements):
-            output += f"Element {element_idx}: {type(element)}\n"
+            output += f"\tElement {element_idx}: {type(element)}\n"
             element_unit = get_default_unit(element)
             element_value = element.get_value(element_unit)
             if type(element) is sq.Junction:
@@ -56,7 +56,7 @@ def build_circuit_topology_string(circuit):
             if get_optim_mode():
                 element_value = element_value.detach().numpy()
             element_value = round_n_sigfigs(element_value)
-            output += f"Value: {element_value} {element_unit}\n"
+            output += f"\tValue: {element_value} {element_unit}\n"
         output += "\n"
     return output
 

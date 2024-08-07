@@ -33,22 +33,23 @@ When running the following scripts, the following directory structure will autom
  main_folder/                       # main directory
  ├── yaml_file.yaml
  │
- └── {optim_type}_{name}/           # experiment_directory
+ └── {name}/           # experiment_directory
      │
      ├── records/                   # records_directory
      │   │
-     │   ├── {optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle
-     │   ├── {optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle
-     │   └── {optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle
+     │   ├── loss_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
+     │   ├── metrics_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
+     │   └── circuit_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
      │
      ├── plots/                     # plots_directory
      │   │
-     │   ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.png
-     │   └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.png
+     │   ├── loss_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
+     │   └── metrics_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
+     |   └── plot_{circuit_code}_{name}_{optim_type}_{id_num}.[flux/charge_diag].png
      │
      └── summaries/                 # summaries_directory
          │
-         └── {optim_type}_circuit_summary_{circuit_code}_{name}_{id_num}.txt
+         └── circuit_summary_{circuit_code}_{name}_{optim_type}_{seed}.txt
 
 ```
 
@@ -69,10 +70,10 @@ done
 
 _Note: If you pass in metadata both in the YAML file and via a command-line argument, the command-line argument will be used._
 
-Running `optimize.py` generates three files in the `{optim_type}_{name}/{records}` directory:
-- `{optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle`: contains the final optimized circuit (and the intermediate circuits, if `--save-intermediate` is passed to `optimize.py`).
-- `{optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle`: contains the total loss calculated at each epoch, in addition to the values for each of the individual component metrics.
-- `{optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle`: contains the value for all the metrics passed in the `use_metrics` list for the YAML file, at each epoch.
+Running `optimize.py` generates three files in the `{name}/{records}` directory:
+- `loss_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the final optimized circuit (and the intermediate circuits, if `--save-intermediate` is passed to `optimize.py`).
+- `metrics_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the total loss calculated at each epoch, in addition to the values for each of the individual component metrics.
+- `circuits_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the value for all the metrics passed in the `use_metrics` list for the YAML file, at each epoch.
 
 ## 3. Summarizing results
 
@@ -85,7 +86,7 @@ It takes in many optimization runs, plots learning curves of the ones with the b
 ```
 python scripts/plot_records.py tutorials/optim_data-min.yaml --circuit_code=JL --num_runs=10 --optim_type=BFGS --num_best=5
 ```
-The learning curves of the `num_best`-performing circuits are outputted as `{circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.png` and `{circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.png` in the `{optim_type}_{name}/plots` directory.
+The learning curves of the `num_best`-performing circuits are outputted as `loss_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png` and `metrics_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png` in the `{name}/plots` directory.
 
 ## 4. Exploring details of best-performing circuits
 
@@ -95,11 +96,11 @@ The [`circuit_summary.py`](../scripts/circuit_summary.py) program prints to file
 ```
 python scripts/circuit_summary.py tutorials/optim_data-min.yaml --circuit_code=JL --optim_type=BFGS --ids=1,6,9
 ```
-The outputs are saved in `{optim_type}_circuit_summary_{circuit_code}_{name}_{id_num}.txt` files in the `{optim_type}_{name}/summaries`.
+The outputs are saved in `circuit_summary_{circuit_code}_{name}_{optim_type}_{id_num}.txt` files in the `{name}/summaries` directory.
 
 
 The [`plot_analysis.py`](../scripts/plot_analysis.py) program plots the flux and charge spectrum of a list of circuits.
 ```
 python scripts/plot_analysis.py tutorials/optim_data-min.yaml --circuit_code=JL --optim_type=BFGS --ids=1,6,9
 ```
-The outputs are saved as `{optim_type}_plot_{circuit_code}_{name}_{id_num}.flux.png` and `{optim_type}_plot_{circuit_code}_{name}_{id_num}.charge_diag.png` in the `{optim_type}_{name}/plots` directory.
+The outputs are saved as `plot_{circuit_code}_{name}_{optim_type}_{id_num}.flux.png` and `{optim_type}_plot_{circuit_code}_{name}_{id_num}.charge_diag.png` in the `{name}/plots` directory.

@@ -91,7 +91,7 @@ def main() -> None:
         optional_keys=OPTIMIZE_OPTIONAL_KEYS
     )
 
-    directory = Directory(parameters, arguments)
+    directory = Directory(parameters, arguments['<yaml_file>'])
 
     if arguments['--verbose']:
         add_stdout_to_logger(sq.get_logger())
@@ -133,7 +133,6 @@ def main() -> None:
     if parameters['init_circuit'] is None or parameters['init_circuit'] == '':
         circuit = sampler.sample_circuit_code(parameters['circuit_code'])
         print('Circuit sampled!')
-        print(f'Loop value: {circuit.loops[0].value() / 2 / np.pi}')
     else:
         circuit = load_final_circuit(parameters['init_circuit'])
         circuit.update()
@@ -145,7 +144,7 @@ def main() -> None:
     # Run the optimizations.
     ############################################################################
 
-    if parameters['optim_type'] == "SGD":
+    if parameters['optim_type'] == 'SGD':
         run_SGD(
             circuit=circuit,
             loss_metric_function=my_loss_function,
@@ -153,11 +152,11 @@ def main() -> None:
             total_trunc_num=parameters['K'],
             bounds=sampler.bounds,
             num_eigenvalues=parameters['num_eigenvalues'],
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_SGD',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_SGD_{parameters["seed"]}',
             save_loc=directory.get_records_dir(),
             save_intermediate_circuits=parameters['save-intermediate']
         )
-    elif parameters['optim_type'] == "BFGS":
+    elif parameters['optim_type'] == 'BFGS':
         run_BFGS(
             circuit=circuit,
             loss_metric_function=my_loss_function,
@@ -165,10 +164,13 @@ def main() -> None:
             total_trunc_num=parameters['K'],
             bounds=sampler.bounds,
             num_eigenvalues=parameters['num_eigenvalues'],
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_BFGS',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_BFGS_{parameters["seed"]}',
             save_loc=directory.get_records_dir(),
             save_intermediate_circuits=parameters['save-intermediate']
         )
+    else:
+        raise ValueError(f'Optimization with {parameters["optim_type"]} '
+                         'is not supported.')
 
 
 if __name__ == '__main__':

@@ -13,8 +13,9 @@ from .reparameterization import (
     get_circuit_params_from_alpha_params
 )
 
+from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    diag_with_convergence,
+    ConvergenceError,
     init_records,
     LossFunctionType,
     RecordType,
@@ -23,6 +24,35 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def diag_with_convergence(
+        circuit: Circuit,
+        num_eigenvalues: int,
+        total_trunc_num: int
+) -> bool:
+    """
+    Diagonalize the circuit, and, if the circuit has not converged, try
+    re-allocating the truncation numbers. If this fails, then we give up and
+    say the circuit has not converged.
+    """
+
+    # Reset to even split of truncation numbers
+    circuit.truncate_circuit(total_trunc_num)
+    circuit.diag(num_eigenvalues)
+    # Check if converges with even split
+    converged, _ = test_convergence(circuit, eig_vec_idx=1)
+    # Otherwise try re-allocating with the heuristic function
+    if not converged:
+        assign_trunc_nums(circuit, total_trunc_num)
+        circuit.diag(num_eigenvalues)
+
+        converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
+        if not converged:
+            raise ConvergenceError(eps)
+
+    return True
+
 
 def run_optimization(
     circuit: Circuit,
