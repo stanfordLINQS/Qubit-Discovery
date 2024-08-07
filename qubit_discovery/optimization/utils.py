@@ -19,7 +19,6 @@ from SQcircuit import (
     Capacitor
 )
 import torch
-from torch.optim import Optimizer, SGD, LBFGS
 
 from .truncation import assign_trunc_nums, test_convergence
 
@@ -119,7 +118,6 @@ def save_results(
     circuit: Circuit,
     identifier: str, # {circuit_code}_{name}
     save_loc: str,
-    optim_type: str,
     save_intermediate_circuits=True,
 ) -> None:
     save_records = {"loss": loss_record, "metrics": metric_record}
@@ -127,7 +125,7 @@ def save_results(
     for record_type, record in save_records.items():
         save_url = os.path.join(
             save_loc,
-            f'{optim_type}_{record_type}_record_{identifier}.pickle'
+            f'{record_type}_record_{identifier}.pickle'
         )
         print(f"Saving in {save_url}")
         with open(save_url, 'wb') as f:
@@ -140,7 +138,7 @@ def save_results(
 
     circuit_save_url = os.path.join(
         save_loc,
-        f'{optim_type}_circuit_record_{identifier}.pickle'
+        f'circuit_record_{identifier}.pickle'
     )
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
@@ -219,12 +217,4 @@ def diag_with_convergence(
             raise ConvergenceError(eps)
 
     return True
-
-def get_optimizer_keyword(optimizer: Optimizer):
-    if optimizer is SGD:
-        return "SGD"
-    elif optimizer is LBFGS:
-        return "BFGS"
-    else:
-        return "none"
     
