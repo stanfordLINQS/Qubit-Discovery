@@ -145,20 +145,19 @@ def main() -> None:
     # Run the optimizations.
     ############################################################################
 
-    if parameters['optim_type'] == 'SGD':
-        raise ValueError('SGD is currently deprecated.')
-        # run_SGD(
-        #     circuit=circuit,
-        #     circuit_code=parameters['circuit_code'],
-        #     loss_metric_function=my_loss_function,
-        #     num_eigenvalues=parameters['num_eigenvalues'],
-        #     baseline_trunc_nums=baseline_trunc_num,
-        #     total_trunc_num=parameters['K'],
-        #     num_epochs=parameters['epochs'],
-        #     save_loc=directory.get_records_dir(),
-        #     save_intermediate_circuits=parameters['save-intermediate']
-        # )
-    elif parameters['optim_type'] == 'BFGS':
+    if parameters['optim_type'] == "SGD":
+        run_SGD(
+            circuit=circuit,
+            loss_metric_function=my_loss_function,
+            max_iter=parameters['epochs'],
+            total_trunc_num=parameters['K'],
+            bounds=sampler.bounds,
+            num_eigenvalues=parameters['num_eigenvalues'],
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_SGD',
+            save_loc=directory.get_records_dir(),
+            save_intermediate_circuits=parameters['save-intermediate']
+        )
+    elif parameters['optim_type'] == "BFGS":
         run_BFGS(
             circuit=circuit,
             loss_metric_function=my_loss_function,
@@ -166,9 +165,9 @@ def main() -> None:
             total_trunc_num=parameters['K'],
             bounds=sampler.bounds,
             num_eigenvalues=parameters['num_eigenvalues'],
-            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}',
+            identifier = f'{parameters["circuit_code"]}_{parameters["name"]}_{parameters["seed"]}_BFGS',
             save_loc=directory.get_records_dir(),
-            save_intermediate_circuits=parameters['save-intermediate'],
+            save_intermediate_circuits=parameters['save-intermediate']
         )
 
 

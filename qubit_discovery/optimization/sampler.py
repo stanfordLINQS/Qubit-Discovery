@@ -88,10 +88,10 @@ class CircuitSampler:
 
         if get_optim_mode():
             return {
-                Capacitor: torch.tensor(self.capacitor_range),
-                Inductor: torch.tensor(self.inductor_range),
-                Junction: torch.tensor(junction_range_bounds),
-                Loop: torch.tensor(flux_range_bounds)
+                Capacitor: torch.tensor(self.capacitor_range, dtype=torch.float64),
+                Inductor: torch.tensor(self.inductor_range, dtype=torch.float64),
+                Junction: torch.tensor(junction_range_bounds, dtype=torch.float64),
+                Loop: torch.tensor(flux_range_bounds, dtype=torch.float64)
             }
         else:
             return {
@@ -312,7 +312,7 @@ class CircuitSampler:
                     continue
 
                 self._add_elem_to_elements(
-                    elem_str="C",
+                    elem_str='C',
                     node_1=i,
                     node_2=j,
                     elements=elements,

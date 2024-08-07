@@ -97,7 +97,7 @@ def sweep_charge_spectrum(
 
             # circuit.update() # necessary?
             x, _ = circuit.diag(n_eig)
-            spectrum[:, charge_sweep_idx] = sqf.numpy(x)
+            spectrum[:, charge_sweep_idx] = sqf.to_numpy(x)
 
     # Set zeroth eigenfrequency to zero
     spectrum -= spectrum[0, :]
@@ -136,7 +136,7 @@ def calculate_flux_spectrum(
             loop.set_flux(flux)
         circuit.update()
         eigenvalues, _ = circuit.diag(n_eig)
-        flux_spectrum[:, flux_idx] = sqf.numpy(eigenvalues)
+        flux_spectrum[:, flux_idx] = sqf.to_numpy(eigenvalues)
         flux_spectrum -= flux_spectrum[0, :]
 
     # Reset circuit

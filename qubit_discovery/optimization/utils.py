@@ -22,7 +22,11 @@ from SQcircuit import (
 )
 import torch
 
+
+from .truncation import assign_trunc_nums, test_convergence
+
 logger = logging.getLogger(__name__)
+
 
 ################################################################################
 # Helper functions.
@@ -90,7 +94,6 @@ def save_results(
     circuit: Circuit,
     identifier: str, # {circuit_code}_{name}
     save_loc: str,
-    optim_type: str,
     save_intermediate_circuits=True,
 ) -> None:
     save_records = {'loss': loss_record, 'metrics': metric_record}
@@ -98,7 +101,7 @@ def save_results(
     for record_type, record in save_records.items():
         save_url = os.path.join(
             save_loc,
-            f'{optim_type}_{record_type}_record_{identifier}.pickle'
+            f'{record_type}_record_{identifier}.pickle'
         )
         logger.info('Saving to %s', save_url)
         with open(save_url, 'wb') as f:
@@ -111,7 +114,7 @@ def save_results(
 
     circuit_save_url = os.path.join(
         save_loc,
-        f'{optim_type}_circuit_record_{identifier}.pickle'
+        f'circuit_record_{identifier}.pickle'
     )
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
@@ -156,8 +159,38 @@ def build_circuit(element_dictionary):
     circuit = Circuit(elements)
     return circuit
 
+
 class ConvergenceError(Exception):
     def __init__(self, epsilon):
         self.epsilon = epsilon
     def __str__(self):
         return f'Your circuit did not converge. The computed epsilon was {self.epsilon}.'
+    
+
+def diag_with_convergence(
+        circuit: Circuit,
+        num_eigenvalues: int,
+        total_trunc_num: int
+) -> bool:
+    """
+    Diagonalize the circuit, and, if the circuit has not converged, try
+    re-allocating the truncation numbers. If this fails, then we give up and
+    say the circuit has not converged.
+    """
+
+    # Reset to even split of truncation numbers
+    circuit.truncate_circuit(total_trunc_num)
+    circuit.diag(num_eigenvalues)
+    # Check if converges with even split
+    converged, _ = test_convergence(circuit, eig_vec_idx=1)
+    # Otherwise try re-allocating with the heuristic function
+    if not converged:
+        assign_trunc_nums(circuit, total_trunc_num)
+        circuit.diag(num_eigenvalues)
+
+        converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
+        if not converged:
+            raise ConvergenceError(eps)
+
+    return True
+    
