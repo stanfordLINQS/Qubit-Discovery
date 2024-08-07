@@ -1,14 +1,11 @@
 """Contains code for defining loss functions used in circuit optimization."""
 from typing import Callable, List, Tuple, Dict
 
-import numpy as np
-import torch
-
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
+import torch
 
 from .functions import (
-    calculate_anharmonicity,
     charge_sensitivity,
     flux_sensitivity,
     element_sensitivity,
@@ -30,15 +27,11 @@ from .utils import (
 # exactly zero (to allow logarithms, etc.)
 EPSILON = 1e-13
 
-###############################################################################
-# Metrics which are only to track (cannot be used in loss function)
-###############################################################################
-
 def t1_loss(
     circuit: Circuit,
     dec_type: str = 'total',
 ) -> Tuple[SQValType, SQValType]:
-    """Computes the T1 time of the qubit.
+    """Penalizes short T1 time.
 
     Parameters
     ----------
@@ -51,7 +44,7 @@ def t1_loss(
     Returns
     ----------
         loss:
-            Always zero.
+            1 / ``T1``.
         T1:
             The T1 time of ``circuit``.
     """
@@ -61,14 +54,14 @@ def t1_loss(
         dec_type=dec_type
     )
 
-    return zero(), t1
+    return (1 / t1) + EPSILON, t1
 
 
 def t_phi_loss(
         circuit: Circuit,
         dec_type='total'
 ) -> Tuple[SQValType, SQValType]:
-    """Computes the dephasing time of the qubit.
+    """Penalizes short dephasing time.
 
     Parameters
     ----------
@@ -81,21 +74,21 @@ def t_phi_loss(
     Returns
     ----------
         loss:
-            Always zero.
+            1 / ``T_phi``.
         T_phi:
             The dephasing time of ``circuit``.
     """
-    tp = decoherence_time(
+    t_phi = decoherence_time(
         circuit=circuit,
         t_type='t_phi',
         dec_type=dec_type
     )
 
-    return zero(), tp
+    return (1 / t_phi) + EPSILON, t_phi
 
 
 def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    """Computes the T2 time of the qubit via all available decay channels.
+    """Penalizes short T2 time, computed via all available decay channels.
     See ``functions.total_dec_time`` for a description of the decay channels
     considered.
 
@@ -107,13 +100,13 @@ def t_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Returns
     ----------
         loss:
-            Always zero.
+            1 / ``T2``.
         T2:
             The T2 time of ``circuit``.
     """
-    t = total_dec_time(circuit)
+    t2 = total_dec_time(circuit)
 
-    return zero(), t
+    return (1 / t2) + EPSILON, t2
 
 
 def element_sensitivity_loss(
@@ -124,7 +117,6 @@ def element_sensitivity_loss(
     """Computes the sensitivity of the single-qubit gate number of the qubit
     with respect to variation in the element values. See
     ``functions.element_sensitivity`` for more details on how this is computed.
-
 
     Parameters
     ----------
@@ -139,17 +131,17 @@ def element_sensitivity_loss(
     Returns
     ----------
         loss:
-            Always zero.
+            The sensitivity ``sens``.
         sensitivity:
             The sensitivity of the gate number to element variation.
     """
     sens = element_sensitivity(circuit, number_of_gates, n_samples, error)
 
-    return zero(), sens
+    return sens + EPSILON, sens
 
 
 def gate_speed_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
-    """Computes the single-qubit gate speed of the circuit. See
+    """Penalizes a slow single-qubit gate speed for the circuit. See
     ``functions.fastest_gate_speed`` for more details on how this is computed.
 
     Parameters
@@ -160,31 +152,23 @@ def gate_speed_loss(circuit: Circuit) -> Tuple[SQValType, SQValType]:
     Returns
     ----------
         loss:
-            Always zero.
-        f:
+            1 / ``gate_speed``.
+        gate_speed:
             The gate speed of ``circuit``.
     
     """
     gate_speed = fastest_gate_speed(circuit)
 
-    return zero(), gate_speed
+    return (1 / gate_speed) + EPSILON, gate_speed
 
-
-###############################################################################
-# Metrics which can be used in a loss function (implement a loss associated
-# with metric).
-###############################################################################
 
 def anharmonicity_loss(
-    circuit: Circuit,
-    alpha=1
+    circuit: Circuit
 ) -> Tuple[SQValType, SQValType]:
-    """Computes a loss to penalize energy level occupancy in the vicinity of
-    the resonant frequency ``f`` and twice the resonant frequency.
-    
-    For ``g in {f, 2f}``, we compute the normalized difference between the
-    frequency of higher levels and ``g``, and sum ``exp(-alpha * difference)``
-    over all higher energy levels.
+    """Computes a loss to penalize low anharmonicitiy. The absolute anharmonicity is
+        ``A = omega_{21} - omega_{10}``
+    and the relative anharmonicity is
+        ``Ar = (omega_{21} - omega_{10})/omega_{10}`.
 
     Parameters
     ----------
@@ -196,26 +180,17 @@ def anharmonicity_loss(
     Returns
     ----------
         loss:
-            The loss described above.
+            1 / Ar, the reciprocal of the relative anharmonicity.
         anharmonicity:
-            The traditional anharmonicity of ``circuit``.
+            A, the absolute anharmonicity.
     """
-    if len(circuit.efreqs) <= 2:
-        raise ValueError('Anharmonicity is only defined for at least three energy levels.')
 
     omega_10 = circuit.efreqs[1] - circuit.efreqs[0]
-    omega_i0 = circuit.efreqs[2:] - circuit.efreqs[0]
-    x1 = alpha * (omega_i0 - 2 * omega_10) / omega_10
-    x2 = alpha * (omega_i0 - omega_10) / omega_10
+    omega_21 = circuit.efreqs[2] - circuit.efreqs[1]
 
-    anharmonicity = calculate_anharmonicity(circuit)
-    if get_optim_mode():
-        loss = torch.sum(
-            torch.exp(-torch.abs(x1)) + torch.exp(-torch.abs(x2))
-        )
-    else:
-        loss = np.sum(np.exp(-np.abs(x1)) + np.exp(-np.abs(x2)))
-    return loss + EPSILON, anharmonicity
+    A = omega_21 - omega_10
+
+    return (omega_10 / A) + EPSILON, A
 
 
 def frequency_loss(
@@ -232,7 +207,7 @@ def frequency_loss(
             A ``Circuit`` object specifying the qubit.
         freq_thresholdD:
             The frequency threshold (in the frequency unit of SQcircuit)
-            above which to apply the quadratic hinge loss.
+            above which to apply the quadratic hinge loss. Default 100 GHz.
 
     Returns
     ----------
@@ -271,7 +246,7 @@ def flux_sensitivity_loss(
     Returns
     ----------
         loss:
-            The hinge loss applied to S. 
+            The hinge loss applied to ``S``. 
         S:
             The flux sensitivity of ``circuit``.
     """
@@ -302,7 +277,7 @@ def charge_sensitivity_loss(
     Returns
     ----------
         loss:
-            The hinge loss applied to S. 
+            The hinge loss applied to ``S``. 
         S:
             The charge sensitivity of ``circuit``.
     """

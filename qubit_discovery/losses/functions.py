@@ -36,24 +36,6 @@ def first_resonant_frequency(circuit: Circuit) -> SQValType:
     return omega
 
 
-def calculate_anharmonicity(circuit: Circuit) -> SQValType:
-    """Calculates anharmonicity (ratio between first and second energy
-    eigenvalue spacings).
-    
-    
-    Parameters
-    ----------
-        circuit:
-            A ``Circuit`` object specifying the qubit.
-
-    Returns
-    ----------
-        The anharmonicity of ``circuit``.
-    """
-    return (circuit.efreqs[2] - circuit.efreqs[1]) / \
-           (circuit.efreqs[1] - circuit.efreqs[0])
-
-
 def fastest_gate_speed(circuit: Circuit) -> SQValType:
     """Calculates the upper bound for the speed of the single-qubit gate.
     The upper bound is:
