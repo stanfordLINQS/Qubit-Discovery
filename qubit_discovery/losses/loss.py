@@ -174,8 +174,6 @@ def anharmonicity_loss(
     ----------
         circuit:
             A ``Circuit`` object specifying the qubit.
-        alpha:
-            A hyperparameter weighting the penalty for nearby energy levels.
 
     Returns
     ----------
