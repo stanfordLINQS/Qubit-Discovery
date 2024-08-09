@@ -1,14 +1,14 @@
 """This module implements the SGD optimizer."""
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Union
 
 from SQcircuit import Circuit, Element, Loop
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ExponentialLR
 from torch import Tensor
 
-from .optim import run_optimization
-from .utils import LossFunctionType, RecordType
+from .optim import OptimizationRecord, run_optimization
+from .utils import LossFunctionType
 
 DEFAULT_OPTIM_KWARGS = {
     'nesterov': False,
@@ -31,7 +31,7 @@ def run_SGD(
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
-) -> Tuple[Circuit, RecordType, RecordType]:
+) -> OptimizationRecord:
     """Runs SGD for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
 

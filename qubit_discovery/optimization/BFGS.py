@@ -1,11 +1,11 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Union
 
 from SQcircuit import Circuit, Element, Loop
 from torch.optim import LBFGS
 from torch import Tensor
 
-from .optim import run_optimization
-from .utils import LossFunctionType, RecordType
+from .optim import OptimizationRecord, run_optimization
+from .utils import LossFunctionType
 
 # Set `max_iter = 1` and iterate manually to control print-out.
 # This incurs 1 extra function evaluation per step vs. using `max_iter`.
@@ -27,7 +27,7 @@ def run_BFGS(
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
-) -> Tuple[Circuit, RecordType, RecordType]:
+) -> OptimizationRecord:
     """Runs BFGS for a maximum of ``max_iter`` beginning with ``circuit`` using
     ``loss_metric_function``.
 

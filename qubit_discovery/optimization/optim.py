@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import logging
-from typing import Dict, Optional, Tuple, Union
+import os
+from typing import Dict, Optional, Union
+import warnings
 
 from SQcircuit import Circuit, Element, Loop
 import torch
@@ -58,10 +60,15 @@ def diag_with_convergence(
 @dataclass
 class OptimizationRecord:
     """Class which contains record of optimization run.
+
+    Sorts based on value in ``loss``.
     """
     circuit: Circuit
-    loss: Tensor
+    loss: float
     record: RecordType
+
+    def __lt__(self, obj):
+        return self.loss < obj.loss
 
 
 def run_optimization(
@@ -80,6 +87,19 @@ def run_optimization(
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
 ) -> OptimizationRecord:
+    if save_loc is not None:
+        if not os.path.exists(save_loc):
+            raise ValueError(f'The path {save_loc} does not exist!')
+        if identifier is None:
+            raise ValueError('If you pass in a `save_loc` to write files to, '
+                            'you must pass in an `identifier` to name the files.')
+    elif save_intermediate_circuits:
+        warnings.warn('Because you did not pass a `save_loc`, intermediate '
+                      'circuits will not be saved.')
+    if scheduler_kwargs and scheduler is None:
+        warnings.warn('You did not pass in a scheduler.')
+
+
     # Set initial truncation numbers
     circuit.truncate_circuit(total_trunc_num)
 
@@ -113,7 +133,8 @@ def run_optimization(
             3. Computes losses and metrics
         """
 
-        # Hacky way to extract history
+        # Hacky way to extract history, which is needed when using
+        # optimizer with closure to avoid extra call.
         nonlocal last_total_loss
         nonlocal last_loss_values
         nonlocal last_metric_values
@@ -174,22 +195,18 @@ def run_optimization(
                 logger.info('Taking a step...')
                 logger.info('Gradient: %s.', alpha_params.grad)
                 optim.step()
-            update_circuit()
+                update_circuit()
 
             if scheduler is not None:
                 sched.step()
 
             # Update records
+            update_record(loss_record, last_loss_values)
+            update_record(metric_record, last_metric_values)
+
             optim_record.loss = last_total_loss.detach().numpy()
             optim_record.record = loss_record | metric_record
-            update_record(
-                loss_record,
-                last_loss_values
-            )
-            update_record(
-                metric_record,
-                last_metric_values
-            )
+
             # And save results
             if save_loc:
                 save_results(
