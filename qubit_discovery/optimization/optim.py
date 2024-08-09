@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 from typing import Dict, Optional, Tuple, Union
 
@@ -54,6 +55,15 @@ def diag_with_convergence(
     return True
 
 
+@dataclass
+class OptimizationRecord:
+    """Class which contains record of optimization run.
+    """
+    circuit: Circuit
+    loss: Tensor
+    record: RecordType
+
+
 def run_optimization(
     circuit: Circuit,
     loss_metric_function: LossFunctionType,
@@ -69,7 +79,7 @@ def run_optimization(
     save_loc: Optional[str] = None,
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
-) -> Tuple[Circuit, RecordType, RecordType]:
+) -> OptimizationRecord:
     # Set initial truncation numbers
     circuit.truncate_circuit(total_trunc_num)
 
@@ -130,6 +140,9 @@ def run_optimization(
         last_metric_values
     )
 
+    optim_record = OptimizationRecord(circuit, last_total_loss,
+                                      loss_record | metric_record)
+
     with trange(max_iter) as t:
         for iteration in t:
             # Update tqdm
@@ -167,6 +180,8 @@ def run_optimization(
                 sched.step()
 
             # Update records
+            optim_record.loss = last_total_loss.detach().numpy()
+            optim_record.record = loss_record | metric_record
             update_record(
                 loss_record,
                 last_loss_values
@@ -175,6 +190,7 @@ def run_optimization(
                 metric_record,
                 last_metric_values
             )
+            # And save results
             if save_loc:
                 save_results(
                     loss_record,
@@ -189,4 +205,4 @@ def run_optimization(
             if torch.all(old_alpha_params == alpha_params):
                 break
 
-    return circuit, loss_record, metric_record
+    return optim_record
