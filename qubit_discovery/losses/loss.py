@@ -1,5 +1,5 @@
 """Contains code for defining loss functions used in circuit optimization."""
-from typing import Callable, List, Tuple, Dict
+from typing import Callable, Dict, List, Optional, Tuple
 
 from SQcircuit import Circuit
 from SQcircuit.settings import get_optim_mode
@@ -168,7 +168,7 @@ def anharmonicity_loss(
     """Computes a loss to penalize low anharmonicitiy. The absolute anharmonicity is
         ``A = omega_{21} - omega_{10}``
     and the relative anharmonicity is
-        ``Ar = (omega_{21} - omega_{10})/omega_{10}`.
+        ``Ar = (omega_{21} - omega_{10})/omega_{10}``.
 
     Parameters
     ----------
@@ -378,7 +378,7 @@ LossFunctionType = Callable[
 
 def build_loss_function(
     use_losses: Dict[str, float],
-    use_metrics: List[str],
+    use_metrics: Optional[List[str]] = None,
     master_use_grad: bool = True
 ) -> LossFunctionType:
     """Build a loss function based on the metrics provided in ``use_losses``.
@@ -409,6 +409,9 @@ def build_loss_function(
         A loss function which computes the total loss using ``use_losses`` as
         well as the metrics in ``use_metrics``.
     """
+    if use_metrics is None:
+        use_metrics = []
+
     if not isinstance(use_losses, dict):
         raise ValueError('You must pass in dictionary of metric_name: weight'
                          ' for `use_losses`.')

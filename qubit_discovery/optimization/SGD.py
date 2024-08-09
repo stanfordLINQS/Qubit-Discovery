@@ -7,13 +7,13 @@ from torch.optim import SGD
 from torch.optim.lr_scheduler import ExponentialLR
 from torch import Tensor
 
-from .run_optimization import run_optimization
+from .optim import run_optimization
 from .utils import LossFunctionType, RecordType
 
 DEFAULT_OPTIM_KWARGS = {
     'nesterov': False,
     'momentum': 0.0,
-    'lr': 1e-1
+    'lr': 1e-2
 }
 
 SCHEDULER_KWARGS = {

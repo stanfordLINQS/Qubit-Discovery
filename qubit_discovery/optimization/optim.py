@@ -154,9 +154,12 @@ def run_optimization(
             old_alpha_params = alpha_params.detach().clone()
 
             if uses_closure:
+                logger.info('Taking a step...')
                 optim.step(objective_closure)
             else:
                 objective_closure()
+                logger.info('Taking a step...')
+                logger.info('Gradient: %s.', alpha_params.grad)
                 optim.step()
             update_circuit()
 

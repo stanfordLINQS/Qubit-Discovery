@@ -1,4 +1,4 @@
-# `Qubit-Discovery` `scripts/` tutorial
+# `Qubit-Discovery` [`scripts/`](../scripts/) tutorial
 
 This document provides a tutorial on using the programs in the [`scripts/`](../scripts/) directory to run replicable parallelized optimization of circuits using the [`qubit_discovery`](../qubit_discovery) package.
 
@@ -33,21 +33,21 @@ When running the following scripts, the following directory structure will autom
  main_folder/                       # main directory
  ├── yaml_file.yaml
  │
- └── {name}/           # experiment_directory
+ └── {name}/                        # experiment directory
      │
-     ├── records/                   # records_directory
+     ├── records/                   # records directory
      │   │
      │   ├── loss_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
      │   ├── metrics_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
      │   └── circuit_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
      │
-     ├── plots/                     # plots_directory
+     ├── plots/                     # plots directory
      │   │
      │   ├── loss_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
-     │   └── metrics_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
-     |   └── plot_{circuit_code}_{name}_{optim_type}_{id_num}.[flux/charge_diag].png
+     │   ├── metrics_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
+     |   └── plot_{circuit_code}_{name}_{optim_type}_{seed}.[flux/charge_diag].png
      │
-     └── summaries/                 # summaries_directory
+     └── summaries/                 # summaries directory
          │
          └── circuit_summary_{circuit_code}_{name}_{optim_type}_{seed}.txt
 
@@ -70,7 +70,7 @@ done
 
 _Note: If you pass in metadata both in the YAML file and via a command-line argument, the command-line argument will be used._
 
-Running `optimize.py` generates three files in the `{name}/{records}` directory:
+Running `optimize.py` generates three files in the `{name}/records` directory:
 - `loss_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the final optimized circuit (and the intermediate circuits, if `--save-intermediate` is passed to `optimize.py`).
 - `metrics_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the total loss calculated at each epoch, in addition to the values for each of the individual component metrics.
 - `circuits_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle`: contains the value for all the metrics passed in the `use_metrics` list for the YAML file, at each epoch.

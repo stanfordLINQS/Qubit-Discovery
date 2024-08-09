@@ -4,7 +4,7 @@ from SQcircuit import Circuit, Element, Loop
 from torch.optim import LBFGS
 from torch import Tensor
 
-from .run_optimization import run_optimization
+from .optim import run_optimization
 from .utils import LossFunctionType, RecordType
 
 # Set `max_iter = 1` and iterate manually to control print-out.

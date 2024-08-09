@@ -26,10 +26,10 @@ A description of the theory and example usage is provided in the following paper
 
 The `qubit_discovery` module provides the basic ingredients for running optimization with `SQcircuit`. The `losses` submodule implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` submodule implements optimization algorithms (SGD and BFGS), utilities to set truncation numbers, and a qubit sampler.
 
-See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features:
-- [`QD_overview.ipynb`](tutorials/QD_overview.ipynb) gives a basic overview of the core functionality.
+See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features.
+- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) provides a quick demo using the package to optimize the $T_2$ time, qubit frequency, and anharmonicity of a transmon, with only a few lines of code.
+- [`QD_overview.ipynb`](tutorials/QD_overview.ipynb) gives an introduction to the core functionality of the package.
 - [`QD_advanced-features.ipynb`](tutorials/QD_advanced-features.ipynb) shows the advanced features and customization possible.
-- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) shows how the package can be used to optimize the $T_2$ time and qubit frequency of a transmon.
 
 ### Scripts
 
