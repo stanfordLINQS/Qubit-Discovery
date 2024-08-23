@@ -174,7 +174,7 @@ def get_slow_fit(
         the first result.
     """
     res_above_threshold = [res for res in fit_results
-                            if res[1] >= ignore_threshold]
+                           if res[1] >= ignore_threshold]
     if res_above_threshold == []:
         logging.warning('All fit results were below threshold. Returning '
                         'the first result.')
@@ -330,7 +330,7 @@ def trunc_num_heuristic(
 
         # Cut off truncation numbers, if necessary
         if charge_mode_cutoff is not None:
-            trunc_nums[trunc_nums[charge_modes] > charge_mode_cutoff] = charge_mode_cutoff
+            trunc_nums[charge_modes & (trunc_nums > charge_mode_cutoff)] = charge_mode_cutoff
 
 
         # Compute remaining Hilbert space dimension
@@ -391,7 +391,7 @@ def trunc_num_heuristic(
             small_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums <= 1]
             large_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums > 1]
             rescale_factor = np.power(np.prod(small_trunc_nums),
-                                    1 / len(large_trunc_nums))
+                                      1 / len(large_trunc_nums))
             harmonic_trunc_nums[harmonic_trunc_nums > 1] *= rescale_factor
             harmonic_trunc_nums[harmonic_trunc_nums <= 1] = 1
 
@@ -496,7 +496,7 @@ def test_convergence(
     """
     if len(circuit.efreqs) == 0:
         raise CircuitStateError('The circuit must be diagonalized first.')
-    if np.any(circuit.m < 4):
+    if np.any(np.array(circuit.m) < 4):
         raise ValueError('In order to check both parities, each mode must '
                          'have a dimension >= 4.')
     if t < 2:
