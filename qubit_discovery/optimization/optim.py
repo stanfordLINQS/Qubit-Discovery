@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 import logging
 import os
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 import warnings
 
-from SQcircuit import Circuit, Element, Loop
+from SQcircuit import Circuit, CircuitComponent
 import torch
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -16,9 +16,9 @@ from .reparameterization import (
     get_circuit_params_from_alpha_params
 )
 
+from .exceptions import ConvergenceError
 from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
-    ConvergenceError,
     init_records,
     LossFunctionType,
     RecordType,
@@ -33,11 +33,21 @@ def diag_with_convergence(
         circuit: Circuit,
         num_eigenvalues: int,
         total_trunc_num: int
-) -> bool:
+) -> None:
     """
     Diagonalize the circuit, and, if the circuit has not converged, try
     re-allocating the truncation numbers. If this fails, then we give up and
-    say the circuit has not converged.
+    say the circuit has not converged; in this case a ``ConvergenceError`` is
+    raised.
+
+    Parameters
+    ----------
+        circuit:
+            The circuit to diagonalize.
+        num_eigenvalues:
+            The number of eigenvalues/vectors to calculate.
+        total_trunc_num:
+            The maximum truncation number, to use when re-allocating.
     """
 
     # Reset to even split of truncation numbers
@@ -53,8 +63,6 @@ def diag_with_convergence(
         converged, eps = test_convergence(circuit, eig_vec_idx=1, t=10)
         if not converged:
             raise ConvergenceError(eps)
-
-    return True
 
 
 @dataclass
@@ -76,7 +84,7 @@ def run_optimization(
     loss_metric_function: LossFunctionType,
     max_iter: int,
     total_trunc_num: int,
-    bounds: Dict[Union[Element, Loop], Tensor],
+    bounds: Dict[CircuitComponent, Tensor],
     optimizer: Optimizer,
     uses_closure: bool,
     optimizer_kwargs: Optional[Dict] = None,
@@ -87,6 +95,49 @@ def run_optimization(
     identifier: Optional[str] = None,
     save_intermediate_circuits: bool = False,
 ) -> OptimizationRecord:
+    """ Peform optimization on ``circuit`` using ``loss_metric_function`` for
+    ``max_iter`` epochs, using the PyTorch ``optimizer``.
+
+    Parameters
+    ----------
+        circuit:
+            A circuit to optimize.
+        loss_metric_function:
+            Loss function to optimize.
+        max_iter:
+            Maximum number of iterations.
+        total_trunc_num:
+            Maximum total truncation number to allocate.
+        bounds:
+            Dictionary giving bounds for each element type.
+        optimizer:
+            A PyTorch ``Optimizer`` use to perform optimization.
+        uses_closure:
+            Whether ``optimizer`` requires a closure to step.
+        optimizer_kwargs:
+            An optional dictionary of keyword arguments to use when
+            initializing ``optimizer``.
+        scheduler:
+            An optional PyTorch ``LRScheduler`` to use during optimization.
+        scheduler_kwargs:
+            An optional dictionary of keyword arguments to use when
+            initializing ``scheduler``.
+        num_eigenvalues:
+            Number of eigenvalues to calculate when diagonalizing.
+        save_loc:
+            Optional path to folder to save results in.
+        identifier:
+            String identifying this run (e.g. seed, name, circuit code, …)
+            to use when saving.
+        save_intermediate_circuits:
+            Whether to save the circuit at each iteration.
+    
+    Returns
+    ----------
+        An ``OptimizationRecord`` containing the optimized circuit, the final
+        loss, and a record of the component loss and metric values at each
+        epoch.
+    """
     if save_loc is not None:
         if not os.path.exists(save_loc):
             raise ValueError(f'The path {save_loc} does not exist!')
@@ -218,7 +269,7 @@ def run_optimization(
                     save_intermediate_circuits=save_intermediate_circuits
                 )
 
-            # Check if the optimizer has finished (params did not move)
+            # Check if the optimizer has finished (params did not change)
             if torch.all(old_alpha_params == alpha_params):
                 break
 

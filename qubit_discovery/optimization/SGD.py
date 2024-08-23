@@ -1,8 +1,8 @@
 """This module implements the SGD optimizer."""
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
-from SQcircuit import Circuit, Element, Loop
+from SQcircuit import Circuit, CircuitComponent
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ExponentialLR
 from torch import Tensor
@@ -25,7 +25,7 @@ def run_SGD(
     loss_metric_function: LossFunctionType,
     max_iter: int,
     total_trunc_num: int,
-    bounds: Dict[Union[Element, Loop], Tensor],
+    bounds: Dict[CircuitComponent, Tensor],
     optimizer_kwargs: Optional[Dict] = None,
     num_eigenvalues: int = 10,
     save_loc: Optional[str] = None,
@@ -55,7 +55,13 @@ def run_SGD(
             String identifying this run (e.g. seed, name, circuit code, …)
             to use when saving.
         save_intermediate_circuits:
-            Whether to save the circuit at each iteration.      
+            Whether to save the circuit at each iteration.
+
+    Returns
+    ----------
+        An ``OptimizationRecord`` containing the optimized circuit, the final
+        loss, and a record of the component loss and metric values at each
+        epoch.   
     """
 
     # Set up optimizer kwargs

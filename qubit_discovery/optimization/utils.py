@@ -1,6 +1,5 @@
 """utils.py """
 
-from collections import defaultdict
 import logging
 import os
 from typing import (
@@ -12,15 +11,9 @@ from typing import (
 )
 
 import dill as pickle
-from SQcircuit import (
-    Circuit,
-    Loop,
-    Element,
-    Inductor,
-    Junction,
-    Capacitor
-)
+from SQcircuit import Circuit
 import torch
+from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
@@ -36,21 +29,43 @@ def float_list(ls: List[str]) -> List[float]:
 
 
 # Typing
-SQValType = Union[float, torch.Tensor]
+SQValType = Union[float, Tensor]
 LossFunctionType = Callable[
     [Circuit],
-    Tuple[torch.Tensor, Dict[str, SQValType], Dict[str, SQValType]]
+    Tuple[Tensor, Dict[str, SQValType], Dict[str, SQValType]]
 ]
 
 RecordType = Dict[
-    str, Union[str, List[torch.Tensor], List[Circuit]]
+    str, Union[str, List[Tensor], List[Circuit]]
 ]
+
+
+################################################################################
+# Functions for records.
+################################################################################
 
 @torch.no_grad()
 def init_records(
-    loss_values: Dict[str, List[torch.tensor]],
-    metric_values: Dict[str, List[torch.tensor]]
+    loss_values: Dict[str, Tensor],
+    metric_values: Dict[str, Tensor]
 ) -> Tuple[RecordType, RecordType]:
+    """Initialize a loss and metric record, starting with a set of initial
+    values.
+    
+    Parameters
+    ----------
+        loss_values:
+            A dictionary of initial loss values.
+        metric_values:
+            A dictionary of initital metric values.
+
+    Returns
+    ----------
+        loss_record:
+            A dictionary of loss_name: [list of values for each epoch].
+        metric_record
+            A dictionary of metric_name: [list of values for each epoch].
+    """
     # Init loss record
     loss_record: RecordType = {
         loss_type: [loss_value.detach().numpy()]
@@ -69,9 +84,17 @@ def init_records(
 @torch.no_grad()
 def update_record(
     record: RecordType,
-    values: Dict[str, List[torch.Tensor]]
+    values: Dict[str, List[Tensor]]
 ) -> None:
-    """Updates record based on next iteration of optimization."""
+    """Updates a record based on next epoch of optimization.
+    
+    Parameters
+    ----------
+        record
+            A dictionary of name: [values for each epoch].
+        metric_values:
+            A dictionary of values for the current epoch.
+    """
     for key in values.keys():
         record[key].append(values[key].detach().numpy())
 
@@ -84,6 +107,25 @@ def save_results(
     save_loc: str,
     save_intermediate_circuits=True,
 ) -> None:
+    """Save results from optimization to ``save_loc``.
+
+    Parameters
+    ----------
+        loss_record
+            The loss record from optimization.
+        metric_record:
+            The metric record from optimization.
+        circuit:
+            The current circuit.
+        identifier:
+            A string to use to label the saved results with.
+        save_loc:
+            A path to save the results at.
+        save_intermediate_circuits:
+            Whether to save intermediate circuits. If ``True``, the saved
+            circuit record is appended to with the new ``circuit``; otherwise
+            it is overwritten by ``circuit``.
+    """
     save_records = {'loss': loss_record, 'metrics': metric_record}
 
     for record_type, record in save_records.items():
@@ -106,10 +148,3 @@ def save_results(
     )
     with open(circuit_save_url, write_mode) as f:
         pickle.dump(circuit.picklecopy(), f)
-
-
-class ConvergenceError(Exception):
-    def __init__(self, epsilon):
-        self.epsilon = epsilon
-    def __str__(self):
-        return f'Your circuit did not converge. The computed epsilon was {self.epsilon}.'
