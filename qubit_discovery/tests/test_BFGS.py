@@ -1,4 +1,4 @@
-"""Test Module for BFGS algorithm."""
+"""Test Module for BFGS algorithm. CURRENTLY DEPRECATED"""
 import pytest
 
 import matplotlib.pyplot as plt
