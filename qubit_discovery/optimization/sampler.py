@@ -8,9 +8,14 @@ import torch
 import SQcircuit as sq
 
 from SQcircuit.circuit import Circuit
-from SQcircuit.elements import Capacitor, Element, Inductor, Junction, Loop
+from SQcircuit.elements import (
+    Capacitor,
+    CircuitComponent,
+    Inductor,
+    Junction,
+    Loop
+)
 from SQcircuit.settings import get_optim_mode
-
 
 class CircuitSampler:
     """Class used to randomly sample different circuit configurations with a
@@ -29,12 +34,12 @@ class CircuitSampler:
             in Hertz.
         flux_range:
             A range of external flux values to uniformly sample from for the
-            loop, in units of Phi_0/2π.
+            loop, in units of Phi_0.
         elems_not_to_optimize:
-            A list of element types no to optimize. These are randomly sampled,
-            but then fixed during the optimization procedure (the 
-            ``required_grad`` attribute is set to False). If ``None``, all
-            element types are optimized.
+            An optonal list of element types **not** to optimize. Such elements
+            will be randomly sampled but then fixed during the optimization
+            procedure (the ``required_grad`` attribute is set to False). If
+            ``None``, all element types are optimized.
     """
 
     def __init__(
@@ -43,7 +48,7 @@ class CircuitSampler:
         inductor_range: List[float],
         junction_range: List[float],
         flux_range: List[float],
-        elems_not_to_optimize: Optional[List[Union[Element, Loop]]]=None,
+        elems_not_to_optimize: Optional[List[CircuitComponent]]=None,
     ) -> None:
 
         self.capacitor_range = capacitor_range
@@ -67,22 +72,25 @@ class CircuitSampler:
         ]
 
     @property
-    def bounds(self) -> Dict[Union[Element, Loop], Union[torch.Tensor, List[float]]]:
+    def bounds(self) -> Dict[CircuitComponent, Union[torch.Tensor, List[float]]]:
         """
         Bounds for circuit parameters, as a dictionary of
-        ``element type: (lower bound, upper_bound)``. To match ``SQcircuit``, the
-        units are
-            - Capacitors: Farads
-            - Inductors: Henries
-            - Junctions: 2π*Hz
-            - External flux: Phi_0
+        ``element type: (lower bound, upper_bound)``. To match ``SQcircuit``,
+        the units are
+        - Capacitors: Farads
+        - Inductors: Henries
+        - Junctions: 2π*Hz
+        - External flux: 2π*Phi_0
 
-        The units of junction and external flux differ from those used to
-        initialize the sampler. 
+        Note the units of junction and external flux differ from those used to
+        initialize the sampler, due to ``SQcircuit``.
+
+        If the SQcircuit engine is ``'NumPy'``, the bounds are a list of
+        floats; if it is ``'PyTorch'``, they are Tensors.
         """
 
         # Bounds in new units to represent difference between setting
-        # and getting value in `SQcircuit.`
+        # and getting value in `SQcircuit`.
         flux_range_bounds = [i * 2 * np.pi for i in self.flux_range]
         junction_range_bounds = [i * 2 * np.pi for i in self.junction_range]
 
@@ -165,10 +173,26 @@ class CircuitSampler:
 
         return elem
 
-    def _sample_special_circuit(self, circuit_code):
-        """Sample a symmetric circuit.
+    def _sample_special_circuit(self, circuit_code: str) -> Circuit:
+        """Sample a symmetric circuit. Currently supported circuits are:
+        - ``'transmon'``: A standard transmon (one junction and one capacitor). 
+        - ``'flux_qubit'``: A qubit with three Josephson junctions where two
+        of the edges (capacitor and junction) are identical.
+        - ``'JJJJ_1'``: A qubit with four Josephson junctions where all
+        but one edge are identical.
+        - ``'JJJJ_2'``: A qubit with four Josephson junctions where opposite
+        pairs of edges are identical.
+        
         
         Parameters
+        ----------
+            circuit_code:
+                A string indicating which symmetric circuit.
+
+        Returns
+        ----------
+            A randomply sampled circuit with the topology defined by
+            ``circuit_code``.
         """
         if circuit_code == 'transmon':
             junc_1 = self._get_elem('J', main_loop=True)
@@ -232,7 +256,8 @@ class CircuitSampler:
             }
 
         else:
-            raise ValueError('The circuit code is not supported!')
+            raise ValueError(f"The circuit code {circuit_code} is not "
+                             "supported!")
 
         return sq.Circuit(elements, flux_dist='junctions')
 
@@ -276,7 +301,7 @@ class CircuitSampler:
         j: int,
         elements: dict
     ) -> bool:
-        """Check whether there is a capacitor between nodes i and j.
+        """Check whether there is a capacitor between nodes ``i`` and ``j``.
 
         Parameters
         ----------
@@ -287,6 +312,10 @@ class CircuitSampler:
             elements:
                 A dictionary that contains the circuit's elements at each branch
                 of the circuit.
+
+        Returns
+        ----------
+            ``True`` if there is a capacitor between nodes ``i`` and ``j``.
         """
 
         if (i, j) in elements:
@@ -308,7 +337,7 @@ class CircuitSampler:
         Parameters
         ----------
             n_nodes:
-                An Integer specifying the number of nodes in the circuit.
+                An integer specifying the number of nodes in the circuit.
             elements:
                 A dictionary that contains the circuit's elements at each branch
                 of the circuit.
@@ -336,6 +365,10 @@ class CircuitSampler:
         ----------
             circuit_code:
                 A string specifying the circuit code.
+
+        Returns
+        ----------
+            The index of the final element in the main loop.
         """
         stack = []
         last_index = -1

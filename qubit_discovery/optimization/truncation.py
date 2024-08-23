@@ -20,11 +20,23 @@ logger = logging.getLogger(__name__)
 def get_reshaped_eigvec(
     circuit: Circuit,
     eig_vec_idx: int,
-) -> Tuple[np.ndarray, List[np.ndarray]]:
+) -> List[np.ndarray]:
+    """Returns the component of the ``eig_vec_idx`` eigenvector of ``circuit``
+    in each of the modes.
+
+    Parameters
+    ----------
+        circuit:
+            A ``Circuit`` object.
+        eig_vec_idx:
+            The index of the eigenvector to use.
+
+    Returns
+    ----------
+        A list of the component of the eigenvector in each of the circuit's
+        modes.
     """
-    Returns the eigenvec and maximum magnitudes per mode index of the eigenvectors.
-    """
-    if len(circuit.efreqs) == 0:
+    if len(circuit.evecs) == 0:
         raise CircuitStateError('The circuit must be diagonalized first.')
 
     # Reshape eigenvector dimensions to correspond to individual modes
@@ -34,64 +46,88 @@ def get_reshaped_eigvec(
         eigenvector = circuit.evecs[eig_vec_idx].full()
     eigenvector_reshaped = np.reshape(eigenvector, circuit.m)
 
-    eigvec_mag = np.abs(eigenvector) ** 2
+    # Get the component of the eigenvector's magnitude in each mode
     mode_magnitudes = []
     total_dim = np.shape(eigenvector)[0]
     for mode_idx, mode_size in enumerate(circuit.m):
-      mode_eigvec = np.moveaxis(eigenvector_reshaped, mode_idx, 0)
-      mode_eigvec = np.reshape(mode_eigvec, (mode_size, total_dim // mode_size))
-      M = np.max(np.abs(mode_eigvec)**2, -1)
-      mode_magnitudes.append(M)
+        mode_eigvec = np.moveaxis(eigenvector_reshaped, mode_idx, 0)
+        mode_eigvec = np.reshape(mode_eigvec, (mode_size, total_dim // mode_size))
+        M = np.max(np.abs(mode_eigvec)**2, -1)
+        mode_magnitudes.append(M)
 
-    return eigvec_mag, mode_magnitudes
+    return mode_magnitudes
 
 
 def fit_mode(
-    mode_vector,
-    num_points=15,
+    vector,
     peak_height_threshold=5e-3,
+    both_parities=False,
     axis: Optional[Axes]=None,
-    both_parities=False
 ) -> List[Tuple[float, float, int]]:
-    """
-    For an input vector corresponding to the absolute eigenvector magnitudes
-    for a specific harmonic mode, return the decay constant for an exponential
-    decay fit starting with the last peak of the input.
+    """Given an input vector corresponding to the absolute eigenvector
+    magnitudes for a specific harmonic mode, return the decay constant for an
+    exponential decay fit starting with the last peak of the input.
 
-    To adjust for patterns of variation between odd and even indices,
-    the fit function matches to even/odd parity indices separately and
-    returns the fit parameters corresponding to each parity as a 2-element list.
+    Since eigenstates often have definite parity, when ``both_parities`` is
+    ``True``, the fit is done to even/odd indices separately. Otherwise, the
+    fit is performed to those indices with the same parity as the maximum
+    element in the list.
 
-    If both_parities is false, returns the fit corresponding to those indices
-    with the same parity as the maximum element in the list.
+    Parameters
+    ----------
+        vector:
+            A vector to fit the decay to.
+        peak_height_treshold:
+            The minimum threshold of an entry to allow to be a peak.
+        both_parities:
+            Whether to fit to both even and odd indices of ``vector``,
+            or only the parity with the maximum element.
+        axis:
+            An optional matplotlib axis to plot the fit on.
+
+    Returns
+    ----------
+        A list of tuples ``(decay constant, peak size, peak index)`` for
+        each of the parities. 
     """
 
     def monoExp(x, m, k):
         return m * np.exp(-k * x)
 
-    fit_results = []
+    # Either fit to even and odd indices separately, or just the parity
+    # matching the index with the largest value.
     if both_parities:
         parities = [0, 1]
-        fit_peak_idxs = []
     else:
-        parities = [np.argmax(mode_vector) % 2, ]
-    for parity in parities:
-        fit_points_parity = mode_vector[parity::2]
+        parities = [np.argmax(vector) % 2]
 
+    # Fit an exponential decay to each parity
+    fit_results = []
+    for parity in parities:
+        # Get only entries with specified parity
+        fit_points_parity = vector[parity::2]
+
+        # Find the peaks in the data
         peaks, _ = scipy.signal.find_peaks(
-            # fit_points_parity[:-(num_points-1)],
             fit_points_parity,
             height=peak_height_threshold
         )
+        # Edge case: No peaks found, ensure we can use the first entry
         peaks = np.insert(peaks, 0, 0)
 
-        fit_peak_idx = sorted(peaks)[-1] * 2 + parity
+        # And get the final one
+        fit_peak_idx_parity = sorted(peaks)[-1]
+        # Compute the actual index of the peak, to return later
+        fit_peak_idx = fit_peak_idx_parity * 2 + parity
 
-        fit_points = mode_vector[fit_peak_idx:: 2]
+        # Fit an exponential decay starting with that peak
+        fit_points = fit_points_parity[fit_peak_idx_parity:]
+
         num_points = len(fit_points)
         fit_range = np.arange(0, 2 * num_points, 2)
+        # Choose a smart first guess
         fit_param_guess = (fit_points[0], -np.log(fit_points[-1]) / num_points)
-
+        # And perform the curve fitting
         try:
             params, _ = scipy.optimize.curve_fit(
                 monoExp,
@@ -99,62 +135,194 @@ def fit_mode(
                 fit_points,
                 fit_param_guess
             )
-        except:
+        except RuntimeError:
+            # If cannot fit, just use the guess
             params = fit_param_guess
 
         m, k = params
         fit_results.append((k, m, fit_peak_idx))
 
-    # Plot slowest decaying curve out of the two parities
-    if both_parities:
-        #   k1, k2 = fit_results[0][0], fit_results[1][0]
-        #   k = np.minimum(k1, k2)
-        #   m = fit_results[0][1] if k1 < k2 else fit_results[1][1]
-        k, m, peak_idx = get_slow_fit(fit_results)
-    else:
-        k, m, peak_idx = fit_results[0]
+    # Plot slowest decaying curve out of the two parities if `axis` passed.
     if axis:
+        if both_parities:
+            k, m, peak_idx = get_slow_fit(fit_results)
+        else:
+            k, m, peak_idx = fit_results[0]
         axis.plot(peak_idx + fit_range, monoExp(fit_range, m, k), 'k')
 
     return fit_results
 
 
 def get_slow_fit(
-    fit_results, 
+    fit_results: List[Tuple[float, float, int]],
     ignore_threshold=5e-3
 ) -> Tuple[float, float, float]:
+    """Given a list of fit results from ``fit_mode()``, return the one with the
+    slowest decay whose peak is at least ``ignore_threshold``.
+    
+    Parameters
+    ----------
+        fit_results
+            A list of fit results as computed by ``fit_mode``.
+        ignore_threshold:
+            The minimum size of a peak.
 
-    if len(fit_results) == 1:
+    Returns
+    ----------
+        The slowest decaying curve whose peak is at least ``ignore_threshold``.
+        If all results are below the threshold, it logs a warning and returns
+        the first result.
+    """
+    res_above_threshold = [res for res in fit_results
+                           if res[1] >= ignore_threshold]
+    if res_above_threshold == []:
+        logging.warning('All fit results were below threshold. Returning '
+                        'the first result.')
         return fit_results[0]
 
-    else:
-        k1, m1, peak1 = fit_results[0]
-        k2, m2, peak2 = fit_results[1]
+    # Sort the results in ascending order by decay constant
+    res_above_threshold.sort(key = lambda res: res[0])
 
-        if m1 < ignore_threshold:
-            return k2, m2, peak2
-        elif m2 < ignore_threshold:
-            return k1, m1, peak1
-        elif k1 < k2:
-            return k1, m1, peak1
-        else:
-            return k2, m2, peak2
+    # Return result with the smallest constant (slowest-decaying)
+    return res_above_threshold[0]
+
+
+def charge_mode_heuristic(
+    circuit: Circuit,
+    n_stds: int = 3
+) -> List[int]:
+    """Calculate truncation numbers for the charge modes of a circuit by
+    approximating each mode as an uncoupled harmonic oscillator and computing
+    the width of the (Gaussian) ground state in the number basis.
+
+    Currently only supports a single charge mode.
+    
+    Parameters
+    ----------
+        circuit:
+            A ``Circuit`` object to provide truncation numbers for the charge
+            modes.
+        n_stds:
+            The number of standard deviations to include in the truncated
+            Hilbert space.
+
+    Returns
+    ----------
+        List of truncation numbers for each charge mode of ``circuit``.
+    """
+    charge_modes_idxs = np.flatnonzero(circuit.omega == 0)
+
+    if len(charge_modes_idxs) == 0:
+        return []
+    if len(charge_modes_idxs) == 1:
+        charge_mode_idx = charge_modes_idxs[0]
+        EC_eff = (
+            (unt.e ** 2) / (2 * np.pi * unt.hbar) / 1e9
+            * circuit.cInvTrans[charge_mode_idx, charge_mode_idx]
+        )
+
+        EJ_eff = 0
+        for _, el, _, w_id in circuit.elem_keys[Junction]:
+            EJ = np.squeeze(sqf.to_numpy(el.get_value('GHz'))) / 2 / np.pi
+            EJ_eff += EJ * (circuit.wTrans[w_id, charge_mode_idx]) ** 2
+
+        sigma = (EJ_eff / (8 * EC_eff)) ** (1 / 4)
+        charge_truncation = int(n_stds * sigma)
+
+        return [charge_truncation]
+    else:
+        raise NotImplementedError('The charge mode heuristic currently only '
+                                  'supports circuits with one charge mode.')
+
+
+def dimension_to_charge_trunc(max_dim: int) -> int:
+    """Convert the maximum dimension of a Hilbert space to the appropriate
+    truncation number for a charge mode.
+    
+    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
+    space dimension is ``2*m - 1``.
+
+    Parameters
+    ----------
+        max_dim:
+            The maximum dimension for the Hilbert space.
+
+    Returns
+    ----------
+        The largest truncation number such that the resulting Hilbert space
+        dimension is no greater than ``max_dim``.
+    """
+
+    return int(np.floor((max_dim + 1) / 2))
+
+
+def charge_trunc_to_dimension(trunc: int) -> int:
+    """Convert the truncation number for a charge mode to the dimension
+    of the Hilbert space.
+    
+    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
+    space dimension is ``2*m - 1``.
+
+    Parameters
+    ----------
+        trunc:
+            The truncation number.
+
+    Returns
+    ----------
+        The Hilbert space dimension of the corresponding charge mode.
+    """
+
+    return 2 * trunc - 1
 
 
 def trunc_num_heuristic(
     circuit: Circuit,
     eig_vec_idx: int = 0,
-    K: int=1000,
-    min_trunc: int=1,
-    charge_mode_cutoff: int=12,
-    axes: Optional[Axes]=None
+    total_trunc_num: int = 1000,
+    min_trunc_harmonic: int = 1,
+    min_trunc_charge: int = 1,
+    max_trunc_charge: Optional[int] = None,
+    use_charge_heuristic=False,
+    axes: Optional[Axes] = None
 ) -> List[int]:
+    """For a diagonalized circuits, suggests a set of truncation numbers for
+    rediagonalization that will maximize the likelihood of convergence,
+    as defined in ``circuit.check_convergence()``.
+
+    If ``use_charge_heuristic`` is ``False``, the truncation numbers for the
+    charge modes are set to ``K**(1/circuit.n)``, subject to the values
+    of ``min_trunc_charge`` and ``max_trunc_charge``.
+
+    Parameters
+    ----------
+        circuit:
+            A ``Circuit`` object to provide truncation numbers for.
+        eig_vec_idx:
+            The index of the eigenvector to use in the harmonic mode heuristic.
+        total_trunc_num:
+            The maximum Hilbert space dimension.
+        min_trunc_harmonic:
+            The minimum truncation number for harmonic modes to have.
+        min_trunc_charge:
+            The minimum truncation number for charge modes to have. Note a
+            truncation number ``m`` for a charge mode results in a Hilbert space
+            of dimension ``2*m - 1``.
+        max_trunc_charge:
+            An optional maximum truncation number for charge modes.
+        use_charge_heuristic:
+            Whether to use the charge mode heuristic, or otherwise assign the
+            charge mode truncation numbers evenly.
+        axes:
+            Optionally, a set of Matplotlib Axes to plot the exponential fits
+            during the charge mode heuristic.
+
+    Returns
+    ----------
+        List of truncation numbers for each mode of ``circuit``.
     """
-    For a diagonalized circuit with internal trunc numbers, suggests a set of
-    trunc numbers for rediagonalization that will maximize likelihood of
-    convergence, defined under the `convergence_test` function.
-    """
-    if len(circuit.efreqs) == 0:
+    # Perform checks on parameters
+    if len(circuit.evecs) == 0:
         raise CircuitStateError('The circuit must be diagonalized first.')
     if axes is not None:
         if len(axes) < len(circuit.omega):
@@ -162,100 +330,131 @@ def trunc_num_heuristic(
                 'Number of axes for fitting plots should match or exceed '
                 'number of modes'
             )
+    if total_trunc_num < 1:
+        raise ValueError('The maximum dimension of the Hilbert space must '
+                         'be an integer >= 1.')
+    if min_trunc_harmonic < 1:
+        raise ValueError('Harmonic modes must have a minimum truncation number '
+                         'of at least 1.')
+    if min_trunc_charge  < 1:
+        raise ValueError('Charge modes must have a minimum truncation number '
+                         'of at least 1.')
 
-    '''# If circuit already passes convergence test, no need to run heuristic fit
-    converged, eps = test_convergence(circuit, eig_vec_idx=eig_vec_idx)
-    if converged:
-        return list(circuit.trunc_nums)'''
+    # Set up trunc nums and list of charge, harmonic modes
+    trunc_nums = np.zeros_like(circuit.trunc_nums)
+    harmonic_modes = circuit.omega != 0
+    n_h = np.count_nonzero(harmonic_modes)
+    charge_modes = circuit.omega == 0
+    n_c = np.count_nonzero(charge_modes)
 
-    trunc_nums = np.zeros_like(circuit.m)
-    harmonic_modes = np.array(circuit.m)[circuit.omega != 0]
-    num_charge_modes = np.sum(circuit.omega == 0)
-    # charge_mode_cutoff = trunc_num_average = np.ceil(K ** (1 / len(circuit.omega)))
-
-
-
-    # Assign charge modes
-    '''if num_charge_modes == 1:
-        num_standard_deviations = 3
-        charge_mode_idx = circuit.n - 1
-        EC_eff = (unt.e ** 2) / (2 * np.pi * unt.hbar) / 1e9 * circuit.cInvTrans[charge_mode_idx, charge_mode_idx]
-        EJ_eff = 0
-        for _, el, B_idx, W_idx in circuit.elem_keys[Junction]:
-            EJ = np.squeeze(sqf.numpy(el.get_value())) / 2 / np.pi
-            EJ_eff += EJ * (circuit.wTrans[W_idx, charge_mode_idx]) ** 2
-        EJ_eff /= 1e9
-        sigma = (EJ_eff / (8 * EC_eff)) ** (1 / 4)
-        charge_truncation = num_standard_deviations * sigma
-        charge_truncation = min(charge_truncation, charge_mode_cutoff)
-
-        trunc_nums[circuit.omega == 0] = int(charge_truncation)
-        K = K / min_trunc ** len(harmonic_modes) / charge_truncation
-
-    else:'''
-    trunc_nums[circuit.omega == 0] = charge_mode_cutoff
-    # Ensure each mode has at least `min_trunc` by allocating truncation
-    # numbers as proportion of `min_trunc`
-    charge_dimensionality = 2 * charge_mode_cutoff - 1
-    K = K / min_trunc ** len(harmonic_modes) / charge_dimensionality ** num_charge_modes
-
-    _, mode_magnitudes = get_reshaped_eigvec(
-        circuit,
-        eig_vec_idx,
+    # Check that `total_trunc_num` is large enough
+    min_dim_req = (
+        charge_trunc_to_dimension(min_trunc_charge) ** n_c
+        * min_trunc_harmonic ** n_h
     )
-    # harmonic_indices = np.nonzero(circuit.omega)[0]
-    # harmonic_mode_magnitudes = [mode_magnitudes[int(harmonic_idx)] for harmonic_idx in harmonic_indices]
+    if min_dim_req > total_trunc_num:
+        raise ValueError('The `total_trunc_num` passed is not large enough to '
+                         'provide each mode the minimum truncation numbers '
+                         'requested.')
 
-    k = np.zeros_like(harmonic_modes, dtype=np.float64)
-    d = np.zeros_like(harmonic_modes, dtype=np.float64)
+    # Assign charge mode truncation numbers
+    K = total_trunc_num
+    if n_c > 0:
+        if use_charge_heuristic:
+            trunc_nums[charge_modes] = charge_mode_heuristic(circuit)
+        else:
+            average_dim = K ** (1/len(trunc_nums))
+            trunc_nums[charge_modes] = dimension_to_charge_trunc(average_dim)
 
-    for mode_idx, mode in enumerate(circuit.omega):
-        axis = axes[mode_idx] if axes is not None else None
-        if mode != 0:
+        # Cut off truncation numbers, if necessary
+        if max_trunc_charge is not None:
+            trunc_nums[charge_modes & (trunc_nums > max_trunc_charge)] = max_trunc_charge
+
+        trunc_nums[charge_modes & (trunc_nums < min_trunc_charge)] = min_trunc_charge
+
+        # Compute the Hilbert space dimension remaining for harmonic modes
+        charge_space_dim = np.prod(charge_trunc_to_dimension(trunc_nums[charge_modes]))
+        K /= charge_space_dim
+
+        if K < (min_trunc_harmonic ** n_h):
+            raise ValueError(
+                'The charge truncation numbers were too large to provide each '
+                f'harmonic mode a truncation number >={min_trunc_harmonic}. '
+                'Please pass a smaller value for `max_trunc_charge`.'
+            )
+
+    # Assign harmonic mode truncation numbers
+    if n_h > 0:
+        # We ensure each mode has at least `min_trunc_harmonic` by allocating
+        # truncation numbers as proportion of it.
+        K_eff = K / (min_trunc_harmonic ** n_h)
+
+        # Compute the component of the state in each of the mode
+        mode_magnitudes = get_reshaped_eigvec(
+            circuit,
+            eig_vec_idx,
+        )
+
+        decay_constants = np.zeros(n_h, dtype=np.float64)
+        peak_locations = np.zeros(n_h, dtype=np.float64)
+
+        # Fit exponential decays to each mode
+        for mode_idx in np.flatnonzero(harmonic_modes):
+            axis = axes[mode_idx] if axes is not None else None
             fit_results = fit_mode(mode_magnitudes[mode_idx],
                                    both_parities=True,
                                    axis=axis)
             ki, _, di = get_slow_fit(fit_results)
-            k[mode_idx] = ki
-            d[mode_idx] = di
 
-    if all([ki < 0 for ki in k]):
-        k = np.array([1 for _ in range(len(k))])
+            decay_constants[mode_idx] = ki
+            peak_locations[mode_idx] = di
 
-    k[k < 0] = np.mean(k[k > 0])
+        # Allocate truncation numbers inverse to decay constants
+        harmonic_trunc_nums = (
+            np.power(K_eff * np.prod(decay_constants), 1 / n_h)
+            / decay_constants
+        )
 
-    # Allocate relative trunc number ratio based on decay constant ratio
-    ratio = np.power(np.prod(k), 1 / len(k)) / k
+        # Shift by relative peaks
+        harmonic_trunc_nums += peak_locations
+        # and renormalize to be below K.
+        harmonic_trunc_nums *= np.power(K_eff / np.prod(harmonic_trunc_nums),
+                                        1 / n_h)
 
-    # Weight [mi, ] such that mi/mj=kj/ki, *mi=K
-    mode_results = np.power(K, 1 / len(harmonic_modes)) * ratio
+        # Edge case: For mode numbers less than 1, rescale to 1 and rescale
+        # other mode numbers to keep total product constant.
+        while np.any(harmonic_trunc_nums < 1):
+            small_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums <= 1]
+            large_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums > 1]
+            rescale_factor = np.power(np.prod(small_trunc_nums),
+                                      1 / len(large_trunc_nums))
+            harmonic_trunc_nums[harmonic_trunc_nums > 1] *= rescale_factor
+            harmonic_trunc_nums[harmonic_trunc_nums <= 1] = 1
 
-    # Shift by relative peaks
-    mode_results += d
-    mode_results *= np.power(K / np.prod(mode_results), 1 / len(harmonic_modes))
+        # Edge case: If a trunc number is greater than K_eff, set it to K_eff
+        harmonic_trunc_nums = np.minimum(harmonic_trunc_nums, K_eff)
 
-    # Edge case: If mode number less than 1, rescale to 1 and rescale other mode numbers
-    # to keep total product constant
-    small_mode_results = mode_results[mode_results < 1]
-    large_mode_results = mode_results[mode_results >= 1]
-    rescale_factor = np.power(np.prod(small_mode_results), 1 / len(large_mode_results))
-    mode_results[mode_results >= 1] *= rescale_factor
-    mode_results[mode_results < 1] = 1
+        # Round to nearest integer and assign harmonic modes. Multiply by
+        # `min_trunc_harmonic` because we allocated as a proportion of that.
+        harmonic_trunc_nums = np.floor(
+            harmonic_trunc_nums * min_trunc_harmonic
+        ).astype(int)
 
-    # Edge case: If a trunc number is greater than K, set it to K
-    mode_results = np.minimum(mode_results, K)
+        # Because everything is integers, it is possible in the process of
+        # taking the floor we cut off too much. Thus, now maximize each
+        # individual mode cutoff while ensuring product less than K.
+        for idx in range(len(harmonic_trunc_nums)):
+            curr_dim = np.prod(harmonic_trunc_nums)
+            if curr_dim == K:
+                break
 
-    # Round to nearest integer and assign harmonic modes
-    harmonic_mode_values = np.floor(np.real(mode_results * min_trunc))
+            harmonic_trunc_nums[idx] += np.floor(
+                (K - curr_dim) 
+                * harmonic_trunc_nums[idx]
+                / curr_dim,
+            ).astype(int)
 
-    # Maximize each individual mode cutoff while ensuring product less than K
-    for mode_idx in range(len(harmonic_mode_values)):
-        max_harmonic_mode_values = harmonic_mode_values.copy()
-        while np.prod(max_harmonic_mode_values) <= K:
-            harmonic_mode_values = max_harmonic_mode_values.copy()
-            max_harmonic_mode_values[mode_idx] += 1
-
-    trunc_nums[circuit.omega != 0] = harmonic_mode_values
+        trunc_nums[harmonic_modes] = harmonic_trunc_nums
 
     return list(trunc_nums)
 
@@ -263,57 +462,63 @@ def trunc_num_heuristic(
 def assign_trunc_nums(
     circuit: Circuit,
     total_trunc_num: int,
-    axes=None,
-    min_trunc=1
+    min_trunc_harmonic: int = 1,
+    min_trunc_charge: int = 1,
+    max_trunc_charge: Optional[int] = None,
+    use_charge_heuristic=False,
+    axes: Optional[Axes] = None
 ) -> List[int]:
-    """
-    Heuristically re-assign truncation numbers for a circuit with one
-    or two modes (not yet implemented for more).
+    """Heuristically re-assign truncation numbers for a circuit with multiple
+    modes. (In the case of a single mode, it simply assigns the truncation
+    number to ``total_trunc_num``.)
 
     Parameters
     ----------
         circuit:
-            Circuit to assign truncation numbers to
+            A ``Circuit`` object to provide truncation numbers for.
         total_trunc_num:
-            Maximum allowed total truncation number
+            The maximum Hilbert space dimension.
+        min_trunc_harmonic:
+            The minimum truncation number for harmonic modes.
+        min_trunc_charge:
+            The minimum truncation number for charge modes.
+        max_trunc_charge:
+            An optional maximum truncation number for charge modes.
+        use_charge_heuristic:
+            Whether to use the charge mode heuristic, or just assign the
+            charge mode truncation numbers evenly.
+        axes:
+            Optionally, a set of Matplotlib Axes to plot the exponential fits
+            during the charge mode heuristic.
+
     Returns
     ----------
         trunc_nums:
-            List of truncation numbers for each mode of circuit
+            List of truncation numbers for each mode of ``circuit``.
     """
     if len(circuit.m) == 1:
         logger.info('re-allocate truncation numbers (single mode)')
         # Charge mode
         if sum(circuit.omega) == 0:
-            charge_allocation = int(np.floor((1 / 2) * (total_trunc_num - 1)))
-            circuit.set_trunc_nums([charge_allocation, ])
+            circuit.set_trunc_nums([dimension_to_charge_trunc(total_trunc_num),])
         # Harmonic mode
         else:
             circuit.set_trunc_nums([total_trunc_num, ])
-        return [total_trunc_num, ]
-
-    # circuit that has only charge modes
-    elif len(circuit.m) == sum(circuit.omega == 0):
-        logger.info(
-            'keep equal truncation numbers for '
-            'all modes (circuit with only charge modes)'
-        )
-        num_charge_modes = len(circuit.m)
-        trunc_num_average = total_trunc_num ** (1 / num_charge_modes)
-        charge_allocation = int(np.floor((1 / 2) * (trunc_num_average - 1)))
-        return [charge_allocation for _ in range(num_charge_modes)]
-
     else:
         logger.info('re-allocate truncation numbers (2+ modes)')
         trunc_nums = trunc_num_heuristic(
             circuit,
-            K=total_trunc_num,
+            total_trunc_num=total_trunc_num,
             eig_vec_idx=1,
-            min_trunc=min_trunc,
+            min_trunc_harmonic=min_trunc_harmonic,
+            min_trunc_charge=min_trunc_charge,
+            max_trunc_charge=max_trunc_charge,
+            use_charge_heuristic=use_charge_heuristic,
             axes=axes
         )
         circuit.set_trunc_nums(trunc_nums)
-        return trunc_nums
+
+    return circuit.trunc_nums
 
 
 def test_convergence(
@@ -321,40 +526,69 @@ def test_convergence(
     eig_vec_idx: int = 0,
     t: int = 10,
     threshold: float = 1e-5,
+    test_charge_modes = False
 ) -> Tuple[bool, List[float]]:
-    """
-    Test convergence of a circuit with one or two modes (test for more modes
-    not yet implemented).
+    """Test convergence of a circuit.
 
-    Requires the last `t` (if available) elements corresponding to
-    each mode individually of the `eig_vec_idx`th eigenvector are each on
-    average less than `threshold`.
+    Requires the last ``t`` (if available) entries corresponding to
+    each mode individually of the ``eig_vec_idx`` eigenvector are on
+    average less than ``threshold``.
 
-    Returns a boolean of whether the convergence test passed, and a list
-    of the average values of the last `t` components for each mode.
+    By default this does **not** test charge modes, since this convergence test
+    is written with harmonic modes (exponentially decaying magnitudes) in mind.
+
+    Parameters
+    ----------
+        circuit:
+            Circuit to test convergence of. Must be diagonalized.
+        eig_vec_idx:
+            The index of the eigenvector to use to check convergence.
+        t:
+            The number of entries of the eigenvector to use to check
+            convergence. Must be at least 2.
+        threshold:
+            The maximum for the last ``t`` entries of the eigenvector.
+        test_charge_modes:
+            Whether to test the charge modes (False by default).
+
+    Returns
+    ----------
+        is_converged:
+            A boolean of whether the circuit converged.
+        epsilons:
+            The average values of the last ``t`` components in each mode.
     """
     if len(circuit.efreqs) == 0:
         raise CircuitStateError('The circuit must be diagonalized first.')
+    if np.any(np.array(circuit.m) < 4):
+        raise ValueError('In order to check both parities, each mode must '
+                         'have a dimension >= 4.')
+    if t < 2:
+        raise ValueError('The value for `t` must be at least 2.')
 
-    eigvec_mag, mode_magnitudes = get_reshaped_eigvec(
+    mode_magnitudes = get_reshaped_eigvec(
         circuit,
         eig_vec_idx
     )
 
+    # Get the last `t` entries of the component of the eigenvector in each mode.
     y = [M[-t:] for M in mode_magnitudes]
-    assert_message = "Need at least 4 modes to check both parities"
-    assert all([len(yi) >= 4 for yi in y]), assert_message
-    epsilon = []
+
+    # Average them. If there are fewer than `t` entires, only average the last
+    # two (to avoid averaging the whole component).
+    epsilons = []
     for yi in y:
         if len(yi) <= t:
-            epsilon_i = (yi[-1] + yi[-2]) / 2
+            epsilon_i = np.average(yi[-2:])
         else:
             epsilon_i = np.average(yi)
-        epsilon.append(epsilon_i)
-    for mode_idx, epsilon_i in enumerate(epsilon):
-        # Exclude charge modes (for now) as they are fixed for a given K
-        if circuit.omega[mode_idx] != 0 and epsilon_i > threshold:
-            return False, epsilon
-    # if any([epsilon_i > threshold for epsilon_i in epsilon]):
-    #     return False, epsilon
-    return True, epsilon
+        epsilons.append(epsilon_i)
+    # epsilons = [np.average(yi) for yi in y]
+
+    for mode_idx, epsilon_i in enumerate(epsilons):
+        if epsilon_i > threshold:
+            if circuit.omega[mode_idx] == 0 and not test_charge_modes:
+                continue
+            return False, epsilons
+
+    return True, epsilons
