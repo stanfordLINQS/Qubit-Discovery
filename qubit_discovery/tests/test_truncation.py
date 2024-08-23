@@ -47,15 +47,15 @@ def test_JJJ_even():
         }
     )
 
-    K = 700
+    K = 1000
     circuit.truncate_circuit(K)
-    assert circuit.trunc_nums == [13, 13]
+    assert circuit.trunc_nums == [16, 16]
 
     circuit.diag(N_EIG)
 
     qd.optimization.assign_trunc_nums(circuit, total_trunc_num=K)
 
-    assert circuit.trunc_nums == [13, 13]
+    assert circuit.trunc_nums == [16, 16]
 
 
 def build_paper_circuit():

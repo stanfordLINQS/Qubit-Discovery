@@ -9,25 +9,24 @@
 | [**Usage**](##Usage)
 | [**Installation**](##Installation)
 | [**Contribution**](##Contribution)
-| [**License**](##License)
 
 ## Introduction
 
-Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting qubits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python package. It provides a Python package `qubit_discovery` implementing loss functions and optimization algorithms, and a set of scripts using it in a reproducible workflow for parallelized optimization runs.
+Qubit-Discovery is a set of software tools to perform gradient-based optimization of superconducting circuits using the [`SQcircuit`](https://github.com/stanfordLINQS/SQcircuit) Python package, with a special focus on qubit design. It provides a Python package, `qubit-discovery`, implementing loss functions and optimization algorithms, and a set of scripts using it in a reproducible workflow for parallelized optimization runs.
 
-With these tools, superconducting qubits can be optimized over the values of their elements for metrics such as decoherence time, anharmonicity, qubit frequency, or other user-defined targets.
+With these tools, superconducting circuits can be optimized over the values of their elements for metrics such as decoherence time, anharmonicity, qubit frequency, or other user-defined targets.
 
-A description of the theory and example usage is provided in the following paper:
+A description of the theory and example application (employing the provided scripts) is provided in the following paper:
 > TODO
 
 ## Usage
 
-### `qubit_discovery`
+### `qubit-discovery`
 
-The `qubit_discovery` module provides the basic ingredients for running optimization with `SQcircuit`. The `losses` submodule implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` submodule implements optimization algorithms (SGD and BFGS), utilities to set truncation numbers, and a qubit sampler.
+The `qubit-discovery` package provides the basic ingredients for running optimization with `SQcircuit`. The `losses` submodule implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` submodule implements optimization algorithms (SGD, BFGS, and other PyTorch optimizers), utilities to set truncation numbers, and a qubit sampler.
 
 See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features.
-- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) provides a quick demo using the package to optimize the $T_2$ time, qubit frequency, and anharmonicity of a transmon, with only a few lines of code.
+- [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) provides a quick demo on how to use `qubit-discovery` to optimize the $T_2$ time, qubit frequency, and anharmonicity of a transmon, in only a few lines of code.
 - [`QD_overview.ipynb`](tutorials/QD_overview.ipynb) gives an introduction to the core functionality of the package.
 - [`QD_advanced-features.ipynb`](tutorials/QD_advanced-features.ipynb) shows the advanced features and customization possible.
 
@@ -42,13 +41,13 @@ For a detailed description of this workflow, see [`parallel_optimization.md`](tu
 
 ## Installation
 
-To install the `qubit_discovery` package, download from  PyPI:
+To install the `qubit-discovery` package, download from  PyPI:
 ```
-pip install qubit_discovery
+pip install qubit-discovery
 ```
 
-To use the provided scripts, after installing the `qubit_discovery` package clone the `Qubit-Discovery` repository and run with Python >=3.9. 
+To use the provided scripts, after installing the `qubit-discovery` package clone the `Qubit-Discovery` repository and run with Python >=3.9. 
 
 ## Contribution
 
-## License
+We welcome contributions to the develoment of Qubit-Discovery! Please feel free to fork the repository and send pull requests, or file bug reports on the [issues](https://github.com/stanfordLINQS/Qubit-Discovery/issues) page. All code contributions are acknowledged in the contributors' section below.

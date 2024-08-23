@@ -208,19 +208,6 @@ def main() -> None:
     # fig.add_gridspec(nrows=3, height_ratios=[2, 1, 1])
 
     ########################################################################
-    # Test baseline truncation numbers.
-    ########################################################################
-
-    # baseline_trunc_nums = np.array(circuit.truncate_circuit(
-    #     int(parameters['K']),
-    #     heuristic=True
-    # ))
-    # baseline_trunc_nums[baseline_trunc_nums < 4] = 4
-    # baseline_trunc_nums = list(baseline_trunc_nums)
-    # print(f"baseline_trunc_nums: {baseline_trunc_nums}")
-    # evaluate_trunc_number(circuit, baseline_trunc_nums, axes[1, 2])
-
-    ########################################################################
     # Test even distribution of truncation numbers.
     ########################################################################
 
@@ -234,7 +221,7 @@ def main() -> None:
     )
 
     # Plot mode magnitudes used in heuristic test (up to three modes)
-    _, mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
+    mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
     for mode_magnitude_idx in range(min(3, len(mode_magnitudes))):
         plot_mode_magnitudes(
             mode_magnitudes[mode_magnitude_idx],
@@ -245,19 +232,20 @@ def main() -> None:
     # Test heuristic truncation numbers.
     ########################################################################
 
-    heuristic_trunc_nums = np.array(assign_trunc_nums(
+    heuristic_trunc_nums = assign_trunc_nums(
         circuit,
         int(parameters['K']),
         axes=axes[:, 0],
-        min_trunc=4)
+        min_trunc_harmonic=4,
+        min_trunc_charge=12,
+        use_charge_heuristic=False
     )
-    heuristic_trunc_nums = list(heuristic_trunc_nums)
     heuristic_passed = evaluate_trunc_number(
         circuit, heuristic_trunc_nums, axes[2, 2]
     )
 
     # Plot mode magnitudes used in heuristic test (up to three modes)
-    _, mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
+    mode_magnitudes = get_reshaped_eigvec(circuit, eig_vec_idx=1)
     for mode_magnitude_idx in range(min(3, len(mode_magnitudes))):
         print(
             f"mode magnitudes: {mode_magnitudes[mode_magnitude_idx].shape}"
@@ -316,9 +304,7 @@ def main() -> None:
         f'summary_{save_suffix}.txt'
     )
 
-    with open(
-            summary_save_url, 'w'
-    ) as f:
+    with open(summary_save_url, 'w') as f:
         f.write(test_summary)
     f.close()
 
