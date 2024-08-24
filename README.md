@@ -23,7 +23,7 @@ A description of the theory and example application (employing the provided scri
 
 ### `qubit-discovery`
 
-The `qubit-discovery` package provides the basic ingredients for running optimization with `SQcircuit`. The `losses` submodule implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` submodule implements optimization algorithms (SGD, BFGS, and other PyTorch optimizers), utilities to set truncation numbers, and a qubit sampler.
+The `qubit-discovery` package provides the basic ingredients for running optimization with `SQcircuit`. The `losses` subpackage implements functions to evaluate qubit metrics (anharmonicity, decoherence time, …) and utilities to build loss functions out of them. The `optimization` subpackage implements optimization algorithms (SGD, BFGS, and other PyTorch optimizers), utilities to set truncation numbers, and a qubit sampler.
 
 See the notebooks in the [`tutorials`](tutorials/) directory for instructions on how to use these features.
 - [`QD_transmon-optim.ipynb`](tutorials/QD_transmon-optim.ipynb) provides a quick demo on how to use `qubit-discovery` to optimize the $T_2$ time, qubit frequency, and anharmonicity of a transmon, in only a few lines of code.
