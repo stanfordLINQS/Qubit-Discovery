@@ -1,7 +1,7 @@
 import SQcircuit as sq
 
 import qubit_discovery as qd
-from qubit_discovery.optimization.truncation import (
+from qubit_discovery.optim.truncation import (
     assign_trunc_nums,
     test_convergence as convergence_test # rename so pytest ignores
 )
@@ -26,7 +26,7 @@ def test_JLL():
     assert circuit.trunc_nums == [26, 26]
     assert not circuit.check_convergence(t=5)[0], 'Circuit should not converge'
 
-    qd.optimization.assign_trunc_nums(circuit, total_trunc_num=K)
+    qd.optim.assign_trunc_nums(circuit, total_trunc_num=K)
     circuit.diag(N_EIG)
 
     assert circuit.trunc_nums == [9, 77]
@@ -53,7 +53,7 @@ def test_JJJ_even():
 
     circuit.diag(N_EIG)
 
-    qd.optimization.assign_trunc_nums(circuit, total_trunc_num=K)
+    qd.optim.assign_trunc_nums(circuit, total_trunc_num=K)
 
     assert circuit.trunc_nums == [16, 16]
 

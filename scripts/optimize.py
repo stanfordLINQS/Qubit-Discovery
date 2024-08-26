@@ -34,14 +34,17 @@ import torch
 import numpy as np
 
 import qubit_discovery as qd
-from qubit_discovery.optimization import run_SGD, run_BFGS
-from qubit_discovery.losses import build_loss_function
-from qubit_discovery.optimization.sampler import CircuitSampler
-from qubit_discovery.optimization.utils import float_list
+from qubit_discovery import (
+    build_loss_function,
+    CircuitSampler,
+    run_BFGS,
+    run_SGD
+)
+from qubit_discovery.optim.utils import float_list
 import SQcircuit as sq
 
-from utils import load_final_circuit, add_stdout_to_logger
-from inout import load_yaml_file, add_command_line_keys, Directory
+from utils import add_stdout_to_logger, load_final_circuit
+from inout import add_command_line_keys, Directory, load_yaml_file
 
 ################################################################################
 # General Settings.

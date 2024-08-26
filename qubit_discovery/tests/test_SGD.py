@@ -7,7 +7,7 @@ import SQcircuit as sq
 
 from SQcircuit import Circuit
 
-from qubit_discovery.optimization import run_SGD
+from qubit_discovery import run_SGD
 from qubit_discovery.losses.loss import calculate_loss_metrics
 from qubit_discovery.tests.conftest import (
     get_fluxonium,

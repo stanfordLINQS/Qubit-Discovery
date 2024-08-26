@@ -11,13 +11,12 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch import Tensor
 from tqdm import trange
 
+from .exceptions import ConvergenceError
+from .truncation import assign_trunc_nums, test_convergence
 from .reparameterization import (
     get_alpha_params_from_circuit_params,
     get_circuit_params_from_alpha_params
 )
-
-from .exceptions import ConvergenceError
-from .truncation import assign_trunc_nums, test_convergence
 from .utils import (
     init_records,
     LossFunctionType,

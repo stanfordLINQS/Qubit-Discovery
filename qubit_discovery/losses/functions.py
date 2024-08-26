@@ -17,7 +17,7 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
-# NOTE: All functions treat the input `circuit` as const, at least
+# NOTE: All functions must treat the input `circuit` as const, at least
 # in effect.
 
 def first_resonant_frequency(circuit: Circuit) -> SQValType:

@@ -5,8 +5,10 @@ import pytest
 import SQcircuit as sq
 import torch
 
-from qubit_discovery.optimization import run_BFGS
-from qubit_discovery.losses import build_loss_function
+from qubit_discovery import (
+    build_loss_function,
+    run_BFGS
+)
 from qubit_discovery.tests.conftest import (
     get_fluxonium,
     get_bounds,

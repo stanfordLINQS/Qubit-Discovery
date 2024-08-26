@@ -7,7 +7,7 @@ import numpy as np
 from SQcircuit import Circuit
 from SQcircuit.settings import set_optim_mode
 
-from qubit_discovery.optimization.sampler import CircuitSampler
+from qubit_discovery import CircuitSampler
 
 
 def test_convergence():

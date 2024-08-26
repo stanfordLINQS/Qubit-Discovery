@@ -10,12 +10,13 @@ To ensure replicability, all metadata about the optimization is recorded in a YA
 - `name`: A unique identifier for the optimization run.
 - `K`: The total truncation number used for circuit quantization.
 - `epochs`: The maximum number of optimization iterations to perform.
-- `num_eigenvalues`: The number of eigenvalues to calculate during optimization.
+- `num_eigenvalues`: The number of eigenvalues to calculate during diagonalization.
 - `capacitor_range`: Range of capacitor values in Farads, specified as `[min, max]`.
-- `inductor_range`: List of floats. Range of inductor values in Henries, specified as `[min, max]`.
-- `junction_range`: List of floats. Range of junction frequencies in radians per second, specified as `[min, max]`.
-- `use_losses`: Specifies how to construct the loss function. A list of metrics is specified as `metric: weight` pairs, and the total loss function is constructed by $\mathcal{L} = \sum \text{weight} \times \text{metric}(\text{circuit})$. The available metrics can be found by calling `qubit_discovery.losses.get_all_metrics()`. 
-- `use_metrics`: List of metrics to calculate during optimization, but not to include in loss function. Useful if you want to track how something evolves during optimization, but don't want to optimize _for_ it. The available metrics can found by calling `qubit_discovery.losses.get_all_metrics()`.
+- `inductor_range`: Range of inductor values in Henries, specified as `[min, max]`.
+- `junction_range`: Range of junction frequencies in Hertz, specified as `[min, max]`.
+- `flux_range`: Range of values for external flux in units of $\Phi_0$, specified as `[min, max]`.
+- `use_losses`: Defines how to construct the loss function. A list of metrics is specified as `metric: weight` pairs, and the total loss function is constructed by $\mathcal{L} = \sum \text{weight} \times \text{metric}(\text{circuit})$. The available metrics can be found by calling `qubit_discovery.get_all_metrics()`. 
+- `use_metrics`: List of metrics to calculate during optimization, but not to include in loss function. Useful if you want to track how something evolves during optimization, but don't want to optimize _for_ it. The available metrics can found by calling `qubit_discovery.get_all_metrics()`.
 
 An example YAML file is provided in [`optim_data-min.yaml`](optim_data-min.yaml). 
 

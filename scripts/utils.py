@@ -25,7 +25,6 @@ def add_stdout_to_logger(
 
 
 def load_record(url: str) -> Any:
-
     if not os.path.exists(url):
         print(f"The file '{url}' does not exist.")
         return None

@@ -6,7 +6,7 @@ import torch
 import SQcircuit as sq
 from SQcircuit.settings import set_optim_mode
 
-from qubit_discovery.losses.functions import (
+from qubit_discovery.losses import (
     element_sensitivity,
     fastest_gate_speed,
     flux_sensitivity,

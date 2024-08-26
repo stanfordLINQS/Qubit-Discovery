@@ -66,6 +66,15 @@ def construct_perturbed_elements(
     return new_elements
 
 
+def detach_if_optim(value: SQValType) -> SQValType:
+    """Detach the value if is in torch. Otherwise, return the value itself."""
+
+    if get_optim_mode():
+        return value.detach()
+
+    return value
+
+
 def hinge_loss(val: SQValType, cutoff: float, slope: float) -> SQValType:
     """
     Compute a linear hinge loss.
@@ -89,6 +98,13 @@ def hinge_loss(val: SQValType, cutoff: float, slope: float) -> SQValType:
         return slope * (val - cutoff)
 
 
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
 def zero() -> SQValType:
     """
     Return the value of 0 in the appropriate datatype for the current
@@ -102,11 +118,3 @@ def zero() -> SQValType:
         return torch.tensor(0.0)
 
     return 0.0
-
-def detach_if_optim(value: SQValType) -> SQValType:
-    """Detach the value if is in torch. Otherwise, return the value itself."""
-
-    if get_optim_mode():
-        return value.detach()
-
-    return value

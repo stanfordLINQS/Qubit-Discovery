@@ -30,9 +30,9 @@ import SQcircuit as sq
 import analysis as an
 from utils import load_final_circuit, set_plotting_defaults
 from inout import (
-    load_yaml_file,
     add_command_line_keys,
     Directory,
+    load_yaml_file
 )
 
 ################################################################################

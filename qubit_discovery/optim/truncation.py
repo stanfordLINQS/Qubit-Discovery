@@ -187,6 +187,47 @@ def get_slow_fit(
     return res_above_threshold[0]
 
 
+def charge_trunc_to_dimension(trunc: int) -> int:
+    """Convert the truncation number for a charge mode to the dimension
+    of the Hilbert space.
+    
+    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
+    space dimension is ``2*m - 1``.
+
+    Parameters
+    ----------
+        trunc:
+            The truncation number.
+
+    Returns
+    ----------
+        The Hilbert space dimension of the corresponding charge mode.
+    """
+
+    return 2 * trunc - 1
+
+
+def dimension_to_charge_trunc(max_dim: int) -> int:
+    """Convert the maximum dimension of a Hilbert space to the appropriate
+    truncation number for a charge mode.
+    
+    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
+    space dimension is ``2*m - 1``.
+
+    Parameters
+    ----------
+        max_dim:
+            The maximum dimension for the Hilbert space.
+
+    Returns
+    ----------
+        The largest truncation number such that the resulting Hilbert space
+        dimension is no greater than ``max_dim``.
+    """
+
+    return int(np.floor((max_dim + 1) / 2))
+
+
 def charge_mode_heuristic(
     circuit: Circuit,
     n_stds: int = 3
@@ -235,45 +276,102 @@ def charge_mode_heuristic(
                                   'supports circuits with one charge mode.')
 
 
-def dimension_to_charge_trunc(max_dim: int) -> int:
-    """Convert the maximum dimension of a Hilbert space to the appropriate
-    truncation number for a charge mode.
-    
-    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
-    space dimension is ``2*m - 1``.
+def harmonic_mode_heuristic(
+    circuit: Circuit,
+    total_trunc_num: int,
+    min_trunc_harmonic: int,
+    eig_vec_idx: int,
+    axes: Optional[Axes]
+) -> List[int]:
+    """For a diagonalized circuit, suggests a set of truncation numbers for
+    harmonic modes that will maximize the likelihood of convergence,
+    as defined by ``circuit.check_convergence()``.
+
+    If the circuit has a single harmonic mode, it simply sets the truncation
+    number to ``total_trunc_num``.
 
     Parameters
     ----------
-        max_dim:
-            The maximum dimension for the Hilbert space.
+        circuit:
+            A ``Circuit`` object to provide truncation numbers for.
+        eig_vec_idx:
+            The index of the eigenvector to use in the heuristic.
+        total_trunc_num:
+            The maximum Hilbert space dimension for the harmonic mode subspace.
+        min_trunc_harmonic:
+            The minimum truncation number for harmonic modes to have.
+        axes:
+            Optionally, a set of Matplotlib Axes to plot the exponential fits
+            used in the he
 
     Returns
     ----------
-        The largest truncation number such that the resulting Hilbert space
-        dimension is no greater than ``max_dim``.
+        List of truncation numbers for the harmonic modes of ``circuit``.
     """
+    harmonic_modes = circuit.omega != 0
+    n_h = np.count_nonzero(harmonic_modes)
 
-    return int(np.floor((max_dim + 1) / 2))
+    if n_h == 0:
+        return [0]
+    elif n_h == 1:
+        return [total_trunc_num]
 
+    K = total_trunc_num
 
-def charge_trunc_to_dimension(trunc: int) -> int:
-    """Convert the truncation number for a charge mode to the dimension
-    of the Hilbert space.
-    
-    Given a truncation number ``m`` for a charge mode, the resulting Hilbert
-    space dimension is ``2*m - 1``.
+    K_eff = K / (min_trunc_harmonic ** n_h)
 
-    Parameters
-    ----------
-        trunc:
-            The truncation number.
+    # Compute the component of the state in each of the mode
+    mode_magnitudes = get_reshaped_eigvec(
+        circuit,
+        eig_vec_idx,
+    )
 
-    Returns
-    ----------
-        The Hilbert space dimension of the corresponding charge mode.
-    """
+    decay_constants = np.zeros(n_h, dtype=np.float64)
+    peak_locations = np.zeros(n_h, dtype=np.float64)
 
-    return 2 * trunc - 1
+    # Fit exponential decays to each mode
+    for mode_idx in np.flatnonzero(harmonic_modes):
+        axis = axes[mode_idx] if axes is not None else None
+        fit_results = fit_mode(mode_magnitudes[mode_idx],
+                                both_parities=True,
+                                axis=axis)
+        ki, _, di = get_slow_fit(fit_results)
+
+        decay_constants[mode_idx] = ki
+        peak_locations[mode_idx] = di
+
+    # Allocate truncation numbers inverse to decay constants
+    harmonic_trunc_nums = (
+        np.power(K_eff * np.prod(decay_constants), 1 / n_h)
+        / decay_constants
+    )
+
+    # Shift by relative peaks
+    harmonic_trunc_nums += peak_locations
+    # and renormalize to be below K.
+    harmonic_trunc_nums *= np.power(K_eff / np.prod(harmonic_trunc_nums),
+                                    1 / n_h)
+
+    # Edge case: For mode numbers less than 1, rescale to 1 and rescale
+    # other mode numbers to keep total product constant.
+    while np.any(harmonic_trunc_nums < 1):
+        small_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums <= 1]
+        large_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums > 1]
+        rescale_factor = np.power(np.prod(small_trunc_nums),
+                                  1 / len(large_trunc_nums))
+        harmonic_trunc_nums[harmonic_trunc_nums > 1] *= rescale_factor
+        harmonic_trunc_nums[harmonic_trunc_nums <= 1] = 1
+
+    # Edge case: If a trunc number is greater than K_eff, set it to K_eff
+    harmonic_trunc_nums = np.minimum(harmonic_trunc_nums, K_eff)
+
+    # Round to nearest integer and assign harmonic modes. Multiply by
+    # `min_trunc_harmonic` because we allocated as a proportion of that.
+    harmonic_trunc_nums = np.floor(
+        harmonic_trunc_nums * min_trunc_harmonic
+    ).astype(int)
+
+    return harmonic_trunc_nums
 
 
 def trunc_num_heuristic(
@@ -283,6 +381,7 @@ def trunc_num_heuristic(
     min_trunc_harmonic: int = 1,
     min_trunc_charge: int = 1,
     max_trunc_charge: Optional[int] = None,
+    use_harmonic_heuristic=True,
     use_charge_heuristic=False,
     axes: Optional[Axes] = None
 ) -> List[int]:
@@ -293,6 +392,9 @@ def trunc_num_heuristic(
     If ``use_charge_heuristic`` is ``False``, the truncation numbers for the
     charge modes are set to ``K**(1/circuit.n)``, subject to the values
     of ``min_trunc_charge`` and ``max_trunc_charge``.
+
+    If the circuit has a single mode, it simply sets the truncation number
+    to ``total_trunc_num`` (appropriately divided for charge modes).
 
     Parameters
     ----------
@@ -310,12 +412,16 @@ def trunc_num_heuristic(
             of dimension ``2*m - 1``.
         max_trunc_charge:
             An optional maximum truncation number for charge modes.
+        use_harmonic_heuristic:
+            Whether to use the harmonic mode heuristic, or otherwise assign
+            the harmonic truncation numbers evenly using the remaining
+            Hilbert dimension after assigning the charge modes.  
         use_charge_heuristic:
             Whether to use the charge mode heuristic, or otherwise assign the
             charge mode truncation numbers evenly.
         axes:
             Optionally, a set of Matplotlib Axes to plot the exponential fits
-            during the charge mode heuristic.
+            used in the harmonic mode heuristic.
 
     Returns
     ----------
@@ -339,6 +445,16 @@ def trunc_num_heuristic(
     if min_trunc_charge  < 1:
         raise ValueError('Charge modes must have a minimum truncation number '
                          'of at least 1.')
+
+    # Deal with the easy case of a single mode (no heuristic necessary)
+    if circuit.n == 1:
+        logger.info('Single mode (no heuristic required).')
+        # Charge mode
+        if sum(circuit.omega) == 0:
+            return [dimension_to_charge_trunc(total_trunc_num)]
+        # Harmonic mode
+        else:
+            return [total_trunc_num]
 
     # Set up trunc nums and list of charge, harmonic modes
     trunc_nums = np.zeros_like(circuit.trunc_nums)
@@ -374,7 +490,7 @@ def trunc_num_heuristic(
 
         # Compute the Hilbert space dimension remaining for harmonic modes
         charge_space_dim = np.prod(charge_trunc_to_dimension(trunc_nums[charge_modes]))
-        K /= charge_space_dim
+        K //= charge_space_dim
 
         if K < (min_trunc_harmonic ** n_h):
             raise ValueError(
@@ -385,64 +501,20 @@ def trunc_num_heuristic(
 
     # Assign harmonic mode truncation numbers
     if n_h > 0:
-        # We ensure each mode has at least `min_trunc_harmonic` by allocating
-        # truncation numbers as proportion of it.
-        K_eff = K / (min_trunc_harmonic ** n_h)
-
-        # Compute the component of the state in each of the mode
-        mode_magnitudes = get_reshaped_eigvec(
-            circuit,
-            eig_vec_idx,
-        )
-
-        decay_constants = np.zeros(n_h, dtype=np.float64)
-        peak_locations = np.zeros(n_h, dtype=np.float64)
-
-        # Fit exponential decays to each mode
-        for mode_idx in np.flatnonzero(harmonic_modes):
-            axis = axes[mode_idx] if axes is not None else None
-            fit_results = fit_mode(mode_magnitudes[mode_idx],
-                                   both_parities=True,
-                                   axis=axis)
-            ki, _, di = get_slow_fit(fit_results)
-
-            decay_constants[mode_idx] = ki
-            peak_locations[mode_idx] = di
-
-        # Allocate truncation numbers inverse to decay constants
-        harmonic_trunc_nums = (
-            np.power(K_eff * np.prod(decay_constants), 1 / n_h)
-            / decay_constants
-        )
-
-        # Shift by relative peaks
-        harmonic_trunc_nums += peak_locations
-        # and renormalize to be below K.
-        harmonic_trunc_nums *= np.power(K_eff / np.prod(harmonic_trunc_nums),
-                                        1 / n_h)
-
-        # Edge case: For mode numbers less than 1, rescale to 1 and rescale
-        # other mode numbers to keep total product constant.
-        while np.any(harmonic_trunc_nums < 1):
-            small_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums <= 1]
-            large_trunc_nums = harmonic_trunc_nums[harmonic_trunc_nums > 1]
-            rescale_factor = np.power(np.prod(small_trunc_nums),
-                                      1 / len(large_trunc_nums))
-            harmonic_trunc_nums[harmonic_trunc_nums > 1] *= rescale_factor
-            harmonic_trunc_nums[harmonic_trunc_nums <= 1] = 1
-
-        # Edge case: If a trunc number is greater than K_eff, set it to K_eff
-        harmonic_trunc_nums = np.minimum(harmonic_trunc_nums, K_eff)
-
-        # Round to nearest integer and assign harmonic modes. Multiply by
-        # `min_trunc_harmonic` because we allocated as a proportion of that.
-        harmonic_trunc_nums = np.floor(
-            harmonic_trunc_nums * min_trunc_harmonic
-        ).astype(int)
+        if use_harmonic_heuristic:
+            harmonic_trunc_nums = harmonic_mode_heuristic(
+                circuit,
+                K,
+                min_trunc_harmonic,
+                eig_vec_idx,
+                axes
+            )
+        else:
+            harmonic_trunc_nums = [np.floor(K**(1/n_h)).astype(int)] * n_h
 
         # Because everything is integers, it is possible in the process of
         # taking the floor we cut off too much. Thus, now maximize each
-        # individual mode cutoff while ensuring product less than K.
+        # individual truncation number while ensuring product less than K.
         for idx in range(len(harmonic_trunc_nums)):
             curr_dim = np.prod(harmonic_trunc_nums)
             if curr_dim == K:
@@ -496,17 +568,8 @@ def assign_trunc_nums(
         trunc_nums:
             List of truncation numbers for each mode of ``circuit``.
     """
-    if len(circuit.m) == 1:
-        logger.info('re-allocate truncation numbers (single mode)')
-        # Charge mode
-        if sum(circuit.omega) == 0:
-            circuit.set_trunc_nums([dimension_to_charge_trunc(total_trunc_num),])
-        # Harmonic mode
-        else:
-            circuit.set_trunc_nums([total_trunc_num, ])
-    else:
-        logger.info('re-allocate truncation numbers (2+ modes)')
-        trunc_nums = trunc_num_heuristic(
+    logger.info('Reallocating truncation numbers.')
+    trunc_nums = trunc_num_heuristic(
             circuit,
             total_trunc_num=total_trunc_num,
             eig_vec_idx=1,
@@ -515,8 +578,9 @@ def assign_trunc_nums(
             max_trunc_charge=max_trunc_charge,
             use_charge_heuristic=use_charge_heuristic,
             axes=axes
-        )
-        circuit.set_trunc_nums(trunc_nums)
+    )
+
+    circuit.set_trunc_nums(trunc_nums)
 
     return circuit.trunc_nums
 

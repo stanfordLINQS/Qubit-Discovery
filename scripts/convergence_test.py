@@ -4,6 +4,7 @@ Evaluate convergence test on randomly sampled (or fixed) circuit.
 Usage:
   convergence_test.py <yaml_file> [--seed=<seed>] [--K=<K>]
                       [--circuit_code=<circuit_code>] [--init_circuit=<init_circuit>]
+                      [--verbose]
   convergence_test.py -h | --help
   convergence_test.py --version
 
@@ -14,9 +15,11 @@ Options:
   -h, --help    Show this screen.
   --version     Show version.
 
-  -c, --circuit_code=<circuit_code>         Circuit code
-  -s, --seed=<seed>                         Seed for random generators
-  -i, --init_circuit=<init_circuit>         Set initial circuit params
+  -s, --seed=<seed>                         Seed for random generators.
+  -K, --K=<K>                               Maximum truncation number.
+  -c, --circuit_code=<circuit_code>         Circuit code.
+  -i, --init_circuit=<init_circuit>         Set initial circuit params.
+  -v, --verbose                             Turn on verbose output.
 """
 
 import os
@@ -31,15 +34,15 @@ import torch
 import SQcircuit as sq
 
 import qubit_discovery as qd
-from qubit_discovery.optimization.sampler import CircuitSampler
-from qubit_discovery.optimization.truncation import (
+from qubit_discovery import CircuitSampler
+from qubit_discovery.optim.truncation import (
     assign_trunc_nums,
-    test_convergence,
-    get_reshaped_eigvec
+    get_reshaped_eigvec,
+    test_convergence
 )
-from qubit_discovery.optimization.utils import float_list
-from utils import load_final_circuit, add_stdout_to_logger
-from inout import load_yaml_file, add_command_line_keys, Directory
+from qubit_discovery.optim.utils import float_list
+from utils import add_stdout_to_logger, load_final_circuit
+from inout import add_command_line_keys, Directory, load_yaml_file
 
 ################################################################################
 # General Settings.
@@ -212,8 +215,7 @@ def main() -> None:
     ########################################################################
 
     even_trunc_nums = circuit.truncate_circuit(
-        int(parameters['K']),
-        heuristic=False
+        int(parameters['K'])
     )
     print(f"even_trunc_nums: {even_trunc_nums}")
     even_split_passed = evaluate_trunc_number(

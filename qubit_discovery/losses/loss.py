@@ -19,6 +19,7 @@ from .functions import (
 )
 from .utils import (
     detach_if_optim,
+    dotdict,
     hinge_loss,
     SQValType
 )
@@ -317,7 +318,7 @@ def number_of_gates_loss(
 # Incorporating all losses into one loss function
 ###############################################################################
 
-ALL_METRICS = {
+ALL_METRICS = dotdict({
     ###########################################################################
     'frequency': frequency_loss,
     'flux_sensitivity': flux_sensitivity_loss,
@@ -336,7 +337,7 @@ ALL_METRICS = {
     't_phi_charge': lambda cr: t_phi_loss(cr, dec_type='charge'),
     't_phi_cc': lambda cr: t_phi_loss(cr, dec_type='cc'),
     't_phi_flux': lambda cr: t_phi_loss(cr, dec_type='flux')
-}
+})
 
 
 def get_all_metrics() -> List[str]:
@@ -351,6 +352,22 @@ def get_all_metrics() -> List[str]:
         List of names of available metrics.
     """
     return list(ALL_METRICS.keys())
+
+
+def describe_metric(name: str) -> None:
+    """
+    Provides a description of a given metric function (if available).
+
+    Parameters
+    ----------
+        Name of metric.
+    """
+    descrip = ALL_METRICS[name].__doc__
+
+    if descrip is None:
+        print('No description available.')
+    else:
+        print(descrip)
 
 
 def add_to_metrics(

@@ -1,27 +1,21 @@
 """This module provides functions to input and output of the scripts.
 
 ################################################################################
-YAML Configuration File Structure(The yaml file is the core setting
-for all the scripts):
+YAML Configuration File Structure
 
-- name: String. A unique identifier for the optimization setup.
-- K: Integer. Total truncation number for circuit quantization.
-- epochs: Integer. Total number of optimization iteration.
-- num_eigenvalues: Integer. Total number of eigenvalues for diagonalization.
-- capacitor_range: List of floats. Range of capacitor values in
-- Farads, specified as [min, max].
-- inductor_range: List of floats. Range of inductor values in
-  Henry, specified as [min, max].
-- junction_range: List of floats. Range of junction frequencies in
-  radians per second, specified as [min, max].
-- use_losses: Dictionary. Specifies which loss to use with float values for the
-  weight in the total loss function:
-    - frequency: Frequency loss.
-    - anharmonicity: Anharmonicity loss.
-    - flux_sensitivity: Flux sensitivity loss.
-    - charge_sensitivity: Charge sensitivity loss.
-    - T1: Energy relaxation time (T1) loss.
-- use_metrics: List of strings. Metrics to use in simulations, e.g., ["T1"] for
+- name [str]: A unique identifier for the optimization setup.
+- K [int]: Total truncation number for circuit quantization.
+- epochs [int]: Total number of optimization iteration.
+- num_eigenvalues [int]: Total number of eigenvalues for diagonalization.
+- capacitor_range [list[float]] Range of capacitor values in Farads, specified
+  as [min, max].
+- inductor_range [list[float]]: Range of inductor values in Henries, specified
+  as [min, max].
+- junction_range [list[float]]: Range of junction frequencies in Hertz,
+  specified as [min, max].
+- use_losses [dict[str, float]]: Specifies which loss components use with float
+  values for the weight in the total loss function:
+- use_metrics [list[str]]: Metrics to use in simulations, e.g., ["T1"] for
   coherence time.
 
 Example:
@@ -30,7 +24,7 @@ Example:
     epochs: 100
     capacitor_range: [1e-15, 12e-12]
     inductor_range: [1e-15, 5e-6]
-    junction_range: [1e9 * 2 * np.pi, 100e9 * 2 * np.pi]
+    junction_range: [1e9, 100e9]
     num_eigenvalues: 10
     use_losses:
       frequency: 1.0
@@ -41,50 +35,42 @@ Example:
     use_metrics: ["T1"]
     optim_type: SGD
     circuit_code: JL
-    init_circuit: ""
-
-Ensure the YAML file follows this structure for proper processing.
 
 ################################################################################
 The working tree for the outputs of scripts will look like:
 
- main_folder/                       - main directory
+ main_folder/
  ├── yaml_file.yaml
  │
- └── {optim_type}_{name}/           - experiment_directory
+ └── {name}/
      │
-     ├── records/                   - records_directory
+     ├── records/
      │   │
-     │   ├── {optim_type}_loss_record_{circuit_code}_{name}_{seed}.pickle
-     │   ├── {optim_type}_metrics_record_{circuit_code}_{name}_{seed}.pickle
-     │   └── {optim_type}_circuits_record_{circuit_code}_{name}_{seed}.pickle
+     │   ├── loss_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
+     │   ├── metrics_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
+     │   └── circuit_record_{circuit_code}_{name}_{optim_type}_{seed}.pickle
      │
-     ├── plots/                     - plots_directory
+     ├── plots/
      │   │
-     │   ├── {circuit_code}_n_{num_runs}_{optim_type}_{name}_loss.png
-     │   └── {circuit_code}_n_{num_runs}_{optim_type}_{name}_metrics.png
+     │   ├── loss_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
+     │   └── metrics_{circuit_code}_{name}_{optim_type}_n_{num_runs}.png
      │
-     └── summaries/                 - summaries_directory
+     └── summaries/
          │
-         └── {optim_type}_circuit_summary_{circuit_code}_{name}_{id_num}.txt
-
-Ensure that you have the correct file structure for proper operation
-of the scripts and modules within this project.
+         └── circuit_summary_{circuit_code}_{name}_{optim_type}_{seed}.txt
 """
 
 from collections import defaultdict
 import os
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import yaml
-
-from qubit_discovery.losses.loss import get_all_metrics
 
 ################################################################################
 # General Settings.
 ################################################################################
 
-# Keys that must be included in Yaml file.
+# Keys that must be included in YAML file.
 YAML_KEYS = [
     'name',
     'K',
@@ -125,7 +111,7 @@ def get_metrics_dict(config: dict) -> Tuple[List[str], List[str]]:
     Parameters
     ----------
         config:
-            A dictionary containing the parameters of the yaml file.
+            A dictionary containing the parameters of the YAML file.
     """
 
     metrics_in_optim = list(config['use_losses'].keys())

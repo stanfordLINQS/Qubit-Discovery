@@ -29,10 +29,10 @@ from matplotlib import pyplot as plt
 
 from utils import load_record
 from inout import (
-    load_yaml_file,
     add_command_line_keys,
     Directory,
     get_units,
+    load_yaml_file
 )
 
 ################################################################################

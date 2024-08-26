@@ -23,16 +23,16 @@ Options:
 
 from docopt import docopt
 import qubit_discovery as qd
-from qubit_discovery.losses.loss import calculate_loss_metrics
+from qubit_discovery.losses import calculate_loss_metrics
 import SQcircuit as sq
 
 import analysis as an
 from inout import (
-    load_yaml_file,
     add_command_line_keys,
     Directory,
+    load_yaml_file,
     get_metrics_dict,
-    get_units,
+    get_units
 )
 from utils import load_final_circuit
 
