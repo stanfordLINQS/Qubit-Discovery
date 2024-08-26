@@ -7,12 +7,12 @@ qd_logger = logging.getLogger(__name__)
 
 
 def get_logger() -> logging.Logger:
-    """Get the Qubit Discovery-wide parent logger."""
+    """Get the qubit_discovery-wide parent logger."""
     return qd_logger
 
 
 def log_to_stdout(level: int =logging.INFO) -> logging.Logger:
-    """Set the Qubit-Discovery module to log to stdout.
+    """Set the qubit_discovery package to log to stdout.
 
     Parameters
     ----------
@@ -33,5 +33,12 @@ def log_to_stdout(level: int =logging.INFO) -> logging.Logger:
 
     return qd_logger
 
+
 from . import losses
 from . import optimization
+
+try:
+    from ._version import version as __version__, version_tuple
+except ImportError:
+    __version__ = "unknown"
+    version_tuple = (0, 0, "unknown")

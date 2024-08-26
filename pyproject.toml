@@ -1,15 +1,45 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qubit_discovery"
-version = "0.0.1"
+name = "qubit-discovery"
 requires-python = ">=3.9"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
+authors = [
+    {name = "Taha Rajabzadeh", email = "tahar@stanford.edu"},
+    {name = "Alex Boulton-McKeehan", email = "mckeehan@stanford.edu"},
+    {name = "Sam Bonkowsky", email = "sbonkov@ucsb.edu"},
+    {name = "Amir Safavi-Naeini", email = "safavi@stanford.edu"}
+]
+description = "Tools to optimize superconducting circuits using SQcircuit."
+readme = "pypi-readme.md"
+license = {file = "LICENSE"}
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Physics",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent"
+]
+keywords = [
+    "superconducting circuits", "superconducting qubits",
+    "machine learning", "pytorch"
+]
+
+[project.urls]
+Homepage = "https://github.com/stanfordLINQS/Qubit-Discovery"
 
 [tool.setuptools]
 packages = ["qubit_discovery"]
+
+[tool.setuptools_scm]
+version_file = "qubit_discovery/_version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+fallback_version = "0.1.0"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
