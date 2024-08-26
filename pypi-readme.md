@@ -1,8 +1,6 @@
-<div align="center"> <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/dark_logo_qd.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/light_logo_qd.png">
-  <img alt="Logo image" src="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/dark_logo_qd.png" width="150" height="auto">
-</picture></div>
+<div align="center">
+  <img alt="Logo image" src="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/light_logo_qd.png" width="150" height="auto">
+</div>
 
 # qubit-discovery
 
@@ -14,6 +12,6 @@ qubit-discovery is an open-source Python library for optimizing superconducting 
 With these capabilities, you can easily optimize any superconducting circuit for decoherence time, anharmonicity, charge sensitivity, or other desired targets. 
 
 A description of the theory involved and example application is provided in the following paper:
-> Taha Rajabzadeh, Alex Boulton-McKeehan, Sam Bonkowsky, David I. Schuster, Amir H. Safavi-Naeini, _A General Framework for Gradient-Based Optimization of Superconducting Quantum Circuits using Qubit Discovery as a Case Study_, arXiv:2408.12704 (2024), https://arxiv.org/abs/2408.12704.
+> Taha Rajabzadeh, Alex Boulton-McKeehan, Sam Bonkowsky, David I. Schuster, Amir H. Safavi-Naeini, "A General Framework for Gradient-Based Optimization of Superconducting Quantum Circuits using Qubit Discovery as a Case Study", arXiv:2408.12704 (2024), https://arxiv.org/abs/2408.12704.
 
 If qubit-discovery is useful to you, we welcome contributions to its development and maintenance! Use of the package in publications may be acknowledged by citing the above paper.
