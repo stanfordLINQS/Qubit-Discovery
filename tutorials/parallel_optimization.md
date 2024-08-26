@@ -2,7 +2,7 @@
 
 This document provides a tutorial on using the programs in the [`scripts/`](../scripts/) directory to run replicable parallelized optimization of circuits using the [`qubit_discovery`](../qubit_discovery) package.
 
-The following pipeline has been used in [TODO]() to run optimization on Stanford's [Sherlock](https://www.sherlock.stanford.edu/) HPC cluster.
+The following pipeline has been used in [arXiv:2408.12704](https://arxiv.org/abs/2408.12704) to run optimization on Stanford's [Sherlock](https://www.sherlock.stanford.edu/) HPC cluster.
 
 ## 1. Creating a YAML file
 
@@ -21,7 +21,7 @@ To ensure replicability, all metadata about the optimization is recorded in a YA
 An example YAML file is provided in [`optim_data-min.yaml`](optim_data-min.yaml). 
 
 Other metadata about the optimization can be provided either directly to the Python scripts or as keys in the YAML file, when needed. These are:
-- `circuit_code`: A string describing the topology of the circuit (see [TODO]() for details about the conventions).
+- `circuit_code`: A string describing the topology of the circuit (see section IV.A of [arXiv:2408.12704](https://arxiv.org/abs/2408.12704) for details about the conventions).
 - `optim_type`: The optimization algorithm to use. Currently gradient descent (`'SGD'`) and BFGS (`'BFGS'`) are supported.
 - `seed`: An integer to set the seed of random number generators. Crucially, this determines the random initialization used to begin optimization.
 - `init_circuit`: The path to a pickled `SQcircuit.Circuit` object to use as the initial circuit for optimization, rather than a random seed.

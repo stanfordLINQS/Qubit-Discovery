@@ -17,7 +17,7 @@ Qubit-Discovery is a set of software tools to perform gradient-based optimizatio
 With these tools, superconducting circuits can be optimized over the values of their elements for metrics such as decoherence time, anharmonicity, qubit frequency, or other user-defined targets.
 
 A description of the theory and example application (employing the provided scripts) is provided in the following paper:
-> TODO
+> Taha Rajabzadeh, Alex Boulton-McKeehan, Sam Bonkowsky, David I. Schuster, Amir H. Safavi-Naeini, _A General Framework for Gradient-Based Optimization of Superconducting Quantum Circuits using Qubit Discovery as a Case Study_, arXiv:2408.12704 (2024), https://arxiv.org/abs/2408.12704.
 
 ## Usage
 

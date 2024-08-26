@@ -14,6 +14,6 @@ qubit-discovery is an open-source Python library for optimizing superconducting 
 With these capabilities, you can easily optimize any superconducting circuit for decoherence time, anharmonicity, charge sensitivity, or other desired targets. 
 
 A description of the theory involved and example application is provided in the following paper:
-> TODO
+> Taha Rajabzadeh, Alex Boulton-McKeehan, Sam Bonkowsky, David I. Schuster, Amir H. Safavi-Naeini, _A General Framework for Gradient-Based Optimization of Superconducting Quantum Circuits using Qubit Discovery as a Case Study_, arXiv:2408.12704 (2024), https://arxiv.org/abs/2408.12704.
 
 If qubit-discovery is useful to you, we welcome contributions to its development and maintenance! Use of the package in publications may be acknowledged by citing the above paper.
