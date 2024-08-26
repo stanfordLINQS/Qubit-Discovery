@@ -1,13 +1,9 @@
 """Test Module for BFGS algorithm. CURRENTLY DEPRECATED"""
-import pytest
 
-import matplotlib.pyplot as plt
 import numpy as np
-import torch
-
+import pytest
 import SQcircuit as sq
-
-from SQcircuit import Circuit
+import torch
 
 from qubit_discovery.optimization import run_BFGS
 from qubit_discovery.losses import build_loss_function
@@ -17,7 +13,7 @@ from qubit_discovery.tests.conftest import (
     are_loss_dicts_close
 )
 
-
+@pytest.mark.skip('Currently deprecated')
 def test_bfgs_run() -> None:
     """Test two steps of the BFGS algorithm."""
 

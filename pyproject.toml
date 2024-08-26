@@ -29,6 +29,9 @@ keywords = [
     "machine learning", "pytorch"
 ]
 
+[project.optional-dependencies]
+scripts = ["docopt", "pyyaml"]
+
 [project.urls]
 Homepage = "https://github.com/stanfordLINQS/Qubit-Discovery"
 

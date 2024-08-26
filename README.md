@@ -46,7 +46,11 @@ To install the `qubit-discovery` package, download from  PyPI:
 pip install qubit-discovery
 ```
 
-To use the provided scripts, after installing the `qubit-discovery` package clone the `Qubit-Discovery` repository and run with Python >=3.9. 
+To use the provided scripts, first install `qubit-discovery` with scripting support:
+```
+pip install qubit-discovery[scripts]
+```
+Then clone the `Qubit-Discovery` repository and run the scripts with Python >= 3.9.
 
 ## Contribution
 

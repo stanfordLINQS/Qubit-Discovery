@@ -3,7 +3,7 @@ import SQcircuit as sq
 import qubit_discovery as qd
 from qubit_discovery.optimization.truncation import (
     assign_trunc_nums,
-    test_convergence
+    test_convergence as convergence_test # rename so pytest ignores
 )
 
 N_EIG = 10
@@ -113,6 +113,6 @@ def test_paper_circuit() -> None:
     assert circuit.m == [4, 65, 23]
 
     circuit.diag(N_EIG)
-    passed_test, test_values = test_convergence(circuit, eig_vec_idx=1)
+    passed_test, test_values = convergence_test(circuit, eig_vec_idx=1)
     print('Convergence test values', test_values)
     assert passed_test, "Test should pass"

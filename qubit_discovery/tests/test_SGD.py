@@ -1,5 +1,6 @@
 """Test Module for SGD algorithm. CURRENTLY DEPRECATED"""
 
+import pytest
 import torch
 
 import SQcircuit as sq
@@ -13,7 +14,7 @@ from qubit_discovery.tests.conftest import (
     get_bounds,
 )
 
-
+@pytest.mark.skip('Currently deprecated')
 def test_sgd_run() -> None:
     """Test one step of SGD algorithm."""
 
