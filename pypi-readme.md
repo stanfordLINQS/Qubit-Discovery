@@ -1,7 +1,7 @@
 <div align="center"> <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="pics/dark_logo_qd.png">
-  <source media="(prefers-color-scheme: light)" srcset="pics/light_logo_qd.png">
-  <img alt="Logo image" src="pics/dark_logo_qd.png" width="150" height="auto">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/dark_logo_qd.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/light_logo_qd.png">
+  <img alt="Logo image" src="https://raw.githubusercontent.com/stanfordLINQS/Qubit-Discovery/main/pics/dark_logo_qd.png" width="150" height="auto">
 </picture></div>
 
 # qubit-discovery

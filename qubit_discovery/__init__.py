@@ -38,7 +38,7 @@ from . import losses
 from . import optimization
 
 try:
-    from ._version import version as __version__, version_tuple
+    from ._version import __version__, __version_tuple__
 except ImportError:
     __version__ = "unknown"
     version_tuple = (0, 0, "unknown")
