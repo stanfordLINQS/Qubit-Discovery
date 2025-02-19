@@ -292,6 +292,7 @@ def flux_sensitivity(
 
     # Return loop back to original flux
     loop.internal_value = org_flux
+    circuit._get_inductive_hamil() # reset memory ops (!)
 
     if get_optim_mode():
         S = torch.abs((f_delta - f_0) / f_0)
